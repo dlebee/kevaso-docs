@@ -80,7 +80,7 @@ Everything in Kevaso is an object with a **spec** (what you want) and a **status
 | For | Using the platform | Running the platform |
 | Like | `kubectl` | `kubeadm` |
 | Talks to | The API, as you (certificate or signed-in token) | Machines over SSH (setup), and the API as a cluster admin |
-| Examples | `apply`, `get`, `exec`, `login`, `create secret` | `check`, `init`, `host add`, `users invite`, `kms rotate` |
+| Examples | `apply`, `get`, `exec`, `login`, `create secret` | `init`, `host add`, `users invite`, `kms rotate` |
 
 ---
 

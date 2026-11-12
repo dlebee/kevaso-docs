@@ -6,11 +6,11 @@ permalink: /setup/single-node/
 # Single system node
 
 With a [prepared machine]({{ '/setup/prepare/' | relative_url }}) (your Kevaso key on it, its
-fingerprint written down, `kvoadm check` all green), install the control plane. Then decide whether
+fingerprint written down), install the control plane. Then decide whether
 that machine also runs silos: see [Choosing a setup]({{ '/setup/' | relative_url }}) for what that
 means for fault tolerance and security.
 
-## Step 6 · Install the control plane
+## Step 1 · Install the control plane
 
 ```bash
 bin/kvoadm init root@203.0.113.10 \
@@ -28,6 +28,33 @@ bin/kvoadm init root@203.0.113.10 \
 | `--api-server URL` | Only if *you* reach the API at another address than the machine's (a tunnel, a DNS name) |
 | `--address IP` | The address *other hosts* should use for this one, if not the SSH address |
 | `--user NAME` | Your name in Kevaso (default: your login name on this computer) |
+
+**First, it looks.** Before changing anything, `init` reads the machine and shows what it found:
+
+```
+What's on this machine:
+  ✓ operating system    Ubuntu 24.04.1 LTS
+  ✓ CPU                 x86_64            build kevasod with GOARCH=amd64
+  ✓ account             root
+  ✓ systemd             yes
+  ✓ openssl             yes
+  ✓ KVM                 /dev/kvm          microVM silos (cloud-hypervisor, openshell) can run here
+  ✓ size                4 CPUs, 7953 MiB memory, 71 GiB free
+  ! SSH password login  on                anyone can try passwords: set PasswordAuthentication no once your key works
+```
+
+| Mark | Means |
+|---|---|
+| `✓` | Fine |
+| `!` | Works, but read the note |
+| `✗` | Won't work: `init` stops there and changes nothing |
+
+To only look, add `--dry-run`: it stops after this table.
+
+> **Password logins on?** Now that your key works, you can turn them off: `kvoadm init` asks you
+> (or pass `--disable-password-login`). Or do it yourself: on the machine, put
+> `PasswordAuthentication no` in `/etc/ssh/sshd_config.d/00-local.conf` and run
+> `systemctl reload ssh`, keeping your current session open until a new key login works.
 
 In a terminal, it first asks two questions, both **No** unless you say otherwise:
 
@@ -78,7 +105,7 @@ hv1    203.0.113.10   -        control-plane   -          1m
 
 ---
 
-## Step 7 · Let the machine run silos (optional)
+## Step 2 · Let the machine run silos (optional)
 
 A control plane alone runs no silos. That's the [recommended setup]({{ '/setup/' | relative_url }}#dedicated-system-node--workers):
 [add workers]({{ '/workers/' | relative_url }}) next. For a one-machine cluster, a
@@ -109,7 +136,7 @@ bin/kvo watch hosts
 
 Wait for `cloud-hypervisor=Ready`, then make [your first silo]({{ '/silos/first-silo/' | relative_url }}).
 
-> **In one command.** `kvoadm init … --worker --runtime cloud-hypervisor` does steps 6 and 7
+> **In one command.** `kvoadm init … --worker --runtime cloud-hypervisor` does steps 1 and 2
 > together, and produces exactly the same setup. The steps are separate here so you can see each
 > one.
 

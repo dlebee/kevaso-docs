@@ -5,9 +5,9 @@ permalink: /setup/prepare/
 
 # Prepare a machine
 
-Before Kevaso changes anything on a machine, you set up the way in, yourself, in five small steps:
-build the tools, make an SSH key for Kevaso, put it on the machine, write down the machine's
-identity, and look at what Kevaso will find there. You do this once for every machine: the system
+Before Kevaso changes anything on a machine, you set up the way in, yourself, in four small steps:
+build the tools, make an SSH key for Kevaso, put it on the machine, and write down the machine's
+identity. You do this once for every machine: the system
 node and each worker.
 
 | Step | You do | Why |
@@ -16,7 +16,6 @@ node and each worker.
 | [2](#step-2--make-an-ssh-key-for-kevaso) | Make an SSH key for Kevaso | So `kvoadm` never needs a password |
 | [3](#step-3--put-the-key-on-the-machine) | Put its public half on the machine | So the machine lets that key in |
 | [4](#step-4--write-down-the-machines-fingerprint) | Write down the machine's host-key fingerprint | So you know you're talking to *your* machine |
-| [5](#step-5--check-the-machine) | `kvoadm check` | See what Kevaso finds before it changes anything |
 
 Then: [install the control plane]({{ '/setup/single-node/' | relative_url }}) on it, or
 [add it as a worker]({{ '/workers/' | relative_url }}).
@@ -36,7 +35,7 @@ go build -o bin/kvoadm ./cmd/kvoadm
 ```
 
 `kevasod` runs on the machine, so build it for Linux and for the machine's CPU (`amd64` for x86_64,
-`arm64` for ARM; step 5 tells you which):
+`arm64` for ARM; `uname -m` on the machine says `x86_64` or `aarch64`):
 
 ```bash
 GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/kevasod-linux-amd64 ./cmd/kevasod
@@ -138,43 +137,6 @@ Compare it with what `ssh` showed you in step 3. Same? Keep it: you'll give it t
 > trusted because this first connection was to the right machine.
 
 ---
-
-## Step 5 · Check the machine
-
-Before changing anything, look. `kvoadm check` logs in exactly the way `init` will, reads the
-machine, and **changes nothing**:
-
-```bash
-bin/kvoadm check root@203.0.113.10 \
-    --ssh-key ~/.ssh/kevaso_ed25519 \
-    --host-key SHA256:kVvp5Yv9fNU4r4yX2P7+O99SU45jwdxC60ylimGFta4
-```
-
-```
-root@203.0.113.10 (host key SHA256:kVvp5Yv9fNU4r4yX2P7+O99SU45jwdxC60ylimGFta4)
-
-✓ operating system    Ubuntu 24.04.1 LTS
-✓ CPU                 x86_64            build kevasod with GOARCH=amd64
-✓ account             root
-✓ systemd             yes
-✓ openssl             yes
-✓ KVM                 /dev/kvm          microVM silos (cloud-hypervisor, openshell) can run here
-✓ size                4 CPUs, 7953 MiB memory, 71 GiB free
-! SSH password login  on                anyone can try passwords: set PasswordAuthentication no once your key works
-
-Ready for kvoadm init. Nothing was changed.
-```
-
-| Mark | Means |
-|---|---|
-| `✓` | Fine |
-| `!` | Works, but read the note |
-| `✗` | Fix it before `init` (it exits non-zero) |
-
-> **Password logins on?** Now that your key works, you can turn them off: `kvoadm init` asks you
-> (or pass `--disable-password-login`). Or do it yourself: on the machine, put
-> `PasswordAuthentication no` in `/etc/ssh/sshd_config.d/00-local.conf` and run
-> `systemctl reload ssh`, keeping your current session open until a new key login works.
 
 ## If something goes wrong
 

@@ -87,19 +87,7 @@ limactl shell kevaso-local ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
 Copy the `SHA256:…` part. In the next commands, replace `you` with your Mac login name, `60022` with
 your port and the fingerprint with yours.
 
-## 4 · Look before installing
-
-```bash
-bin/kvoadm check you@127.0.0.1 \
-    --ssh-port 60022 \
-    --ssh-key ~/.lima/_config/user \
-    --host-key SHA256:kVvp5Yv9fNU4r4yX2P7+O99SU45jwdxC60ylimGFta4
-```
-
-It logs in, reads the machine and changes nothing. You want `✓` everywhere (a `!` for SSH password
-login is fine for a throwaway VM).
-
-## 5 · Install the control plane
+## 4 · Install the control plane
 
 ```bash
 bin/kvoadm init you@127.0.0.1 \
@@ -112,14 +100,16 @@ bin/kvoadm init you@127.0.0.1 \
     --api-server https://127.0.0.1:6443
 ```
 
-`--api-server` is where *you* reach the API: Lima forwards the VM's port 6443 to your Mac. At the end
-it prints a recovery key; for a throwaway VM you can let it go.
+It first shows what it found on the VM (all `✓`; a `!` for SSH password login is fine for a
+throwaway VM), asks whether to harden SSH (answer No here), then installs. `--api-server` is where
+*you* reach the API: Lima forwards the VM's port 6443 to your Mac. At the end it prints a recovery
+key; for a throwaway VM you can let it go.
 
 ```bash
 bin/kvo get hosts
 ```
 
-## 6 · Let it run silos
+## 5 · Let it run silos
 
 ```bash
 bin/kvoadm host enable-worker you@127.0.0.1 \
@@ -138,7 +128,7 @@ bin/kvo watch hosts
 
 When you see `cloud-hypervisor=Ready`, press Ctrl-C.
 
-## 7 · Your first silo
+## 6 · Your first silo
 
 Save this as `hello.yaml`:
 
@@ -181,7 +171,7 @@ hello from hello
 
 A microVM, inside a VM, on your Mac.
 
-## 8 · Clean up
+## 7 · Clean up
 
 ```bash
 limactl delete --force kevaso-local

@@ -69,7 +69,6 @@ Kinds: `namespaces` (`ns`), `hosts`, `silos`, `secrets`, `grants`, `ippools`, `r
 
 | Command | Does |
 |---|---|
-| `kvoadm check [USER@]ADDR --ssh-key KEY --host-key SHA256:…` | Report what Kevaso finds; changes nothing |
 | `kvoadm init [USER@]ADDR --ssh-key KEY --host-key SHA256:… --kevasod BIN [--name N] [--cluster C] [--api-server URL]` | Install the control plane; write your kvo context; print the recovery key |
 | `kvoadm host enable-worker [USER@]ADDR --ssh-key KEY [--runtime R]… [--loop-storage SIZE]` | The control-plane host runs silos too |
 | `kvoadm host add [USER@]ADDR --ssh-key KEY --kevasod BIN --install worker [--name N] [--region R] [--label K=V] [--runtime R] [--behind-nat]` | Add a worker |
@@ -85,6 +84,9 @@ the fingerprint).
 `--disable-password-login` (SSH keys only) and `--change-root-password` (a random one nobody
 knows). In a terminal without these flags they ask; `--no-extra-hardening` skips the questions.
 Everything that asks has a flag, so every command runs unattended too.
+
+Both look at the machine first and stop, changing nothing, if something won't work there;
+`--dry-run` stops after looking.
 
 ### People
 

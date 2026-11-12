@@ -83,16 +83,10 @@ limactl shell kevaso-local ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
 
 The `SHA256:…` part is what you give `kvoadm` as `--host-key`.
 
-### Check, install, add the worker
+### Install, and add the worker
 
-These are the same commands as for any machine, with Lima's port and key:
-
-```bash
-bin/kvoadm check you@127.0.0.1 \
-    --ssh-port 60022 \
-    --ssh-key ~/.lima/_config/user \
-    --host-key SHA256:kVvp5Yv9fNU4r4yX2P7+O99SU45jwdxC60ylimGFta4
-```
+These are the same commands as for any machine, with Lima's port and key. `init` first shows what
+it found on the VM, then installs:
 
 ```bash
 bin/kvoadm init you@127.0.0.1 \

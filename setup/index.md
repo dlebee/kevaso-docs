@@ -98,4 +98,4 @@ them, it's a perfectly good way to run a small cluster.
 | **Security risk** | The biggest one. A silo that escapes its VM or container lands on the machine that holds the cluster CA, the store and the **master key for every secret**. Root on a system node is trusted with everything; on a combined node, a silo is one escape away from it. Prefer it for silos you trust (your own dev boxes), not for untrusted code or agents running other people's input. |
 | **Grows into** | The recommended setup: add workers, then move silos off. |
 
-→ [Single system node]({{ '/setup/single-node/' | relative_url }}#step-7--let-the-machine-run-silos-optional)
+→ [Single system node]({{ '/setup/single-node/' | relative_url }}#step-2--let-the-machine-run-silos-optional)

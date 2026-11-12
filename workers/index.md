@@ -26,7 +26,8 @@ your router. They don't need to be on the same network.
 ## Prepare the machine
 
 The same as for the system node: [Prepare a machine]({{ '/setup/prepare/' | relative_url }}). Put your
-Kevaso key on it, write down its fingerprint, and `kvoadm check` it.
+Kevaso key on it and write down its fingerprint. `host add` looks at the machine before it creates
+anything (`--dry-run` to only look).
 
 ---
 
