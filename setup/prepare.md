@@ -104,9 +104,9 @@ ssh -i ~/.ssh/kevaso_ed25519 root@203.0.113.10
 You should get a shell without being asked for the machine's password (only for your key's
 passphrase, if `ssh-agent` doesn't have it yet). Type `exit` to leave.
 
-> **Prefer not to do this by hand?** `kvoadm init --password` logs in with the password once,
-> installs a key of its own, turns password logins off and changes the root password. It's the
-> same result, done for you, and it still asks you to confirm the machine first.
+> **Prefer not to do this by hand?** `kvoadm init --password` logs in with the password once and
+> adds a key of its own for next time (`~/.kevaso/ssh/id_ed25519`). It changes nothing else about how
+> the machine is logged in to.
 
 ---
 
@@ -171,9 +171,10 @@ Ready for kvoadm init. Nothing was changed.
 | `!` | Works, but read the note |
 | `✗` | Fix it before `init` (it exits non-zero) |
 
-> **Password logins on?** Now that your key works, turn them off: on the machine, put
+> **Password logins on?** Now that your key works, you can turn them off: `kvoadm init` asks you
+> (or pass `--disable-password-login`). Or do it yourself: on the machine, put
 > `PasswordAuthentication no` in `/etc/ssh/sshd_config.d/00-local.conf` and run
-> `systemctl reload ssh`. Keep your current session open until a new key login works.
+> `systemctl reload ssh`, keeping your current session open until a new key login works.
 
 ## If something goes wrong
 

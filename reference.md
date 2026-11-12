@@ -77,8 +77,14 @@ Kinds: `namespaces` (`ns`), `hosts`, `silos`, `secrets`, `grants`, `ippools`, `r
 | `kvoadm host drain NAME` / `uncordon NAME` | Maintenance |
 
 Every command that logs in takes `--ssh-key PATH` (a key with a passphrase is taken from `ssh-agent`
-or asked for) or `--password` (typed once; the machine then goes key-only), `--ssh-port N`, and
-`--host-key SHA256:…` (without it, you're asked to confirm the fingerprint).
+or asked for) or `--password` (typed once, read from stdin when there's no terminal; kvoadm then adds
+a key of its own), `--ssh-port N`, and `--host-key SHA256:…` (without it, you're asked to confirm
+the fingerprint).
+
+`init` and `host add` also take the extra hardening, each only when asked for:
+`--disable-password-login` (SSH keys only) and `--change-root-password` (a random one nobody
+knows). In a terminal without these flags they ask; `--no-extra-hardening` skips the questions.
+Everything that asks has a flag, so every command runs unattended too.
 
 ### People
 

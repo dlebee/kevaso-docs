@@ -29,6 +29,17 @@ bin/kvoadm init root@203.0.113.10 \
 | `--address IP` | The address *other hosts* should use for this one, if not the SSH address |
 | `--user NAME` | Your name in Kevaso (default: your login name on this computer) |
 
+In a terminal, it first asks two questions, both **No** unless you say otherwise:
+
+```
+Turn off SSH password logins on this machine?   Keys only from then on.
+Change root's password to a random one?        Nobody will know it, you included.
+```
+
+Kevaso doesn't need either; they're extra hardening for a machine that's now Kevaso's. In a script,
+nothing is asked: pass `--disable-password-login` and `--change-root-password` for the ones you
+want, or `--no-extra-hardening` to skip the questions.
+
 What it does, in order (each line is printed as it happens):
 
 1. **Connects** with your key, checking the host key against `--host-key`.
