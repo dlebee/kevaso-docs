@@ -81,16 +81,15 @@ The machine is gone. You have a backup file and the recovery key.
 [Prepare it]({{ '/setup/prepare/' | relative_url }}) like the first one: your Kevaso key on it, its
 fingerprint written down.
 
-**Give it the old machine's address if you can** (a reserved or floating IP from your provider).
-Workers find the control plane at the address they were given. If the address changes, each worker
-has to be [added again]({{ '/workers/' | relative_url }}).
+It can have the old machine's address (a reserved or floating IP you move over) or a new one. Each
+worker remembers the address it reports to; with a new one, the restore points them at it (step 4).
 
 ### 2 · Restore onto it
 
 `kvoadm init` with `--restore`:
 
 ```bash
-bin/kvoadm init root@203.0.113.10 \
+bin/kvoadm init root@198.51.100.7 \
     --ssh-key ~/.ssh/kevaso_ed25519 \
     --host-key SHA256:pD6y1yfXq0b3m9GWkqk1n0x5S8yGe7mT1UuJb2cNqXE \
     --kevasod bin/kevasod-linux-amd64 \
@@ -116,13 +115,15 @@ With the right key:
 
 ```
 → backup of cluster "home" (control plane hv1), taken 2026-11-12 03:00:04: the recovery key opens it
-→ connected to 203.0.113.10:22 (host key SHA256:pD6y1yfX…)
+→ connected to 198.51.100.7:22 (host key SHA256:pD6y1yfX…)
 → kevasod installed (signature verified on the host)
 → backup restored into /var/lib/kevaso: store, cluster CA, and the master key rebuilt with the recovery key
 → control plane started (kevasod.service)
-→ kvo context "home" written to /Users/you/.kevaso/config.yaml (server https://203.0.113.10:6443)
+→ kvo context "home" written to /Users/you/.kevaso/config.yaml (server https://198.51.100.7:6443)
 → host hv1 is Ready. Try: kvo get hosts
 → the recovery key is still the one you restored with
+→ worker hv2 reconnected (https://198.51.100.7:6443)
+→ worker hv3 reconnected (https://198.51.100.7:6443)
 ```
 
 The cluster and host names come from the backup (`--cluster` and `--name` override them). It
@@ -132,7 +133,7 @@ In a script, pass the key on stdin, never as an argument (arguments end up in sh
 `ps`):
 
 ```bash
-bin/kvoadm init root@203.0.113.10 --ssh-key ~/.ssh/kevaso_ed25519 \
+bin/kvoadm init root@198.51.100.7 --ssh-key ~/.ssh/kevaso_ed25519 \
     --host-key SHA256:pD6y1yfX… --kevasod bin/kevasod-linux-amd64 \
     --restore home-2026-11-12.kvb < recovery-key.txt
 ```
@@ -151,6 +152,51 @@ Secrets open again, and existing `kvo` contexts keep working: it's the same clus
 
 If the machine also ran silos, they start again from their specs, with empty disks: restore their
 data from your own backups of it.
+
+### 4 · Workers
+
+Workers weren't lost, and neither is what's on their disks. They only need to know where the
+control plane is now.
+
+A worker proves who it is with a certificate from the cluster CA, and the restored control plane
+has the same CA, so it still trusts every worker. All that changes is one setting on each worker,
+the address it reports to:
+
+```
+ExecStart=/usr/local/bin/kevasod worker --name hv2 --server https://198.51.100.7:6443 …
+```
+
+**The restore does this for you.** `kvoadm host add` noted how it reached each worker (its SSH
+address and host key) on the worker's Host, so it's in the backup. After restoring, `kvoadm` logs in
+to each worker with the same SSH key, changes the address, restarts it, and waits until it reports.
+On the same address as before, there's nothing to change and the workers simply reconnect.
+
+If it can't reach a worker (another SSH key, a machine that's off), it says which and what to run:
+
+```
+1 of 2 workers still point at the old control plane:
+
+HOST   WHY                                         RUN
+hv3    ssh: handshake failed: unable to authenticate   kvoadm host reconnect root@198.51.100.23 --ssh-port 22 --ssh-key KEY --server https://198.51.100.7:6443
+```
+
+Run it with the right key:
+
+```bash
+bin/kvoadm host reconnect root@198.51.100.23 \
+    --ssh-key ~/.ssh/hv3_ed25519 \
+    --server https://198.51.100.7:6443
+```
+
+```
+→ host hv3 reports to https://198.51.100.7:6443 again
+```
+
+Without `--server`, it uses the control plane of your current `kvo` context. The host key is
+checked against the one recorded when the worker was added.
+
+The WireGuard mesh between hosts heals by itself: the restored control plane gets new mesh keys,
+publishes them, and every worker picks them up.
 
 ---
 

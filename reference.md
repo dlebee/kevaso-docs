@@ -71,6 +71,7 @@ Kinds: `namespaces` (`ns`), `hosts`, `silos`, `secrets`, `grants`, `ippools`, `r
 |---|---|
 | `kvoadm init [USER@]ADDR --ssh-key KEY --host-key SHA256:… --kevasod BIN [--name N] [--cluster C] [--api-server URL]` | Install the control plane; write your kvo context; print the recovery key |
 | `kvoadm host enable-worker [USER@]ADDR --ssh-key KEY [--runtime R]… [--loop-storage SIZE]` | The control-plane host runs silos too |
+| `kvoadm host reconnect [USER@]ADDR --ssh-key KEY [--server URL]` | Point a worker at the control plane again (after a restore onto another address) |
 | `kvoadm host add [USER@]ADDR --ssh-key KEY --kevasod BIN --install worker [--name N] [--region R] [--label K=V] [--runtime R] [--behind-nat]` | Add a worker |
 | `kvoadm host list` | Hosts and their state |
 | `kvoadm host drain NAME` / `uncordon NAME` | Maintenance |
@@ -108,7 +109,7 @@ Both look at the machine first and stop, changing nothing, if something won't wo
 | Command | Does |
 |---|---|
 | `kvoadm backup [USER@]ADDR --ssh-key KEY --output FILE` | A backup of the control plane, sealed to the recovery key |
-| `kvoadm init [USER@]ADDR … --restore FILE` | A fresh machine from a backup; asks for the recovery key (or reads it from stdin) |
+| `kvoadm init [USER@]ADDR … --restore FILE` | A fresh machine from a backup; asks for the recovery key (or reads it from stdin), then reconnects the workers |
 
 ---
 
