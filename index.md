@@ -4,21 +4,46 @@ title: Overview
 
 # Kevaso
 
-Kevaso runs self-hosted, stateful **silos** (microVMs or containers) on the machines you bring,
-managed Kubernetes-style. One cluster can mix bare metal, any cloud and home machines.
+Kevaso runs **silos** — isolated, long-lived machines (microVMs or containers) — on computers you
+bring: a dedicated server, a VPS, a box under your desk. You describe what you want in YAML, and
+Kevaso makes it so and keeps it that way, the way Kubernetes does for pods.
 
-> **Status: early.** Kevaso is not ready to use yet. These docs grow as the
-> [milestones](https://github.com/dlebee/kevaso/blob/main/MILESTONES.md) land.
+Unlike a pod, a silo is a *machine*: it has a disk that stays, a name, an address, and it can be the
+place an AI agent or a developer works for months. Its secrets can work inside it without ever
+entering it.
 
-## The commands
+> **Status: early.** Milestones M0–M8 are done and M9 is in progress
+> ([milestones](https://github.com/dlebee/kevaso/blob/main/MILESTONES.md)). Everything here runs on
+> real machines in tests, but there are no releases yet: you build the binaries yourself. What isn't
+> built yet is marked <span class="badge planned">planned</span>.
 
-| Command | For |
+---
+
+## Where to start
+
+| If you want to | Go to |
 |---|---|
-| `kvo` (or `kevaso`) | users: create, inspect and enter silos |
-| `kvoadm` | operators: set up hosts and the cluster |
-| `kevasod` | the agent that runs on every host |
+| Understand the words first | [Concepts]({{ '/concepts/' | relative_url }}) |
+| Try it on your own computer in 15 minutes | [Quick start]({{ '/quickstart/' | relative_url }}) |
+| Decide how to set up a real cluster | [Choosing a setup]({{ '/setup/' | relative_url }}) |
+| Set up a machine, step by step | [Prepare a machine]({{ '/setup/prepare/' | relative_url }}) |
+| Look up a command | [Command reference]({{ '/reference/' | relative_url }}) |
 
-## Next
+---
 
-- [Concepts](concepts/): silos, hosts and components.
-- [Contributing](contributing/): build and test the code.
+## What's in a cluster
+
+| | |
+|---|---|
+| **System node** | Runs the control plane: the API, the store, the scheduler, the sign-in provider, the secrets' master key. |
+| **Workers** | Run silos. They only dial *out* to the system node, so a box behind your home router can be one. |
+| **`kvo`** | The CLI for using it: create silos, step inside, manage secrets. |
+| **`kvoadm`** | The CLI for running it: set up machines, invite people, rotate keys. |
+
+## What you need
+
+- **A Linux machine** for the system node: Ubuntu 24.04, x86_64 or arm64. 2 CPUs and 2 GiB of
+  memory is plenty for the control plane alone.
+- **KVM** (`/dev/kvm`) on the machines that run microVM silos: bare metal, or a VPS with nested
+  virtualization. Without it, container silos still work.
+- **Your computer** (macOS or Linux) with Go 1.27 and OpenSSH.

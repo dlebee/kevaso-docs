@@ -4,13 +4,42 @@ baseurl: /kevaso-docs
 url: https://dlebee.github.io
 markdown: kramdown
 kramdown:
+  input: GFM
   syntax_highlighter_opts:
     disable: true
 defaults:
   - scope: { path: "" }
     values: { layout: default }
-nav:
-  - { title: Overview, url: / }
-  - { title: Concepts, url: /concepts/ }
-  - { title: Contributing, url: /contributing/ }
+# The sidebar, in reading order.
+sections:
+  - title: Getting started
+    pages:
+      - { title: Overview, url: / }
+      - { title: Concepts, url: /concepts/ }
+      - { title: Quick start (local), url: /quickstart/ }
+  - title: Set up the system node
+    pages:
+      - { title: Choosing a setup, url: /setup/ }
+      - { title: Prepare a machine, url: /setup/prepare/ }
+      - { title: Single system node, url: /setup/single-node/ }
+      - { title: Running locally, url: /setup/local/ }
+      - { title: High availability, url: /setup/ha/ }
+  - title: Workers
+    pages:
+      - { title: Adding workers, url: /workers/ }
+      - { title: Host loss and draining, url: /workers/host-loss/ }
+  - title: Silos
+    pages:
+      - { title: Your first silo, url: /silos/first-silo/ }
+      - { title: Runtimes, url: /silos/runtimes/ }
+  - title: Networking and secrets
+    pages:
+      - { title: Networking, url: /networking/ }
+      - { title: Secrets, url: /secrets/ }
+  - title: Running it
+    pages:
+      - { title: People and access, url: /access/ }
+      - { title: Operations, url: /operations/ }
+      - { title: Command reference, url: /reference/ }
+      - { title: Contributing, url: /contributing/ }
 exclude: [README.md]
