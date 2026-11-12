@@ -80,7 +80,7 @@ footer a { color: var(--ink-2); }
 /* code blocks: syntax colours (Rouge), in the brand palette on Night */
 div.highlighter-rouge { position: relative; margin: 16px 0; }
 div.highlighter-rouge pre.highlight { margin: 0; }
-div.highlighter-rouge:not([class*="language-"]) pre, div.language-text pre { background: var(--surface); color: var(--ink-2);
+div.highlighter-rouge:not([class*="language-"]) pre, div.language-text pre, div.language-plaintext pre { background: var(--surface); color: var(--ink-2);
   border: 1px solid var(--line); }
 .highlight .c, .highlight .c1, .highlight .cm, .highlight .cs, .highlight .ch { color: #7d8597; font-style: italic; }
 .highlight .k, .highlight .kd, .highlight .kn, .highlight .kp, .highlight .kr, .highlight .kt { color: #b6a8ff; }
