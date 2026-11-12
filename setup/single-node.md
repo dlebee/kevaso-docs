@@ -81,16 +81,7 @@ What it does, in order (each line is printed as it happens):
    request goes to the machine, which signs it through its root-only admin socket.
 6. **Writes your `kvo` context** to `~/.kevaso/config.yaml`: the API address, the cluster CA (so
    `kvo` trusts only *this* cluster) and your certificate.
-7. **Waits for the host to be Ready**, then prints the **recovery key**:
-
-```
-Recovery key for secrets (the spare key to them; shown only now, keep it offline):
-
-    KVR1-3NQF-…
-```
-
-Put the recovery key in your password manager or on paper, **now**. It's shown once and never
-again. [Secrets]({{ '/secrets/' | relative_url }}#the-master-key-and-the-recovery-key) explains what it's for.
+7. **Waits for the host to be Ready**, then prints the **recovery key** (next step).
 
 Now try `kvo`:
 
@@ -105,7 +96,41 @@ hv1    203.0.113.10   -        control-plane   -          1m
 
 ---
 
-## Step 2 · Let the machine run silos (optional)
+## Step 2 · Save the recovery key
+
+The last thing `init` prints is this:
+
+```
+Recovery key for secrets (the spare key to them; shown only now, keep it offline):
+
+    KVR1-3NQF-…
+```
+
+**Save it now.** It's shown this once, and nothing can show it again: the machine keeps only a
+lock that it opens, not the key itself.
+
+It's the key to your backups. Without it:
+
+- a backup can't be restored, since backups are sealed to it;
+- if the machine is lost, so are your secrets, even with a backup in hand.
+
+Where to keep it:
+
+| Good | Not good |
+|---|---|
+| A password manager entry of its own (not the one on your laptop alone) | A file next to your backups |
+| Printed, in a safe, with your other recovery codes | Chat, email, a ticket, the repository |
+| Two places, held by two people, for a team | The control-plane machine itself |
+
+Someone with the recovery key *and* a backup can read every secret in it. Keep the two apart. If
+the key leaks, replace it:
+[`kvoadm kms rotate … --new-recovery-key`]({{ '/secrets/' | relative_url }}#the-master-key-and-the-recovery-key).
+
+Then take your first backup: [Backup and restore]({{ '/operations/backup/' | relative_url }}).
+
+---
+
+## Step 3 · Let the machine run silos (optional)
 
 A control plane alone runs no silos. That's the [recommended setup]({{ '/setup/' | relative_url }}#dedicated-system-node--workers):
 [add workers]({{ '/workers/' | relative_url }}) next. For a one-machine cluster, a
@@ -136,7 +161,7 @@ bin/kvo watch hosts
 
 Wait for `cloud-hypervisor=Ready`, then make [your first silo]({{ '/silos/first-silo/' | relative_url }}).
 
-> **In one command.** `kvoadm init … --worker --runtime cloud-hypervisor` does steps 1 and 2
+> **In one command.** `kvoadm init … --worker --runtime cloud-hypervisor` does steps 1 and 3
 > together, and produces exactly the same setup. The steps are separate here so you can see each
 > one.
 

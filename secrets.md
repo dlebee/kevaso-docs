@@ -191,7 +191,8 @@ store opens nothing without it.
 
 The **recovery key** that `kvoadm init` printed is the spare key to your secrets: the master keys are
 sealed to it in the store, and the system node keeps only its public half, so it can't use it
-itself. Keep it offline, with your other recovery codes. Nobody needs it day to day.
+itself. Keep it offline, with your other recovery codes. Nobody needs it day to day. It's what opens
+your [backups]({{ '/operations/backup/' | relative_url }}): a backup without it can't be restored.
 
 | Task | Command |
 |---|---|

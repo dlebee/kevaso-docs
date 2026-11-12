@@ -103,6 +103,13 @@ Both look at the machine first and stop, changing nothing, if something won't wo
 | `kvoadm kms rotate [USER@]ADDR --ssh-key KEY` | A new master key for secrets |
 | …`--new-recovery-key` | Also replace the recovery key (it leaked) |
 
+### Backups
+
+| Command | Does |
+|---|---|
+| `kvoadm backup [USER@]ADDR --ssh-key KEY --output FILE` | A backup of the control plane, sealed to the recovery key |
+| `kvoadm init [USER@]ADDR … --restore FILE` | A fresh machine from a backup; asks for the recovery key (or reads it from stdin) |
+
 ---
 
 ## kevasod: on the hosts
@@ -113,5 +120,7 @@ You rarely run it yourself; `kvoadm` installs it as a service.
 |---|---|
 | `kevasod control-plane --name N --address A [--worker --runtime R…]` | The control plane (and worker) |
 | `kevasod worker --name N --server URL` | A worker-only host |
-| `kevasod admin recovery-key` / `kms-rotate [--new-recovery-key]` | Through the admin socket, as root |
+| `kevasod admin recovery-key` / `kms-rotate [--new-recovery-key]` / `backup` | Through the admin socket, as root |
+| `kevasod admin restore [--data DIR]` | Put a backup into a fresh data directory (`kvoadm init --restore` runs it) |
+| `kevasod control-plane --cert-controller N=PROGRAM` / `--dns-provider N=PROGRAM` | Register programs (also picked up from `/etc/kevaso/cert-controllers/` and `/etc/kevaso/dns-providers/`) |
 | `kevasod dev` | The API without authentication on loopback, for trying `kvo` locally |

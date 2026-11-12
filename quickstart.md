@@ -102,8 +102,9 @@ bin/kvoadm init you@127.0.0.1 \
 
 It first shows what it found on the VM (all `✓`; a `!` for SSH password login is fine for a
 throwaway VM), asks whether to harden SSH (answer No here), then installs. `--api-server` is where
-*you* reach the API: Lima forwards the VM's port 6443 to your Mac. At the end it prints a recovery
-key; for a throwaway VM you can let it go.
+*you* reach the API: Lima forwards the VM's port 6443 to your Mac. At the end it prints a **recovery
+key**. For this throwaway VM you can let it go. On a real cluster, it's the one thing you must save
+([why]({{ '/setup/single-node/' | relative_url }}#step-2--save-the-recovery-key)).
 
 ```bash
 bin/kvo get hosts

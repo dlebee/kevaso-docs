@@ -34,11 +34,13 @@ sections:
   - title: Networking and secrets
     pages:
       - { title: Networking, url: /networking/ }
+      - { title: HTTPS sites (ingress), url: /ingress/ }
       - { title: Secrets, url: /secrets/ }
   - title: Running it
     pages:
       - { title: People and access, url: /access/ }
       - { title: Operations, url: /operations/ }
+      - { title: Backup and restore, url: /operations/backup/ }
       - { title: Command reference, url: /reference/ }
       - { title: Contributing, url: /contributing/ }
 exclude: [README.md]

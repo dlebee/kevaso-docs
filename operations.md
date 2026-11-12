@@ -17,7 +17,7 @@ The day-two tasks, and where to look when something isn't right.
 |---|---|
 | `/usr/local/bin/kevasod` | The program (installed only after its signature verifies) |
 | `/etc/systemd/system/kevasod.service` | Its service |
-| `/var/lib/kevaso/` | The store, the cluster CA (`pki/`), the master key (`kms/`), `audit.log`. Root only. |
+| `/var/lib/kevaso/` | The store, the cluster CA (`pki/`), the master key (`kms/`), `audit.log`. Root only. Back it up with `kvoadm backup`: [Backup and restore]({{ '/operations/backup/' | relative_url }}) |
 | `/run/kevaso/admin.sock` | The admin socket: root on this host can do anything through it (bootstrap and break-glass) |
 
 **On a worker:**
