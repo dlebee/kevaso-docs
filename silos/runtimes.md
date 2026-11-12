@@ -20,7 +20,7 @@ how it's made. Pick one per silo with `spec.runtime`.
 | **Inbound services** | Yes, client IP kept | No | No | Yes, client IP kept |
 | **Persists** | Its own disk | `/sandbox` | `/sandbox` | Volumes |
 | **Injection** | Kevaso's egress gate | OpenShell (placeholder in an env var) | OpenShell | Kevaso's egress gate |
-| **Broker (`kvo-guest`)** | Yes, over vsock | *Later* | *Later* | Yes, over a socket |
+| **Broker (`kvo-guest`)** | Yes, over vsock | No | No | Yes, over a socket |
 | **Root inside** | Yes | No (a sandbox user) | No | The image's user |
 | **Good for** | Dev boxes, servers, P2P nodes, Docker inside | AI agents, untrusted code | The same, on hosts without KVM | Apps packaged as images |
 
@@ -117,5 +117,5 @@ spec:
 | `command` | The main process. Without it, the image's own (for `ubuntu-24.04`, one that sleeps, so it's a machine to `exec` into) |
 | Init steps | **Init containers**: each step runs in a container of its own from the silo's image, on its network and volumes, **before** the main container starts |
 | Persistence | Volumes survive restarts; the container's own files stay on its host |
-| Secrets | `inject` and `broker` (the socket is at `/run/kevaso/broker.sock`, `kvo-guest` is mounted in); `file` and `env` *later* |
-| Volume `size` | Not enforced yet on containers |
+| Secrets | `inject` and `broker` (the socket is at `/run/kevaso/broker.sock`, `kvo-guest` is mounted in) |
+| Volume `size` | Not enforced on containers |

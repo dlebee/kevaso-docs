@@ -42,7 +42,14 @@ brew install lima
 Create the VM and start it:
 
 ```bash
-limactl create --name=kevaso-local --vm-type=vz --nested-virt --cpus=4 --memory=6 --disk=60 --mount-none template:ubuntu-24.04
+limactl create \
+    --name=kevaso-local \
+    --vm-type=vz \
+    --nested-virt \
+    --cpus=4 \
+    --memory=6 \
+    --disk=60 \
+    --mount-none template:ubuntu-24.04
 ```
 
 If Lima asks how to proceed, choose **Proceed with the current configuration**.
@@ -83,7 +90,10 @@ your port and the fingerprint with yours.
 ## 4 · Look before installing
 
 ```bash
-bin/kvoadm check you@127.0.0.1 --ssh-port 60022 --ssh-key ~/.lima/_config/user --host-key SHA256:kVvp5Yv9fNU4r4yX2P7+O99SU45jwdxC60ylimGFta4
+bin/kvoadm check you@127.0.0.1 \
+    --ssh-port 60022 \
+    --ssh-key ~/.lima/_config/user \
+    --host-key SHA256:kVvp5Yv9fNU4r4yX2P7+O99SU45jwdxC60ylimGFta4
 ```
 
 It logs in, reads the machine and changes nothing. You want `✓` everywhere (a `!` for SSH password
@@ -92,7 +102,14 @@ login is fine for a throwaway VM).
 ## 5 · Install the control plane
 
 ```bash
-bin/kvoadm init you@127.0.0.1 --ssh-port 60022 --ssh-key ~/.lima/_config/user --host-key SHA256:kVvp5Yv9fNU4r4yX2P7+O99SU45jwdxC60ylimGFta4 --kevasod bin/kevasod-linux-arm64 --name local --cluster local --api-server https://127.0.0.1:6443
+bin/kvoadm init you@127.0.0.1 \
+    --ssh-port 60022 \
+    --ssh-key ~/.lima/_config/user \
+    --host-key SHA256:kVvp5Yv9fNU4r4yX2P7+O99SU45jwdxC60ylimGFta4 \
+    --kevasod bin/kevasod-linux-arm64 \
+    --name local \
+    --cluster local \
+    --api-server https://127.0.0.1:6443
 ```
 
 `--api-server` is where *you* reach the API: Lima forwards the VM's port 6443 to your Mac. At the end
@@ -105,7 +122,12 @@ bin/kvo get hosts
 ## 6 · Let it run silos
 
 ```bash
-bin/kvoadm host enable-worker you@127.0.0.1 --ssh-port 60022 --ssh-key ~/.lima/_config/user --host-key SHA256:kVvp5Yv9fNU4r4yX2P7+O99SU45jwdxC60ylimGFta4 --runtime cloud-hypervisor --loop-storage 40G
+bin/kvoadm host enable-worker you@127.0.0.1 \
+    --ssh-port 60022 \
+    --ssh-key ~/.lima/_config/user \
+    --host-key SHA256:kVvp5Yv9fNU4r4yX2P7+O99SU45jwdxC60ylimGFta4 \
+    --runtime cloud-hypervisor \
+    --loop-storage 40G
 ```
 
 The worker now installs Cloud Hypervisor and an Ubuntu image. Watch it:

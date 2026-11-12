@@ -12,7 +12,7 @@ node and each worker.
 
 | Step | You do | Why |
 |---|---|---|
-| [1](#step-1--build-the-tools) | Build `kvo`, `kvoadm` and `kevasod` | No releases yet |
+| [1](#step-1--build-the-tools) | Build `kvo`, `kvoadm` and `kevasod` | Kevaso is built from source |
 | [2](#step-2--make-an-ssh-key-for-kevaso) | Make an SSH key for Kevaso | So `kvoadm` never needs a password |
 | [3](#step-3--put-the-key-on-the-machine) | Put its public half on the machine | So the machine lets that key in |
 | [4](#step-4--write-down-the-machines-fingerprint) | Write down the machine's host-key fingerprint | So you know you're talking to *your* machine |
@@ -145,7 +145,9 @@ Before changing anything, look. `kvoadm check` logs in exactly the way `init` wi
 machine, and **changes nothing**:
 
 ```bash
-bin/kvoadm check root@203.0.113.10 --ssh-key ~/.ssh/kevaso_ed25519 --host-key SHA256:kVvp5Yv9fNU4r4yX2P7+O99SU45jwdxC60ylimGFta4
+bin/kvoadm check root@203.0.113.10 \
+    --ssh-key ~/.ssh/kevaso_ed25519 \
+    --host-key SHA256:kVvp5Yv9fNU4r4yX2P7+O99SU45jwdxC60ylimGFta4
 ```
 
 ```

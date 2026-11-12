@@ -23,7 +23,6 @@ sections:
       - { title: Prepare a machine, url: /setup/prepare/ }
       - { title: Single system node, url: /setup/single-node/ }
       - { title: Running locally, url: /setup/local/ }
-      - { title: High availability, url: /setup/ha/ }
   - title: Workers
     pages:
       - { title: Adding workers, url: /workers/ }

@@ -5,7 +5,7 @@ permalink: /setup/
 
 # Choosing a setup
 
-Every Kevaso cluster has one or more **system nodes** (the control plane) and any number of
+Every Kevaso cluster has a **system node** (the control plane) and any number of
 **workers** (the silos). How you arrange them decides what survives when a machine fails, and what
 an attacker gets if one is broken into. This page compares the options; the pages after it set each
 one up.
@@ -14,12 +14,11 @@ one up.
 
 ## The options
 
-| Setup | Machines | Status | Recommended for |
-|---|---|---|---|
-| [Running locally](#running-locally) | A VM on your computer | <span class="badge ok">available</span> | Trying Kevaso, developing it |
-| [Dedicated system node + workers](#dedicated-system-node--workers) | 1 + N | <span class="badge ok">available</span> | **Most clusters.** The default choice. |
-| [Combined node](#combined-node-control-plane-and-silos-on-one-machine) | 1 (both roles) | <span class="badge ok">available</span> | One machine, run by someone who knows the trade-offs |
-| [High availability](#high-availability) | 3 system nodes + N workers | <span class="badge planned">planned (M16)</span> | Clusters that must keep accepting changes through a machine failure |
+| Setup | Machines | Recommended for |
+|---|---|---|
+| [Running locally](#running-locally) | A VM on your computer | Trying Kevaso, developing it |
+| [Dedicated system node + workers](#dedicated-system-node--workers) | 1 + N | **Most clusters.** The default choice. |
+| [Combined node](#combined-node-control-plane-and-silos-on-one-machine) | 1 (both roles) | One machine, run by someone who knows the trade-offs |
 
 ---
 
@@ -77,7 +76,7 @@ flowchart LR
 | | |
 |---|---|
 | **Fault tolerance** | Losing a **worker**: its `Wait` silos wait, its `Recreate` silos start elsewhere after 30 s. Losing the **system node**: running `Wait` silos keep running, but nothing changes until it's back (see the tables above). |
-| **Recovery** | Bring the machine back, and everything resumes. A dead machine needs a restore from a backup and the recovery key <span class="badge planned">backups: planned (M16)</span>. |
+| **Recovery** | Bring the machine back, and everything resumes. |
 | **Operational risk** | The system node is a single point of control: keep it small, patched, and running nothing else. |
 | **Security** | A silo broken out of its VM lands on a *worker*, which only ever gets the secrets of its own silos, and can't act as another host. |
 | **Cost** | The system node can be small: 1–2 CPUs, 2 GiB. |
@@ -100,17 +99,3 @@ them, it's a perfectly good way to run a small cluster.
 | **Grows into** | The recommended setup: add workers, then move silos off. |
 
 → [Single system node]({{ '/setup/single-node/' | relative_url }}#step-7--let-the-machine-run-silos-optional)
-
----
-
-## High availability
-
-<span class="badge planned">planned (M16)</span> Three (or five) system nodes share the store
-(embedded etcd, Raft), and any of them serves the API. Losing one changes nothing for you.
-
-| | |
-|---|---|
-| **Fault tolerance** | Keeps accepting changes with one of three (or two of five) system nodes down. |
-| **Operational risk** | Three machines to keep healthy; a slow store member slows every write. Two system nodes alone are *worse* than one (either failing stops changes), so the third can be a tiny "state only" node in another place. |
-
-→ [High availability]({{ '/setup/ha/' | relative_url }})

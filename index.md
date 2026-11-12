@@ -12,10 +12,8 @@ Unlike a pod, a silo is a *machine*: it has a disk that stays, a name, an addres
 place an AI agent or a developer works for months. Its secrets can work inside it without ever
 entering it.
 
-> **Status: early.** Milestones M0–M8 are done and M9 is in progress
-> ([milestones](https://github.com/dlebee/kevaso/blob/main/MILESTONES.md)). Everything here runs on
-> real machines in tests, but there are no releases yet: you build the binaries yourself. What isn't
-> built yet is marked <span class="badge planned">planned</span>.
+> **Built from source.** Kevaso has no packaged releases: you build `kvo`, `kvoadm` and `kevasod`
+> with Go, as the [quick start]({{ '/quickstart/' | relative_url }}) shows.
 
 ---
 

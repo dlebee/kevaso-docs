@@ -30,7 +30,14 @@ virtualization** (Apple M3 or later, macOS 15 or later), the VM has KVM, so it c
 silos itself.
 
 ```bash
-limactl create --name=kevaso-local --vm-type=vz --nested-virt --cpus=4 --memory=6 --disk=60 --mount-none template:ubuntu-24.04
+limactl create \
+    --name=kevaso-local \
+    --vm-type=vz \
+    --nested-virt \
+    --cpus=4 \
+    --memory=6 \
+    --disk=60 \
+    --mount-none template:ubuntu-24.04
 ```
 
 | Option | Why |
@@ -81,18 +88,33 @@ The `SHA256:…` part is what you give `kvoadm` as `--host-key`.
 These are the same commands as for any machine, with Lima's port and key:
 
 ```bash
-bin/kvoadm check you@127.0.0.1 --ssh-port 60022 --ssh-key ~/.lima/_config/user --host-key SHA256:kVvp5Yv9fNU4r4yX2P7+O99SU45jwdxC60ylimGFta4
+bin/kvoadm check you@127.0.0.1 \
+    --ssh-port 60022 \
+    --ssh-key ~/.lima/_config/user \
+    --host-key SHA256:kVvp5Yv9fNU4r4yX2P7+O99SU45jwdxC60ylimGFta4
 ```
 
 ```bash
-bin/kvoadm init you@127.0.0.1 --ssh-port 60022 --ssh-key ~/.lima/_config/user --host-key SHA256:kVvp5Yv9fNU4r4yX2P7+O99SU45jwdxC60ylimGFta4 --kevasod bin/kevasod-linux-arm64 --name local --cluster local --api-server https://127.0.0.1:6443
+bin/kvoadm init you@127.0.0.1 \
+    --ssh-port 60022 \
+    --ssh-key ~/.lima/_config/user \
+    --host-key SHA256:kVvp5Yv9fNU4r4yX2P7+O99SU45jwdxC60ylimGFta4 \
+    --kevasod bin/kevasod-linux-arm64 \
+    --name local \
+    --cluster local \
+    --api-server https://127.0.0.1:6443
 ```
 
 `--api-server https://127.0.0.1:6443`: Lima forwards the VM's API port to your Mac's loopback, so
 that's where `kvo` reaches it.
 
 ```bash
-bin/kvoadm host enable-worker you@127.0.0.1 --ssh-port 60022 --ssh-key ~/.lima/_config/user --host-key SHA256:kVvp5Yv9fNU4r4yX2P7+O99SU45jwdxC60ylimGFta4 --runtime cloud-hypervisor --loop-storage 40G
+bin/kvoadm host enable-worker you@127.0.0.1 \
+    --ssh-port 60022 \
+    --ssh-key ~/.lima/_config/user \
+    --host-key SHA256:kVvp5Yv9fNU4r4yX2P7+O99SU45jwdxC60ylimGFta4 \
+    --runtime cloud-hypervisor \
+    --loop-storage 40G
 ```
 
 `--loop-storage 40G`: silo disks normally live in a volume group named `kevaso`. In a VM, a 40 GB

@@ -108,8 +108,6 @@ spec:
     loadBalancer: { class: ip-pool, pool: hv2-extra, stableIP: true }
 ```
 
-Cloud load balancers (Linode NodeBalancers, floating IPs) come with the Linode plugin *(later)*.
-
 > **Exposing publicly is its own permission:** `create` on `services/expose-public`. Namespace
 > `admin`s have it, `editor`s don't.
 

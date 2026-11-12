@@ -13,7 +13,12 @@ means for fault tolerance and security.
 ## Step 6 · Install the control plane
 
 ```bash
-bin/kvoadm init root@203.0.113.10 --ssh-key ~/.ssh/kevaso_ed25519 --host-key SHA256:kVvp5Yv9fNU4r4yX2P7+O99SU45jwdxC60ylimGFta4 --kevasod bin/kevasod-linux-amd64 --name hv1 --cluster home
+bin/kvoadm init root@203.0.113.10 \
+    --ssh-key ~/.ssh/kevaso_ed25519 \
+    --host-key SHA256:kVvp5Yv9fNU4r4yX2P7+O99SU45jwdxC60ylimGFta4 \
+    --kevasod bin/kevasod-linux-amd64 \
+    --name hv1 \
+    --cluster home
 ```
 
 | Flag | Meaning |
@@ -41,7 +46,7 @@ What it does, in order (each line is printed as it happens):
 7. **Waits for the host to be Ready**, then prints the **recovery key**:
 
 ```
-Recovery key for secrets (needed to restore a backup; shown only now, keep it offline):
+Recovery key for secrets (the spare key to them; shown only now, keep it offline):
 
     KVR1-3NQF-…
 ```
@@ -70,7 +75,10 @@ A control plane alone runs no silos. That's the [recommended setup]({{ '/setup/'
 let it be a worker too:
 
 ```bash
-bin/kvoadm host enable-worker root@203.0.113.10 --ssh-key ~/.ssh/kevaso_ed25519 --host-key SHA256:kVvp5Yv9fNU4r4yX2P7+O99SU45jwdxC60ylimGFta4 --runtime cloud-hypervisor
+bin/kvoadm host enable-worker root@203.0.113.10 \
+    --ssh-key ~/.ssh/kevaso_ed25519 \
+    --host-key SHA256:kVvp5Yv9fNU4r4yX2P7+O99SU45jwdxC60ylimGFta4 \
+    --runtime cloud-hypervisor
 ```
 
 `--runtime` picks what kind of silos it runs (repeat it for several; see [Runtimes]({{ '/silos/runtimes/' | relative_url }})):
@@ -90,7 +98,7 @@ bin/kvo watch hosts
 
 Wait for `cloud-hypervisor=Ready`, then make [your first silo]({{ '/silos/first-silo/' | relative_url }}).
 
-> **One command, later.** `kvoadm init … --worker --runtime cloud-hypervisor` does steps 6 and 7
+> **In one command.** `kvoadm init … --worker --runtime cloud-hypervisor` does steps 6 and 7
 > together, and produces exactly the same setup. The steps are separate here so you can see each
 > one.
 

@@ -24,7 +24,7 @@ microVMs, runs the test and tears the machine down.
 
 Docs for people working *on* Kevaso live with the code, in
 [`docs/`](https://github.com/dlebee/kevaso/tree/main/docs) of the core repo: design decisions
-(`docs/adr/`) and the walkthroughs each milestone was demonstrated with (`docs/demo/`). The design
+(`docs/adr/`) and demo walkthroughs (`docs/demo/`). The design
 itself and the research behind it are in separate repositories.
 
 ## These docs

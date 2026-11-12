@@ -35,7 +35,10 @@ kvo create secret anthropic-key -n dev --from-file - --allow inject --write-only
 Paste the key, press Enter, then Ctrl-D. Or keep it in a file only you can read and give its path:
 
 ```bash
-kvo create secret anthropic-key -n dev --from-file ~/keys/anthropic.txt --allow inject --write-only
+kvo create secret anthropic-key -n dev \
+    --from-file ~/keys/anthropic.txt \
+    --allow inject \
+    --write-only
 ```
 
 | Flag | Meaning |
@@ -183,17 +186,18 @@ namespace's secrets.
 ## The master key and the recovery key
 
 Values are stored with **envelope encryption**: each value has its own data key, and only data keys
-are wrapped by the cluster's master key (a root-only file on the control plane). A stolen copy of
-the store, or of a backup, opens nothing without it.
+are wrapped by the cluster's master key (a root-only file on the system node). A stolen copy of the
+store opens nothing without it.
 
-The **recovery key** that `kvoadm init` printed is what restores secrets from a backup on a new
-control plane. The control plane keeps only its public half, so it can't use it itself.
+The **recovery key** that `kvoadm init` printed is the spare key to your secrets: the master keys are
+sealed to it in the store, and the system node keeps only its public half, so it can't use it
+itself. Keep it offline, with your other recovery codes. Nobody needs it day to day.
 
 | Task | Command |
 |---|---|
 | New master key (re-wraps data keys; the recovery key is unchanged) | `kvoadm kms rotate root@HOST --ssh-key …` |
 | The recovery key leaked: new master key and new recovery key | `kvoadm kms rotate root@HOST --ssh-key … --new-recovery-key` |
 
-After `--new-recovery-key`, the old key opens nothing backed up from then on. Backups from before
-still open with it and hold the values of then: take a fresh backup, destroy the older ones, and
-rotate the secrets that matter.
+After `--new-recovery-key`, the old recovery key opens nothing stored from then on. Copies of the
+store made before still open with it and hold the values of then: destroy them, and rotate the
+secrets that matter.

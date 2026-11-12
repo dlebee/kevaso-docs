@@ -33,7 +33,14 @@ Kevaso key on it, write down its fingerprint, and `kvoadm check` it.
 ## Add it
 
 ```bash
-bin/kvoadm host add root@198.51.100.20 --ssh-key ~/.ssh/kevaso_ed25519 --host-key SHA256:… --kevasod bin/kevasod-linux-amd64 --install worker --name hv2 --region ca-east --runtime cloud-hypervisor
+bin/kvoadm host add root@198.51.100.20 \
+    --ssh-key ~/.ssh/kevaso_ed25519 \
+    --host-key SHA256:… \
+    --kevasod bin/kevasod-linux-amd64 \
+    --install worker \
+    --name hv2 \
+    --region ca-east \
+    --runtime cloud-hypervisor
 ```
 
 | Flag | Meaning |
