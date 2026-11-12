@@ -35,6 +35,7 @@
       </div>
       {% endfor %}
     </details>
+    <script>if (matchMedia("(max-width: 860px)").matches) document.querySelector(".side details").removeAttribute("open");</script>
   </aside>
   <main>
 {{ content }}
