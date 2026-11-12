@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% if page.title %}{{ page.title }} · {% endif %}{{ site.title }}</title>
+<meta name="description" content="{{ page.description | default: site.description }}">
+<link rel="icon" href="{{ '/assets/mark.svg' | relative_url }}" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ '/assets/style.css' | relative_url }}">
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="brand" href="{{ '/' | relative_url }}"><img src="{{ '/assets/mark.svg' | relative_url }}" alt="" width="30" height="30">Kevaso <span>docs</span></a>
+  <nav>
+    {% for item in site.nav %}<a href="{{ item.url | relative_url }}"{% if page.url == item.url %} aria-current="page"{% endif %}>{{ item.title }}</a>{% endfor %}
+    <a href="https://github.com/dlebee/kevaso">GitHub</a>
+  </nav>
+</div></header>
+<main>
+{{ content }}
+</main>
+<footer>
+  <a href="https://github.com/dlebee/kevaso-docs/edit/main/{{ page.path }}">Edit this page</a> · Apache 2.0
+</footer>
+</body>
+</html>

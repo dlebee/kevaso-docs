@@ -1,0 +1,16 @@
+title: Kevaso docs
+description: Stateful silos (microVMs or containers) on the machines you bring, managed Kubernetes-style.
+baseurl: /kevaso-docs
+url: https://dlebee.github.io
+markdown: kramdown
+kramdown:
+  syntax_highlighter_opts:
+    disable: true
+defaults:
+  - scope: { path: "" }
+    values: { layout: default }
+nav:
+  - { title: Overview, url: / }
+  - { title: Concepts, url: /concepts/ }
+  - { title: Contributing, url: /contributing/ }
+exclude: [README.md]
