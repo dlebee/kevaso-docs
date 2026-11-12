@@ -3,10 +3,10 @@ description: Stateful silos (microVMs or containers) on the machines you bring, 
 baseurl: /kevaso-docs
 url: https://dlebee.github.io
 markdown: kramdown
+highlighter: rouge
 kramdown:
   input: GFM
-  syntax_highlighter_opts:
-    disable: true
+  syntax_highlighter: rouge
 defaults:
   - scope: { path: "" }
     values: { layout: default }

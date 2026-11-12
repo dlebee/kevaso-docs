@@ -98,8 +98,11 @@ asks: that's step 4.
 Then check that the key works on its own:
 
 ```bash
-ssh -i ~/.ssh/kevaso_ed25519 -o IdentitiesOnly=yes root@203.0.113.10 true && echo "the key works"
+ssh -i ~/.ssh/kevaso_ed25519 root@203.0.113.10
 ```
+
+You should get a shell without being asked for the machine's password (only for your key's
+passphrase, if `ssh-agent` doesn't have it yet). Type `exit` to leave.
 
 > **Prefer not to do this by hand?** `kvoadm init --password` logs in with the password once,
 > installs a key of its own, turns password logins off and changes the root password. It's the

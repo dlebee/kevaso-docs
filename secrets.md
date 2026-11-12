@@ -24,11 +24,18 @@ as possible inside. Often that's nothing at all.
 
 ## Store a secret
 
-Values come from a file or from stdin, **never from the command line** (other users of the machine
-and your shell history would see it):
+Values come from a file or from what you type, **never from the command line** (other users of the
+machine and your shell history would see it). With `--from-file -`, `kvo` reads the value from
+your terminal:
 
 ```bash
-printf '%s' "$ANTHROPIC_API_KEY" | kvo create secret anthropic-key -n dev --from-file - --allow inject --write-only
+kvo create secret anthropic-key -n dev --from-file - --allow inject --write-only
+```
+
+Paste the key, press Enter, then Ctrl-D. Or keep it in a file only you can read and give its path:
+
+```bash
+kvo create secret anthropic-key -n dev --from-file ~/keys/anthropic.txt --allow inject --write-only
 ```
 
 | Flag | Meaning |
@@ -113,7 +120,7 @@ kvo-guest secret get db-password
 ```
 
 ```bash
-printf 'block 42' | kvo-guest sign validator-key --slot 42
+echo -n "block 42" | kvo-guest sign validator-key --slot 42
 ```
 
 ```bash
@@ -131,8 +138,10 @@ kvo-guest public-key validator-key
 ## Rotation
 
 ```bash
-printf '%s' "$NEW_KEY" | kvo secret set anthropic-key -n dev --from-file -
+kvo secret set anthropic-key -n dev --from-file -
 ```
+
+Paste the new key, Enter, Ctrl-D.
 
 | Delivered as | What happens |
 |---|---|

@@ -76,3 +76,24 @@ blockquote p { margin: 0; }
 
 footer { max-width: 1160px; margin: 0 auto; padding: 20px 16px 40px; border-top: 1px solid var(--line); font-size: 14px; color: var(--ink-3); }
 footer a { color: var(--ink-2); }
+
+/* code blocks: syntax colours (Rouge), in the brand palette on Night */
+div.highlighter-rouge { position: relative; margin: 16px 0; }
+div.highlighter-rouge pre.highlight { margin: 0; }
+div.highlighter-rouge:not([class*="language-"]) pre, div.language-text pre { background: var(--surface); color: var(--ink-2);
+  border: 1px solid var(--line); }
+.highlight .c, .highlight .c1, .highlight .cm, .highlight .cs, .highlight .ch { color: #7d8597; font-style: italic; }
+.highlight .k, .highlight .kd, .highlight .kn, .highlight .kp, .highlight .kr, .highlight .kt { color: #b6a8ff; }
+.highlight .s, .highlight .s1, .highlight .s2, .highlight .sb, .highlight .sh, .highlight .sx, .highlight .sr { color: #f5c97f; }
+.highlight .se, .highlight .si { color: #ffb07a; }
+.highlight .nv, .highlight .vg, .highlight .vi, .highlight .vc { color: #7ee8f5; }
+.highlight .nb, .highlight .bp { color: #8fb8ff; }
+.highlight .na, .highlight .nt, .highlight .py { color: var(--mint); }
+.highlight .m, .highlight .mi, .highlight .mf, .highlight .mh, .highlight .il { color: #f5c97f; }
+.highlight .o, .highlight .p, .highlight .pi { color: #aab0bd; }
+.highlight .kc { color: #b6a8ff; }
+.copy { position: absolute; top: 8px; right: 8px; padding: 3px 9px; border-radius: 7px; border: 1px solid rgba(243,241,236,.18);
+  background: rgba(243,241,236,.06); color: #c9cdd6; font: 500 12px "Inter", sans-serif; cursor: pointer; opacity: 0;
+  transition: opacity .15s; }
+div.highlighter-rouge:hover .copy, .copy:focus { opacity: 1; }
+@media (hover: none) { .copy { opacity: 1; } }

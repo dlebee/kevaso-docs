@@ -116,8 +116,16 @@ certificate paths, never tokens.
 
 A **service account** is an identity for a script or a pipeline:
 
+Save this as `deployer.yaml`:
+
+```yaml
+apiVersion: kevaso/v1
+kind: ServiceAccount
+metadata: { name: deployer, namespace: payments }
+```
+
 ```bash
-printf 'apiVersion: kevaso/v1\nkind: ServiceAccount\nmetadata: { name: deployer, namespace: payments }\n' | kvo apply -f -
+kvo apply -f deployer.yaml
 ```
 
 Give it a role with a RoleBinding (subject kind `ServiceAccount`), then mint a token:

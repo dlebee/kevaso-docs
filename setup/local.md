@@ -11,8 +11,8 @@ Two ways to run Kevaso on your own computer, depending on what you want to try.
 |---|---|---|
 | **What runs** | A real control plane and worker, in a Lima VM | Only the API, on your computer |
 | **Silos** | Yes: real microVMs (with nested virtualization) or containers | No: objects are stored, nothing runs |
-| **Setup** | ~10 minutes | Seconds |
-| **Good for** | Learning Kevaso end to end, the [quick start]({{ '/quickstart/' | relative_url }}) | Trying `kvo`, writing YAML, developing the API |
+| **Setup** | About 15 minutes | Seconds |
+| **Good for** | Learning Kevaso end to end | Trying `kvo`, writing YAML, developing the API |
 
 Neither is for anything you'd mind losing: see [Choosing a setup]({{ '/setup/' | relative_url }}#running-locally).
 
@@ -20,109 +20,128 @@ Neither is for anything you'd mind losing: see [Choosing a setup]({{ '/setup/' |
 
 ## A Linux VM with everything
 
+The [quick start]({{ '/quickstart/' | relative_url }}) has every command in order. This section
+explains what each one is for.
+
+### The VM
+
 On a Mac, [Lima](https://lima-vm.io) runs Linux VMs with Apple's own hypervisor. With **nested
 virtualization** (Apple M3 or later, macOS 15 or later), the VM has KVM, so it can run microVM
 silos itself.
 
-### 1 · Install Lima and build the tools
-
 ```bash
-brew install lima
+limactl create --name=kevaso-local --vm-type=vz --nested-virt --cpus=4 --memory=6 --disk=60 --mount-none template:ubuntu-24.04
 ```
 
-```bash
-go build -o bin/kvo ./cmd/kvo && go build -o bin/kvoadm ./cmd/kvoadm && GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o bin/kevasod-linux-arm64 ./cmd/kevasod
-```
-
-(`arm64`: an Apple Silicon Mac's VM is ARM.)
-
-### 2 · Create the VM
-
-```bash
-limactl create --name=kevaso-local --vm-type=vz --nested-virt --cpus=4 --memory=6 --disk=60 --mount-none --tty=false template:ubuntu-24.04 && limactl start kevaso-local
-```
-
-| Flag | Why |
+| Option | Why |
 |---|---|
-| `--vm-type=vz --nested-virt` | Apple's hypervisor, with KVM inside the VM |
+| `--vm-type=vz` | Apple's hypervisor (Virtualization.framework) |
+| `--nested-virt` | KVM inside the VM, for microVM silos |
 | `--mount-none` | Don't share your home folder with the VM: Kevaso treats it as its own machine |
 | `--cpus=4 --memory=6 --disk=60` | Room for the control plane and a couple of silos |
+| `template:ubuntu-24.04` | The Linux Kevaso is tested on |
 
-### 3 · The way in: Lima's key and the VM's fingerprint
+### The way in
 
-This is the [Prepare a machine]({{ '/setup/prepare/' | relative_url }}) steps, with Lima doing
-the first ones for you:
+This is [Prepare a machine]({{ '/setup/prepare/' | relative_url }}), with Lima doing the first steps
+for you.
 
-- **The SSH key:** Lima made one when you installed it (`~/.lima/_config/user`) and put it in the
-  VM. For a throwaway VM that's fine; for a real machine you'd [make one for
-  Kevaso]({{ '/setup/prepare/' | relative_url }}#step-2--make-an-ssh-key-for-kevaso).
-- **The address:** Lima forwards the VM's SSH to a port on `127.0.0.1`. Read it from Lima's
-  config:
+**The SSH key.** Lima made one when you first used it, `~/.lima/_config/user`, and put its public
+half in every VM it creates. For a throwaway VM that's fine. For a real machine you'd
+[make one for Kevaso]({{ '/setup/prepare/' | relative_url }}#step-2--make-an-ssh-key-for-kevaso).
+
+**The address.** Lima forwards the VM's SSH to a port on your Mac:
 
 ```bash
-eval "$(awk '/^ *(Hostname|Port|User|IdentityFile) /{gsub(/"/,"",$2); print "SSH_"toupper($1)"="$2}' ~/.lima/kevaso-local/ssh.config)" && echo "$SSH_USER@$SSH_HOSTNAME port $SSH_PORT key $SSH_IDENTITYFILE"
+limactl list kevaso-local
 ```
 
-- **The fingerprint:** `limactl shell` is Lima's own channel to the VM, not the network, so it's a
-  trustworthy place to read it:
-
-```bash
-PIN=$(limactl shell kevaso-local ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub | awk '{print $2}') && echo "$PIN"
+```
+NAME           STATUS     SSH                VMTYPE    ARCH       CPUS    MEMORY    DISK
+kevaso-local   Running    127.0.0.1:60022    vz        aarch64    4       6GiB      60GiB
 ```
 
-### 4 · Check, install, add the worker
+So you log in as your Mac user, at `127.0.0.1`, port `60022` (yours will differ).
+
+**The fingerprint.** `limactl shell` reaches the VM through Lima itself, not the network, so it's a
+trustworthy place to read the VM's identity:
 
 ```bash
-bin/kvoadm check "$SSH_USER@$SSH_HOSTNAME" --ssh-port "$SSH_PORT" --ssh-key "$SSH_IDENTITYFILE" --host-key "$PIN"
+limactl shell kevaso-local ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
+```
+
+```
+256 SHA256:kVvp5Yv9fNU4r4yX2P7+O99SU45jwdxC60ylimGFta4 root@lima-kevaso-local (ED25519)
+```
+
+The `SHA256:…` part is what you give `kvoadm` as `--host-key`.
+
+### Check, install, add the worker
+
+These are the same commands as for any machine, with Lima's port and key:
+
+```bash
+bin/kvoadm check you@127.0.0.1 --ssh-port 60022 --ssh-key ~/.lima/_config/user --host-key SHA256:kVvp5Yv9fNU4r4yX2P7+O99SU45jwdxC60ylimGFta4
 ```
 
 ```bash
-bin/kvoadm init "$SSH_USER@$SSH_HOSTNAME" --ssh-port "$SSH_PORT" --ssh-key "$SSH_IDENTITYFILE" --host-key "$PIN" --kevasod bin/kevasod-linux-arm64 --name local --cluster local --api-server https://127.0.0.1:6443
+bin/kvoadm init you@127.0.0.1 --ssh-port 60022 --ssh-key ~/.lima/_config/user --host-key SHA256:kVvp5Yv9fNU4r4yX2P7+O99SU45jwdxC60ylimGFta4 --kevasod bin/kevasod-linux-arm64 --name local --cluster local --api-server https://127.0.0.1:6443
 ```
 
 `--api-server https://127.0.0.1:6443`: Lima forwards the VM's API port to your Mac's loopback, so
 that's where `kvo` reaches it.
 
 ```bash
-bin/kvoadm host enable-worker "$SSH_USER@$SSH_HOSTNAME" --ssh-port "$SSH_PORT" --ssh-key "$SSH_IDENTITYFILE" --host-key "$PIN" --runtime cloud-hypervisor --loop-storage 40G
+bin/kvoadm host enable-worker you@127.0.0.1 --ssh-port 60022 --ssh-key ~/.lima/_config/user --host-key SHA256:kVvp5Yv9fNU4r4yX2P7+O99SU45jwdxC60ylimGFta4 --runtime cloud-hypervisor --loop-storage 40G
 ```
 
-`--loop-storage 40G`: silo disks normally live in a volume group named `kevaso`; in a VM, a 40 GB
+`--loop-storage 40G`: silo disks normally live in a volume group named `kevaso`. In a VM, a 40 GB
 sparse file stands in for it.
 
+### Clean up
+
 ```bash
-bin/kvo watch hosts
+limactl delete --force kevaso-local
 ```
 
-Wait for `cloud-hypervisor=Ready` (a few minutes: packages, Cloud Hypervisor, the Ubuntu image).
-Then make [your first silo]({{ '/silos/first-silo/' | relative_url }}).
-
-### 5 · Clean up
-
 ```bash
-limactl delete -f kevaso-local && rm -rf ~/.kevaso
+rm -rf ~/.kevaso
 ```
 
 ---
 
 ## `kevasod dev`: just the API
 
-No machines, no silos: the API alone, on your loopback, with no authentication. Objects are stored
-(in `~/.kevaso/dev.db`) and checked like on a real cluster, so it's the fastest way to learn the
-YAML.
+No machines and no silos: the API alone, on your loopback, with no authentication. Objects are
+stored (in `~/.kevaso/dev.db`) and checked like on a real cluster, so it's the fastest way to learn
+the YAML.
+
+Start it, and leave it running:
 
 ```bash
 go run ./cmd/kevasod dev
 ```
 
-In another terminal:
+In another terminal, point `kvo` at it:
 
 ```bash
 export KVO_SERVER=http://127.0.0.1:8080
 ```
 
+Save this as `demo.yaml`:
+
+```yaml
+apiVersion: kevaso/v1
+kind: Namespace
+metadata: { name: demo }
+```
+
 ```bash
-printf 'apiVersion: kevaso/v1\nkind: Namespace\nmetadata: { name: demo }\n' | bin/kvo apply -f - && bin/kvo get ns
+bin/kvo apply -f demo.yaml
+```
+
+```bash
+bin/kvo get ns
 ```
 
 It only listens on loopback, on purpose: there's no sign-in in dev mode.
