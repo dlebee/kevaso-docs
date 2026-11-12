@@ -93,6 +93,7 @@ Plain layer-4 forwarding: no proxy, and **the silo sees the client's real addres
 |---|---|---|
 | `worker-ip` | The host's own address (like `hostPort`, chosen for you) | Nothing |
 | `ip-pool` | An address of its own, from an `IPPool` routed to the host | Extra addresses on that host |
+| `linode-nodebalancer`, `linode-shared-ip` | A NodeBalancer's, or an IPv4 that follows the silo | The [Linode provider]({{ '/providers/linode/' | relative_url }}) |
 
 ```yaml
 apiVersion: kevaso/v1

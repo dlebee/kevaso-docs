@@ -36,6 +36,9 @@ sections:
       - { title: Networking, url: /networking/ }
       - { title: HTTPS sites (ingress), url: /ingress/ }
       - { title: Secrets, url: /secrets/ }
+  - title: Providers
+    pages:
+      - { title: Linode, url: /providers/linode/ }
   - title: Running it
     pages:
       - { title: People and access, url: /access/ }

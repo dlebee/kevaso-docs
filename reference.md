@@ -110,6 +110,8 @@ Both look at the machine first and stop, changing nothing, if something won't wo
 |---|---|
 | `kvoadm backup [USER@]ADDR --ssh-key KEY --output FILE` | A backup of the control plane, sealed to the recovery key |
 | `kvoadm init [USER@]ADDR … --restore FILE` | A fresh machine from a backup; asks for the recovery key (or reads it from stdin), then reconnects the workers |
+| `kvoadm plugin install [USER@]ADDR --name N --binary FILE [--credential NAME=FILE]… [--config FILE] [--side node]` | A provider plugin as a hardened service (credentials read from files, root-only on the host) |
+| `kvoadm plugin remove [USER@]ADDR --name N` | Removes it: unit, program, credentials |
 
 ---
 
@@ -123,5 +125,6 @@ You rarely run it yourself; `kvoadm` installs it as a service.
 | `kevasod worker --name N --server URL` | A worker-only host |
 | `kevasod admin recovery-key` / `kms-rotate [--new-recovery-key]` / `backup` | Through the admin socket, as root |
 | `kevasod admin restore [--data DIR]` | Put a backup into a fresh data directory (`kvoadm init --restore` runs it) |
+| `kevasod control-plane --plugins-dir DIR` | Where provider plugins' sockets are (default `/run/kevaso-plugins`) |
 | `kevasod control-plane --cert-controller N=PROGRAM` / `--dns-provider N=PROGRAM` | Register programs (also picked up from `/etc/kevaso/cert-controllers/` and `/etc/kevaso/dns-providers/`) |
 | `kevasod dev` | The API without authentication on loopback, for trying `kvo` locally |
