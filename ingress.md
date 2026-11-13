@@ -91,7 +91,7 @@ or a value it won't take, is refused.
 | Driver | Option | Meaning (default) |
 |---|---|---|
 | `nginx` | `user` | The user worker processes run as (`nginx`) |
-| | `pid` | The pid file the image's nginx uses (`/var/run/nginx.pid`) |
+| | `pid` | The pid file the image's nginx uses (`/run/nginx.pid`) |
 | | `worker-connections` | Per worker (`1024`) |
 | | `client-max-body-size` | Largest request body (`16m`) |
 | | `proxy-connect-timeout` | To a backend (`5s`) |
@@ -166,7 +166,7 @@ spec:
 | `controller.silo` or `controller.siloSet` | The silo, or the SiloSet whose instances all run the proxy (one of the two) |
 | `controller.options` | The driver's options |
 | `public` | Reachable from the internet |
-| `dns` | `{ provider, ttl }`: publish every host name of this class through a DNS provider, pointing at the controller's address. `ttl` is in seconds (300). See [Linode]({{ '/providers/linode/' | relative_url }}) |
+| `dns` | `{ provider, ttl }`: publish every host name of this class through a DNS provider, pointing at the controller's address. `ttl` is in seconds (300). The provider comes from a [provider plugin]({{ '/extending/plugins/' | relative_url }}); its page says how |
 
 Where certificates come from is each Ingress's choice (below).
 
@@ -298,6 +298,25 @@ checked before they reach the configuration: nothing is quoted or escaped for yo
 
 Fix the Ingress and apply it again; the class recovers by itself.
 
+### While a class is held
+
+A class is **held** (not the same as a silo held back by `routeWhen`) when its driver refuses an Ingress (an annotation it doesn't know, a bad value, a host
+name or path it can't take). Nothing new is applied: the proxy keeps serving the last good configuration.
+The class shows it: the condition `Applied` is false with the reason `Rejected`, and
+`status.controllers[]` has `rejected` (`ingress NAMESPACE/NAME: driver DRIVER refuses it: ...`) and
+`blamed` (that Ingress). Fixing or deleting the Ingress releases the class.
+
+| While held | |
+|---|---|
+| Still served | The last good routes and certificates, and **ACME HTTP-01 challenges**: the control plane's current ones are put into the last good configuration, so one tenant's bad annotation does not stop certificates being issued or renewed for the whole class |
+| Not served | An Ingress made or changed since, a backend whose address changed, a certificate issued or renewed since (the proxy keeps the old one), a changed class option |
+
+Two limits. The agent keeps the last good configuration in memory: after the agent restarts, or if
+nothing was ever applied in full, a held class applies nothing, challenges included. And when the
+proxy's own check refuses a configuration, the challenges are in that refused configuration too, so
+they are not served until it is fixed. The held-class challenge is covered by a one-machine test; it
+was found on a bare-metal machine with Let's Encrypt's staging server.
+
 ---
 
 ## Not proven yet
@@ -402,7 +421,7 @@ PROGRAM cleanup _acme-challenge.status.example.com. VALUE
 The name ends with a dot. It's the same convention as lego's `exec` provider, so scripts written
 for lego work here.
 
-Any program in `/etc/kevaso/dns-providers/` is a provider, named after its file. For example, for a
+Any program in `/etc/kevaso/dns-providers/` is a provider, named after its file. Names are lowercase letters, digits and dashes. A provider program is stopped after 2 minutes. For example, for a
 DNS server that accepts dynamic updates (BIND, Knot, PowerDNS), save this as
 `/etc/kevaso/dns-providers/bind` on the control-plane host:
 
@@ -462,7 +481,7 @@ The certificate and its key land in the Secret `internal-wildcard-tls`, renewed 
 ### Other tools: certbot and friends
 
 When you'd rather use a tool you already have, register it as a cert-controller. Any program in
-`/etc/kevaso/cert-controllers/` is one, named after its file. Kevaso runs it as `PROGRAM issue` and
+`/etc/kevaso/cert-controllers/` is one, named after its file. Kevaso runs it as `PROGRAM issue` (stopped after 10 minutes) and
 writes the request to its standard input as JSON:
 
 ```json
@@ -478,7 +497,7 @@ It reads the certificate chain back from the program's standard output, in PEM, 
 certificate first. Whatever the program prints to standard error goes to Kevaso's log. `config` is
 whatever the Issuer gives it.
 
-For example, certbot with its Cloudflare plugin, as `/etc/kevaso/cert-controllers/certbot`:
+For example, certbot with a DNS plugin for your DNS host (here `DNSHOST`), as `/etc/kevaso/cert-controllers/certbot`:
 
 ```sh
 #!/bin/sh
@@ -493,7 +512,7 @@ email=$(echo "$request" | jq -r .config.email)
 
 certbot certonly --non-interactive --agree-tos --email "$email" \
   --csr "$work/request.pem" \
-  --dns-cloudflare --dns-cloudflare-credentials /etc/kevaso/cloudflare.ini \
+  --dns-DNSHOST --dns-DNSHOST-credentials /etc/kevaso/dnshost.ini \
   --config-dir /var/lib/kevaso/certbot --work-dir "$work/run" --logs-dir /var/log/kevaso-certbot \
   --cert-path "$work/cert.pem" --chain-path "$work/chain.pem" \
   --fullchain-path "$work/fullchain.pem" >&2

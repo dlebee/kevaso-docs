@@ -48,7 +48,7 @@ spec:
   address it opens on). A lease never makes it wider.
 - `lease` on a port that doesn't open outside its silo IP is refused: silo-to-silo access is never
   leased.
-- Durations are Go durations (`90s`, `30m`, `2h`), at least one second. `default` can't be more than
+- Durations are written like `90s`, `30m` or `2h`, at least one second. `default` can't be more than
   `max`, and `max` can't be more than the cluster's limit.
 
 `kvo apply` tells you if a value breaks a rule, and why. The same field is allowed in a SiloSet's
@@ -216,7 +216,7 @@ Outside ports:
   debug    default 15m, max 2h, a person's yes first, from 203.0.113.0/24   open until 4:12PM
 ```
 
- There is one
+There is one
 `Lease` per leased port, named `SILO-PORT-xxxxxx`. Only the control plane writes them; you can't
 create or edit one, and an admin can delete one.
 
@@ -263,8 +263,10 @@ plugin that filters. Plugin authors: see [Plugins]({{ '/extending/plugins/' | re
 ## Not done
 
 - A lease on an **Ingress** host. Only service ports with `hostPort` or `loadBalancer: true` lease.
-- Leases on a **NodeBalancer** class haven't run on a real machine: the test token had no NodeBalancer access.
-- Leases on host ports ran on real Linodes, but before ports were declared and opened one by one. The
-  layout on this page is tested in-process and hasn't run on real machines yet.
+- Leases on a plugin's node-port **load balancer** class have not run on a real machine.
+- Leases on host ports, as written on this page, ran on one Lima machine with microVM silos: closed until
+  leased, open and closed from the silo, approval, a held connection cut when the lease ends. They have not
+  run on container silos, on a bare-metal machine, or across two machines. Before ports were declared and
+  opened one by one, leases also ran on real cloud machines.
 
 See [What's proven where]({{ '/operations/#whats-proven-where' | relative_url }}).

@@ -45,7 +45,7 @@ Which classes exist:
 | Class | Address | Who provides it |
 |---|---|---|
 | `ip-pool` | One of a host's extra addresses | Built in. See [Extra addresses on a host](#extra-addresses-on-a-host) |
-| Others | A load balancer or an address a provider owns | A [provider plugin]({{ '/extending/plugins/' | relative_url }}), such as the [Linode]({{ '/providers/linode/' | relative_url }}) one. Each provider's page lists its classes |
+| Others | A load balancer or an address a provider owns | A [provider plugin]({{ '/extending/plugins/' | relative_url }}), such as the ones on the provider pages. Each provider's page lists its classes |
 
 Without `ip` and without `dedicated`, **services share**:
 
@@ -204,7 +204,7 @@ Whether that can be honoured depends on the class:
 | A host port | The host's address |
 | An `ip-pool` address | That address |
 | A class whose address sits on the silo's host (an announced shared address) | That address |
-| A balancer in front of the hosts | **The host's address.** The balancer's address is on no host, so nothing can send from it. Refused at admission when the class is known |
+| A balancer in front of the hosts | Nothing. The balancer's address is on no host, so nothing can send from it. Refused when a plugin serves the class; if none does now, the silo sends from the host's address |
 
 When the address out isn't the address in, `kvo describe silo` says why:
 
@@ -220,7 +220,7 @@ NAME's address: out is the host's meanwhile".
 ## What isn't done
 
 - **Not proven on real machines:** the IP kind, `ip-pool` and shared addresses have run in-process
-  and in tests with a fake provider. A shared address on real Linodes was proven before the IP kind
+  and in tests with a fake provider. A shared address on real cloud machines was proven before the IP kind
   existed (it answered from the other worker after its host went down); the IP kind itself has not
   run on a real machine. See [What's proven where]({{ '/operations/#whats-proven-where' | relative_url }}).
 - An external IP that is not on any of the host's interfaces (a cloud's 1:1 NAT address) matches

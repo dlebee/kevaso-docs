@@ -25,7 +25,7 @@ Internal IP, external IP, mesh IP, silo IP and cluster IP each mean one thing in
 | A silo → another silo | Denied | The receiving port's `allowFrom` |
 | Outside → a silo | Denied | A service port with `hostPort` or `loadBalancer: true` |
 | A silo → outside | Denied | A `Grant` naming the destination ([below](#what-a-silo-may-reach-outside)) |
-| A silo → its host | DNS and ping only | Never more, except the [local endpoint]({{ '/secrets/' | relative_url }}) for a silo that has something to ask it |
+| A silo → its host | DNS and ping only | Never more, except the [local endpoint]({{ '/secrets/' | relative_url }}) for a silo that has something to ask it, and the egress gate for a silo whose grants name hosts |
 | A silo → the mesh's host addresses | Denied | Never |
 | A silo → names (DNS) | Allowed | Its host answers on the silo network's gateway |
 
@@ -81,7 +81,7 @@ number. The `service.loadBalancer` block says where the address comes from.
 | Class | Address | Needs |
 |---|---|---|
 | `ip-pool` | An extra address routed to the silo's host | Extra addresses declared on that host |
-| A provider's class, such as `linode-nodebalancer` or `linode-shared-ip` | A balancer's address, or an IPv4 that follows the silo | The [Linode provider]({{ '/providers/linode/' | relative_url }}) |
+| A class from a provider plugin | A balancer's address, or an IPv4 that follows the silo | A [provider plugin]({{ '/extending/plugins/' | relative_url }}); each provider's page lists its classes |
 
 ```yaml
 spec:
@@ -145,12 +145,13 @@ opened. A fourth source, `gateway` (leave from a chosen host), is not built.
 | Nothing (no service) | None | Nothing to match. `sameAsService` is refused |
 | `hostPort` | The host's address | **Yes.** `host` and `sameAsService` are the same address, so the default is already that |
 | A load balancer of class `ip-pool` | An address of its own | **Yes**, with `sameAsService` (or `pool`). That address is on the host, so the host sends from it |
-| A provider's class whose address is announced to the silo's host (`linode-shared-ip`) | The shared IP | **Yes**, with `sameAsService`. The host holds the address while the silo is there |
-| A provider's balancer in front (`linode-nodebalancer`) | The balancer's address | **No.** That address is on no host, so nothing can send from it |
+| A provider class whose address is announced to the silo's host (a shared IP) | The shared IP | **Yes**, with `sameAsService`. The host holds the address while the silo is there |
+| A provider class that puts a balancer in front | The balancer's address | **No.** That address is on no host, so nothing can send from it. `sameAsService` is refused |
 | An [Ingress]({{ '/ingress/' | relative_url }}) controller | The controller's address | **No.** The address belongs to the controller, not to your silo |
 
-When `sameAsService` can't be honoured, Kevaso doesn't refuse it: the silo sends from the host's
-address and `kvo describe silo` says why. The same happens while an address is still being made.
+`sameAsService` is refused for a class whose address is a balancer's, on no host, when a provider plugin
+serves that class. When Kevaso can't tell yet (no plugin serves the class now), or the address is still
+being made, the silo sends from the host's address and `kvo describe silo` says why.
 
 To see both addresses for a running silo:
 
@@ -196,5 +197,9 @@ spec:
 |---|---|
 | An address or CIDR | The host firewall, by address, port and protocol |
 | A host name | The host's **egress gate**: the silo's TLS is checked against the name it asks for (SNI) and passed through, untouched, only for that name, to the address the gate looks up itself. No name or another name: refused. A name opens TCP only, port 443 unless you list ports. (The gate doesn't look inside a passed-through connection; for hosts it injects a secret for, it does, and refuses a request for another host: see [Secrets]({{ '/secrets/' | relative_url }}).) |
+
+A rule opens TCP unless it lists `protocols` (`tcp`, `udp`; a host name is TCP only). `ports` takes
+numbers and ranges such as `"30000-30100"`; with none, an address range opens every port and a host name
+opens 443. Addresses are IPv4 only for now.
 
 DNS always works, so a silo can resolve anything; it just can't connect where no grant says.

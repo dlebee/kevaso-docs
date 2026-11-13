@@ -52,7 +52,11 @@ chmod 600 ~/linode-token.txt
 Build the plugin (it runs on the Linodes, so it's built for Linux):
 
 ```bash
-git clone https://github.com/dlebee/kevaso-provider-linode && make -C kevaso-provider-linode build
+git clone https://github.com/dlebee/kevaso-provider-linode
+```
+
+```bash
+make -C kevaso-provider-linode build
 ```
 
 On the control plane, with the token:
@@ -64,7 +68,10 @@ bin/kvoadm plugin install root@203.0.113.10 \
     --credential token=$HOME/linode-token.txt
 ```
 
-```
+```text
+→ plugin linode, controller side:
+    runs as its own dynamic user
+    no capabilities
 → connected to 203.0.113.10:22 (host key SHA256:kVvp5Yv9…)
 → kevaso-plugin-linode installed (signature verified on the host)
 → credential token stored on the host (root only; the plugin reads it through systemd)
@@ -135,13 +142,12 @@ You can tune one with annotations on the `IP` or the service: `linode.kevaso.com
 Other annotations in that domain are refused.
 
 **Outgoing traffic can't leave from the NodeBalancer's address.** It belongs to no Linode, so
-`egress.source: sameAsService` can't be honoured behind one: the silo sends from its host's address
-and `kvo describe silo` says why. See
+`egress.source: sameAsService` is refused behind one (use `host`, or `pool` with an `ip-pool` address). See
 [Can a silo use the same IP out as in?]({{ '/networking/' | relative_url }}#can-a-silo-use-the-same-ip-out-as-in).
 
 A standalone Service can have one too (`type: LoadBalancer`, `loadBalancerClass:
 linode-nodebalancer`): one NodeBalancer whose backends are every Linode with one of its endpoints,
-on the Service's node ports (32000 and up). See [Sets, images and updates](../../silos/sets/#an-outside-address).
+on the Service's node ports (32000 and up). See [Sets, images and updates]({{ '/silos/sets/#an-outside-address' | relative_url }}).
 
 ---
 
@@ -158,7 +164,7 @@ Kevaso creates the volume in the worker's region, attaches it, formats it **once
 empty), and mounts it into the silo. From then on the silo stays in that region: the volume can't
 leave it.
 
-```
+```text
 Volumes:
   NAME  CLASS         SIZE  MOUNT                      WHERE              STATE
   data  linode-block  20Gi  /var/lib/postgresql/data   ca-central #19072311  mounted on hv2

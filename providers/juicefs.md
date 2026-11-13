@@ -11,8 +11,7 @@ The JuiceFS provider gives silos **volumes that follow the silo to any host**:
 |---|---|
 | `volumes: [{ class: juicefs, … }]` | A folder in a shared file system, mounted into the silo wherever it runs |
 
-JuiceFS keeps a volume's **data in a bucket** (anything S3-compatible: Cloudflare R2, Backblaze,
-MinIO, AWS) and its **metadata in a database** (Postgres, Redis and others). A host that can reach
+JuiceFS keeps a volume's **data in a bucket** (any S3-compatible object store) and its **metadata in a database** (Postgres, Redis and others). A host that can reach
 both can mount the volume, in any region, with no shared network and no cloud-specific disk. So a
 silo whose volumes are all on a JuiceFS class can move to **any** host, and its `MOVABLE` column
 says `Anywhere` ([Host loss and moves]({{ '/silos/moves/' | relative_url }})).
@@ -31,7 +30,7 @@ flowchart LR
 
 | | |
 |---|---|
-| **Container silos** (`docker`, `podman`) | Run on real machines (Linodes, `docker`): the volume formatted once, mounted with `--subdir` so the silo sees only its folder, sized, moved with its data, moved again after its host was powered off (running elsewhere with its data after about 1 m 20 s), and deleted. Not run with `podman`. |
+| **Container silos** (`docker`, `podman`) | Run on real cloud machines with `docker`: the volume formatted once, mounted with `--subdir` so the silo sees only its folder, sized, moved with its data, moved again after its host was powered off (running elsewhere with its data after about 1 m 20 s), and deleted. Not run with `podman`. |
 | **MicroVM silos** (`cloud-hypervisor`) | In code and tested with fakes: a volume is shared into the VM over virtiofs, and a root disk can be an image file on a volume, so the VM moves ([Volumes]({{ '/silos/volumes/' | relative_url }})). **Not run on a real machine.** |
 | **Volume sizes** | `size` is a directory quota on the volume's folder (whole GiB, rounded up): writes past it fail, and growing `size` in the spec raises it with the silo running. A volume with no `size` has no quota. |
 | **The metadata database** | Bring your own. Kevaso doesn't run it for you yet. |
@@ -69,7 +68,7 @@ A JSON file naming the classes. It holds no secrets: credentials are only *named
     "name": "juicefs",
     "metadata": "postgres://juicefs@10.63.0.1:5432/juicefs",
     "storage": "s3",
-    "bucket": "https://ACCOUNT.r2.cloudflarestorage.com/acme-kevaso-volumes",
+    "bucket": "https://objects.example.com/kevaso-volumes",
     "credentials": {
       "accessKey": "bucket-access-key",
       "secretKey": "bucket-secret-key",
@@ -88,6 +87,9 @@ A JSON file naming the classes. It holds no secrets: credentials are only *named
 | `fileSystem` | The JuiceFS file system's name | `kevaso` |
 | `cacheDir`, `cacheSizeMiB` | The local cache on each host | `/var/cache/kevaso-juicefs/CLASS` |
 | `credentials` | The *names* of the credentials holding the bucket's keys and the metadata password. Each is optional. | none |
+| `description` | Text shown for the class | A standard line |
+| `stateDir` | The controller side's folder, where it mounts each class's root | `/var/lib/kevaso-provider-juicefs` |
+| `volumesDir` | The folder the node side mounts under | `/var/lib/kevaso/volumes` |
 
 One file system per class, and one folder per volume in it. A silo is only given its own folder, so
 it never sees another volume's files. The credentials reach `juicefs` through its environment,
@@ -100,7 +102,11 @@ never its command line, and **never reach the silo**: it only gets the mounted f
 Build the provider (for Linux):
 
 ```bash
-git clone https://github.com/dlebee/kevaso-provider-juicefs && make -C kevaso-provider-juicefs build
+git clone https://github.com/dlebee/kevaso-provider-juicefs
+```
+
+```bash
+make -C kevaso-provider-juicefs build
 ```
 
 Save the three secrets, each in a file only you can read:
@@ -139,7 +145,7 @@ bin/kvoadm plugin install root@203.0.113.20 \
 ```
 
 The names after `--credential` are the ones in the config's `credentials`. See
-[the Linode page]({{ '/providers/linode/' | relative_url }}#install-it) for what `plugin install`
+[Plugins]({{ '/extending/plugins/' | relative_url }}) for what `plugin install`
 does with them. `--manifest` shows you what each side asks of the host (root, `/dev/fuse`, and on
 the node side the host's own mount namespace) and `--yes` grants it: see [Plugins]({{ '/extending/plugins/' | relative_url }}#what-a-manifest-asks-for).
 
@@ -188,5 +194,5 @@ volume, then the new host mounts it and starts it. Two hosts never have it mount
 | Class | Where it lives | Can the silo move? | From |
 |---|---|---|---|
 | `local` (the default) | On the silo's host | No: pinned to its host | Built in |
-| `linode-block` | A Block Storage volume in one Linode region | Another Linode in the same region | [Linode]({{ '/providers/linode/' | relative_url }}) |
+| A provider's block-storage class | A volume in one region | Another host in the same region | That provider's page |
 | `juicefs` (any name you give it) | A bucket and a metadata database | Any host that runs the node side | This page |
