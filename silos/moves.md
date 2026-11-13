@@ -59,8 +59,9 @@ spec:
 
 - **Kevaso checks it when you apply:** `Move` is refused if anything is pinned, and the message
   says what (`disk root uses local on hv1: not movable`).
-- **An important volume is never left behind:** `Recreate` is refused for a silo with a local
-  volume marked `important: true`.
+- **A volume is never left behind:** a volume is always kept data, so `Recreate` (and
+  `kvo move --recreate`) is refused for a silo with a host-local volume, with the volume named.
+  Keep disposable data on the silo's own disk, put the volume on a class that travels, or use `Wait`.
 - **Two copies never run.** A lost host stops its `Recreate` and `Move` silos once it's cut off,
   and the control plane waits until then before starting them elsewhere. `Wait` silos
   are never started elsewhere on their own. [How, and how long it takes](#the-fence).

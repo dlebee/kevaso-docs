@@ -13,7 +13,7 @@ up, and step inside.
 ## The smallest silo
 
 A silo needs nothing ensured inside it. Init steps, [daemons and upkeep]({{ '/silos/daemons/' | relative_url }})
-and a [readiness check]({{ '/silos/sets/' | relative_url }}#readiness) are all optional. A silo with none of them is a normal,
+and [probes]({{ '/silos/probes/' | relative_url }}) are all optional. A silo with none of them is a normal,
 stateful machine: Kevaso creates it, keeps it started, and otherwise leaves it alone. This is the
 whole manifest:
 
@@ -23,7 +23,7 @@ kind: Silo
 metadata: { name: plain, namespace: demo }
 spec:
   runtime: cloud-hypervisor
-  image: ubuntu-24.04
+  vm: { image: ubuntu-24.04 }
 ```
 
 With no `resources` or `disk`, a microVM gets 1 CPU, 1 GiB of memory and a 20 GiB disk. With no
@@ -46,7 +46,7 @@ kind: Silo
 metadata: { name: hello, namespace: demo }
 spec:
   runtime: cloud-hypervisor        # a microVM with its own kernel and network card
-  image: ubuntu-24.04
+  vm: { image: ubuntu-24.04 }      # what it boots
   resources: { cpu: 1, memory: 1Gi }
   disk: { size: 10Gi }             # its own disk, kept for its whole life
   init:                            # optional: run inside, in order, before it's Ready
@@ -62,7 +62,7 @@ spec:
 | Field | Means |
 |---|---|
 | `runtime` | What kind of silo: here a microVM. Others in [Runtimes]({{ '/silos/runtimes/' | relative_url }}). |
-| `image` | What it boots. `ubuntu-24.04` is built in (downloaded once per host, digest-checked). |
+| `vm` | What it boots: `image` names a built-in OS image (`ubuntu-24.04`, downloaded once per host and checked) or a [VMImage]({{ '/silos/sets/#what-a-silo-starts-from' | relative_url }}); `disk` gives a disk by URL and `sha256`. A container silo says `container:` instead. |
 | `resources` | CPUs and memory it may use. The scheduler only places it where they fit. |
 | `disk` | Its root disk. It lives on the host it was created on. |
 | `init.steps` | Optional. Scripts, run as root inside the silo, in order. If you give any, the silo is Ready only after the last one succeeds. |
@@ -102,8 +102,27 @@ bin/kvo get silos -n demo
 bin/kvo describe silo hello -n demo
 ```
 
-`describe` shows everything about it: where it runs, its address, its init steps with their exit
-codes and durations, and its conditions (the *why* when something isn't Ready).
+`describe` shows everything about it: where it runs, its silo IP, its init steps with their exit
+codes and durations, and its conditions (the *why* when something isn't Ready). `get silos` has a
+`READY` column next to the phase.
+
+---
+
+## Reaching it
+
+The silo has an address of its own (its silo IP), but nothing can connect to it yet and it has no
+name. A silo declares the ports it listens on in `spec.ports`; a `spec.service` opens them, one by
+one, to the silos, hosts or networks you choose, and gives the silo a name:
+
+```yaml
+spec:
+  ports: [{ name: web, port: 8080 }]
+  service:
+    ports: [{ port: web, allowFrom: [client] }]   # silo "client" may connect, on the silo IP
+```
+
+A silo with no service has no name and is reachable by nobody. The addresses, the options of
+`service.ports` and the names are all on [Addresses, ports and names]({{ '/networking/model/' | relative_url }}).
 
 ---
 
@@ -145,6 +164,7 @@ Fix the step in `hello.yaml` and `apply` again.
 
 - Get a shell, or move files: [Terminals, files and the small UI]({{ '/silos/terminals/' | relative_url }}).
 - Keep a program running, or a check passing, if you want that (a silo doesn't need it): [Daemons and upkeep]({{ '/silos/daemons/' | relative_url }}).
+- Say when it is started, ready and healthy: [Probes and routing]({{ '/silos/probes/' | relative_url }}).
 - Show a status to the people watching: [Panes]({{ '/panes/' | relative_url }}).
 
 ---

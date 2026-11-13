@@ -19,7 +19,7 @@ runtime, and what makes a microVM movable.
 spec:
   volumes:
     - { name: data, class: local, size: 50Gi, mountPath: /data }
-    - { name: archive, class: juicefs, size: 500Gi, mountPath: /archive, important: true }
+    - { name: archive, class: juicefs, size: 500Gi, mountPath: /archive }
 ```
 
 | Field | Meaning |
@@ -28,7 +28,17 @@ spec:
 | `class` | The storage class. Default `local` |
 | `size` | How big. See the table below: not every runtime holds it |
 | `mountPath` | Where it appears inside the silo |
-| `important` | A `Recreate` is refused for a silo with an important local volume |
+
+A volume has no retention flag: it is always **kept data**. Disposable data (a cache, scratch
+space) belongs on the silo's own disk, not on a volume.
+
+- A silo whose volumes are on a host-local class can't be recreated elsewhere. `onHostLoss:
+  Recreate` and `kvo move --recreate` are refused while the silo has such a volume, naming it:
+  a fresh copy elsewhere would leave the volume's data behind. Put the volume on a class that
+  travels, keep the disposable data on the silo's own disk, or use `Wait`.
+- If a silo is placed on another host while it still has a `local` volume, the old host stops the
+  copy and **keeps it** with its volumes. It removes the copy only when the silo is deleted. If the silo
+  is placed back there, the copy is reused with its volumes.
 
 ---
 
@@ -47,7 +57,7 @@ A microVM can have volumes too. How one reaches the guest depends on where it li
 | `local` | A disk of its own (a thin logical volume on the host). The guest formats it once, with ext4, **only if nothing at all is on it**, and mounts it |
 | On a class whose storage is a **folder on the host** (a mount class such as `juicefs`, or a device class such as `linode-block` that the host has mounted) | A **virtiofs** share of that folder. The guest never sees a cloud block device |
 
-- **The guest mounts them by itself**, before the guest helper and your init steps run, and again
+- **The guest mounts them by itself**, before your init steps run, and again
   on every boot (the lines are in a block of `/etc/fstab` that the host owns, with `nofail`, so a
   missing one never holds a boot).
 - **Each shared folder has its own `virtiofsd`**, run as the user `kevaso-vfs`, with no network, no
@@ -79,7 +89,7 @@ kind: Silo
 metadata: { name: dev, namespace: work }
 spec:
   runtime: cloud-hypervisor
-  image: ubuntu-24.04
+  vm: { image: ubuntu-24.04 }
   disk: { class: juicefs, size: 40Gi }
   volumes:
     - { name: home, class: juicefs, size: 100Gi, mountPath: /home/dev }

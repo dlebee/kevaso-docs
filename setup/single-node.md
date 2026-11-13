@@ -26,8 +26,13 @@ bin/kvoadm init root@203.0.113.10 \
 | `--name hv1` | The host's name in Kevaso (default: its address with dashes) |
 | `--cluster home` | The cluster's name, and the name of your `kvo` context |
 | `--api-server URL` | Only if *you* reach the API at another address than the machine's (a tunnel, a DNS name) |
-| `--address IP` | The address *other hosts* should use for this one, if not the SSH address |
+| `--internal-ip IP` | The machine's address on its own network: the one other machines in that network use |
+| `--external-ip IP` | The machine's address reachable from outside that network, if it has one |
 | `--user NAME` | Your name in Kevaso (default: your login name on this computer) |
+
+With neither `--internal-ip` nor `--external-ip`, the SSH address becomes the internal IP. Give at
+least one if you reach the machine some other way (a tunnel, a name). Both must be IPv4 addresses, and
+they must differ. What they mean is on [Addresses, ports and names]({{ '/networking/model/' | relative_url }}).
 
 **First, it looks.** Before changing anything, `init` reads the machine and shows what it found:
 
@@ -90,8 +95,8 @@ bin/kvo get hosts
 ```
 
 ```
-NAME   ADDRESS        REGION   COMPONENTS      RUNTIMES   AGE
-hv1    203.0.113.10   -        control-plane   -          1m
+NAME   INTERNAL IP    EXTERNAL IP   REGION   COMPONENTS      RUNTIMES   AGE
+hv1    203.0.113.10   -             -        control-plane   -          1m
 ```
 
 ---

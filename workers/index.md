@@ -18,8 +18,8 @@ your router. They don't need to be on the same network.
   else come back through it. Nothing needs to listen on the worker.
 - Hosts are on a **WireGuard mesh** run by the control plane. Each host gets its own silo subnet
   (`10.64.N.0/24`), so silos on different hosts reach each other by address and name.
-- A worker **behind NAT** reaches the others through a relay (a host with a public address), end to
-  end encrypted inside it: the relay only ever sees encrypted UDP.
+- A worker **behind NAT** reaches the others through a relay (a host that can be reached directly),
+  end to end encrypted inside it: the relay only ever sees encrypted UDP.
 
 ---
 
@@ -47,7 +47,8 @@ bin/kvoadm host add root@198.51.100.20 \
 | Flag | Meaning |
 |---|---|
 | `--install worker` | This host only runs silos |
-| `--region`, `--zone` | Where it is, for placement (`placement.region` on a silo) |
+| `--internal-ip IP`, `--external-ip IP` | The machine's addresses, as for `kvoadm init` (neither: the SSH address, as internal IP) |
+| `--region`, `--zone` | Where it is, for placement (`placement.region` and `placement.zone` on a silo) |
 | `--label k=v` | Any label, for `placement.hostSelector` |
 | `--runtime` | Which runtimes to install (repeatable) |
 | `--behind-nat` | Nothing can reach it from outside: it'll use the relay |
@@ -59,6 +60,8 @@ bin/kvoadm host add root@198.51.100.20 \
 ```bash
 bin/kvo get hosts
 ```
+
+It shows each host's internal and external IP; `kvoadm host list` shows them too, with the zone and status.
 
 ---
 

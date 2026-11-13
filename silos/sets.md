@@ -6,60 +6,103 @@ permalink: /silos/sets/
 # Sets, images and updates
 
 Many identical silos are a **SiloSet**: a scale set of stateful machines, each a normal silo with a
-stable name. They start from an **Image**. A standalone **Service** gives them one name and one
+stable name. They start from the block in their template (`container:` or `vm:`). A standalone **Service** gives them one name and one
 address. Updates are deliberate: a silo is *reset* onto a new image, never silently replaced.
 
 ---
 
-## Images
+## What a silo starts from
 
-What a silo starts from depends on what kind of silo it is.
+A silo says what it starts from in a block named for what the image is. Exactly one block, and the
+one its runtime takes:
 
-**A container silo** (docker, podman, OpenShell's container runtime) names its image the way you
-would anywhere else: a registry reference. There is nothing to create first.
+| Runtime | Block | What it names |
+|---|---|---|
+| `docker`, `podman`, `openshell`, `openshell-container` | `container:` | A registry image |
+| `cloud-hypervisor` | `vm:` | A bootable disk |
+
+Admission refuses the wrong block and says which one to use.
+
+### `container:`
+
+`container.image` is a registry reference, used as it is. Nothing is created first.
 
 ```yaml
 kind: Silo
 spec:
   runtime: docker
-  image: docker.io/library/python:3.12-slim
+  container:
+    image: docker.io/library/python:3.12-slim
+    command: [python3, -m, http.server, "8080"]      # optional: the main process
+    pull: { secretRef: registry-pull }                # optional: a private registry's credential
 ```
 
-Pin it by digest (`…@sha256:…`) if it must never change under you: a tag can move.
-`kvo describe silo` flags an image that isn't pinned, and shows the digest that was actually pulled.
-For a private registry, see [private registries]({{ '/secrets/' | relative_url }}).
+| Field | Means |
+|---|---|
+| `image` | A registry reference, or the built-in `ubuntu-24.04` (which is `docker.io/library/ubuntu:24.04`). It can't be the name of a VMImage |
+| `command` | The main process. Default: the image's own |
+| `pull.secretRef` | A `registry` secret in the silo's namespace. Default: the namespace's default pull secret for the image's registry, if there is one. Docker and podman only: the OpenShell runtimes refuse it |
 
-**A microVM silo** (cloud-hypervisor) boots from a disk image. It names either the built-in one,
-`ubuntu-24.04`, or an **Image** you define: a named list of disk versions.
+Pin the image by digest (`…@sha256:…`) if it must never change under you: a tag can move.
+`kvo describe silo` flags an image that isn't pinned, and shows the digest that was actually pulled.
+How a registry credential is made and kept is on [Secrets]({{ '/secrets/' | relative_url }}).
+
+### `vm:`
+
+A microVM boots from a disk. Give either `image` or `disk`, not both.
+
+```yaml
+kind: Silo
+spec:
+  runtime: cloud-hypervisor
+  vm: { image: web-app:v2 }          # a VMImage's version, or web-app for its newest
+---
+kind: Silo
+spec:
+  runtime: cloud-hypervisor
+  vm:
+    disk:                            # a disk stated inline
+      url: https://images.example.com/web-app-v2.img
+      sha256: 4f0c…                  # 64 hex digits: every host checks what it downloads
+```
+
+| Field | Means |
+|---|---|
+| `image` | `NAME[:VERSION]` of a VMImage in the silo's namespace, or the built-in `ubuntu-24.04`. It can't be a registry reference |
+| `disk.url` | An `https://` address |
+| `disk.sha256` | The disk's hash. Hosts refuse a disk that doesn't match |
+
+### VMImage: a named disk with versions
+
+A **VMImage** is a named list of disk versions, for microVM silos. It saves repeating a URL and
+hash, and lets a set roll to a new release by changing one word.
 
 ```yaml
 apiVersion: kevaso/v1
-kind: Image
+kind: VMImage
 metadata: { name: web-app, namespace: ops }
 spec:
   versions:                                    # oldest first
     - name: v1
       disk:
         url: https://images.example.com/web-app-v1.img
-        sha256: 9a31…                          # every host checks what it downloads
+        sha256: 9a31…
     - name: v2
       disk:
         url: https://images.example.com/web-app-v2.img
         sha256: 4f0c…
 ```
 
-```yaml
-kind: Silo
-spec:
-  runtime: cloud-hypervisor
-  image: web-app:v2          # or web-app, for the newest version
+```bash
+kvo get vmimages -n ops
 ```
 
-An Image's versions never change once added, so a silo on `v1` always boots the same disk; a new
-release is a new version. An Image is only ever a disk: container images live in registries, and
-Kevaso keeps no second list of them.
+A version never changes once added, so a silo on `v1` always boots the same disk; a new release is
+a new version. A VMImage is only ever a disk: container images live in registries, and Kevaso keeps
+no second list of them. A silo that names a VMImage that doesn't exist, or a version it doesn't
+have, stays `Pending` with the condition `Image` false, reason `ImageMissing`, and the message says what is missing.
 
-`kvo describe silo NAME` shows what its image resolved to, and what it runs right now.
+`kvo describe silo NAME` shows what its source resolved to, and what it runs right now.
 
 ---
 
@@ -99,16 +142,8 @@ Kevaso refuses:
 
 ### Readiness
 
-"Running" isn't always "ready": a silo that is still starting up shouldn't get traffic. A readiness check is a
-command run inside the silo now and then. Until it passes, the silo isn't Ready: no Service sends to
-it, and a set's rollout waits for it.
-
-```yaml
-spec:
-  readiness:
-    command: [sh, -c, "curl -fs localhost:8080/health"]
-    period: 15s                  # default 10s; each run times out after 5s
-```
+A silo can say when it is ready, so that a set's rollout waits for it and traffic waits too. That is
+[probes and routing]({{ '/silos/probes/' | relative_url }}).
 
 ---
 
@@ -119,7 +154,6 @@ apiVersion: kevaso/v1
 kind: SiloSet
 metadata: { name: api-pool, namespace: payments }
 spec:
-  image: docker.io/library/python:3.12-slim
   instances: 3
   spread: host                  # different hosts where possible (or zone, region)
   standby: 1                    # an extra one, booted and idle, ready to take over
@@ -127,9 +161,11 @@ spec:
   template:                     # each instance's silo spec
     labels: { app: api }
     runtime: docker
+    container: { image: docker.io/library/python:3.12-slim }   # what every instance starts from
     volumes: [{ name: data, mountPath: /data }]
+    ports: [{ name: http, port: 8080 }]
     service:
-      ports: [{ name: http, port: 8080 }]
+      ports: [{ port: http }]
 ```
 
 The instances are `api-pool-0`, `api-pool-1` and `api-pool-2`, each its own silo, with its own disk
@@ -159,7 +195,8 @@ kvo protect silo api-pool-0 -n payments
 
 ### Rolling out a new image
 
-Change the set's `image` (or its template) and apply it. What happens depends on `upgradePolicy`:
+The set has no image of its own: what instances start from is the template's `container.image`,
+`vm.image` or `vm.disk`. Change that (or anything else in the template) and apply it. What happens depends on `upgradePolicy`:
 
 | Policy | What happens |
 |---|---|
@@ -202,7 +239,7 @@ spec:
     - { name: http, port: 8080, targetPort: http }   # a port name of the silos' own service, or a number
 ```
 
-- It gets a virtual IP and the name `api.payments.kevaso`.
+- It gets a virtual IP (its cluster IP) and the name `api.payments.kevaso`.
 - Every worker sends that address to one of its endpoints: the Ready silos its selector picks.
   Standby instances are never endpoints.
 - The connection keeps the caller's address, so **each endpoint's `allowFrom` still decides**.
@@ -214,7 +251,7 @@ kvo describe service api -n payments      # its address and endpoints
 
 ### An outside address
 
-`type: LoadBalancer` with a provider's load-balancer class gives the Service a public address.
+`type: LoadBalancer` with a provider's load-balancer class gives the Service an address from outside.
 
 ```yaml
 spec:
@@ -222,12 +259,17 @@ spec:
   loadBalancerClass: linode-nodebalancer
 ```
 
+- The address is an [IP]({{ '/networking/ips/' | relative_url }}): by default the namespace's shared one for the
+  class. `loadBalancerIP: NAME` picks one you keep, and `loadBalancerDedicated: true` makes one of its own.
 - The load balancer's backends are the hosts that have endpoints.
 - Each host sends the traffic only to its own endpoints, so they see the load balancer's address,
   not the client's.
 - The instances themselves stay private.
-- Like exposing a silo, it needs `create` on `services/expose-public` (namespace admins have it).
-- Only classes that spread over hosts fit. A shared IP follows one silo, so it's for a silo's own
-  service. See [Linode](../../providers/linode/).
+- It needs `create` on `services/expose-public` (namespace admins have it).
+- `routeWhen` says whether an endpoint gets traffic only while ready (`ready`) or as soon as it runs
+  (`running`). It is required when the silos it selects have a readiness probe; an endpoint that is held
+  shows in `kvo describe service`. See [probes and routing]({{ '/silos/probes/' | relative_url }}).
+- Only classes that spread over hosts fit. A shared IP that follows one silo is for a silo's own
+  service. See [Linode]({{ '/providers/linode/' | relative_url }}).
 
-A full example is in the repo: `examples/07-siloset-service.yaml`.
+Full examples are in the repo: `examples/07-siloset-service.yaml` and `examples/08-images-and-registries.yaml`.

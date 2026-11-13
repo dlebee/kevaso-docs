@@ -5,8 +5,7 @@ permalink: /silos/daemons/
 
 # Inside a silo: daemons and upkeep
 
-> **None of this is required.** A silo doesn't need init steps, daemons, upkeep or a readiness
-> check. A silo with none of them is a complete, supported silo: a stateful machine that Kevaso
+> **None of this is required.** A silo doesn't need init steps, daemons, upkeep or probes. A silo with none of them is a complete, supported silo: a stateful machine that Kevaso
 > keeps started and otherwise leaves alone. This page is for when you *do* want Kevaso to keep
 > something true inside it. The smallest silo is on [Your first silo]({{ '/silos/first-silo/' | relative_url }}#the-smallest-silo).
 
@@ -31,7 +30,7 @@ kind: Silo
 metadata: { name: api, namespace: payments }
 spec:
   runtime: docker
-  image: ghcr.io/acme/api:1.4
+  container: { image: "ghcr.io/acme/api:1.4" }
   daemons:
     - name: web
       run: /usr/local/bin/api --port 8080
@@ -121,10 +120,11 @@ done; after that, `every` after the last one.
 
 A silo with a `Failed` upkeep task gets the condition `Degraded` with the reason `UpkeepFailed` and
 the failing tasks' names. It clears by itself, with the reason `UpkeepOK`, the next time every task
-passes.
+passes. A failing [liveness probe]({{ '/silos/probes/#liveness' | relative_url }}) marks the silo `Degraded` too.
 
 `Degraded` is a warning. It doesn't stop the silo, change its phase or make it not `Ready`, and
-Kevaso doesn't restart or move a silo because of it.
+Kevaso doesn't restart or move a silo because of it. (A liveness probe with `onFailure: restart` does
+restart it, and only that.)
 
 ---
 

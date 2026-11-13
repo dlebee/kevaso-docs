@@ -24,8 +24,12 @@ how it's made. Pick one per silo with `spec.runtime`.
 | **Root inside** | Yes | No (a sandbox user) | No | The image's user |
 | **Good for** | Dev boxes, servers, Docker inside | Untrusted code | The same, on hosts without KVM | Apps packaged as images |
 
-Admission tells you when a silo asks for something its runtime can't do (a public port on
-`openshell`, an address range in a grant…), instead of accepting it and never opening it.
+A runtime with no inbound network (the OpenShell ones) has no way to take a connection, so don't
+open ports on its silos. Admission refuses a grant that an OpenShell silo can't express (an address
+range, for example).
+
+What a silo starts from depends on the runtime: `vm:` for `cloud-hypervisor`, `container:` for
+the rest ([what a silo starts from]({{ '/silos/sets/#what-a-silo-starts-from' | relative_url }})).
 
 ---
 
@@ -33,6 +37,7 @@ Admission tells you when a silo asks for something its runtime can't do (a publi
 
 The default choice: a real Linux machine, booted from `ubuntu-24.04`, with its own disk.
 
+- It boots from `vm: { image: … }` (a built-in OS image or a VMImage) or `vm: { disk: { url, sha256 } }`.
 - The hypervisor process runs as its own unprivileged user, with no capabilities, a system-call
   filter and only its own disk and network device.
 - Init steps run as root inside, through SSH from the host only (a key the host holds; nothing else
@@ -65,7 +70,7 @@ kind: Silo
 metadata: { name: worker-1, namespace: ops }
 spec:
   runtime: openshell
-  image: ubuntu-24.04                     # OpenShell's base image
+  container: { image: ubuntu-24.04 }      # OpenShell's base image
   resources: { cpu: 2, memory: 4Gi }
   grants: [api-access]
 ```
@@ -91,8 +96,8 @@ network; a supervisor container makes the allowed calls.
 ## docker and podman
 
 A container from any image, on the **same silo bridge as the VMs**, so everything on
-[Networking]({{ '/networking/' | relative_url }}) applies unchanged: default deny, grants, `allowFrom`, `hostPort`,
-the egress gate.
+[Addresses, ports and names]({{ '/networking/model/' | relative_url }}) and [Networking]({{ '/networking/' | relative_url }})
+applies unchanged: default deny, grants, `allowFrom`, `hostPort`, the egress gate.
 
 ```yaml
 apiVersion: kevaso/v1
@@ -100,12 +105,13 @@ kind: Silo
 metadata: { name: web, namespace: shop }
 spec:
   runtime: docker
-  image: docker.io/library/python:3.12-slim
-  command: [python3, -m, http.server, "8080"]
+  container:
+    image: docker.io/library/python:3.12-slim
+    command: [python3, -m, http.server, "8080"]
   volumes: [{ name: data, mountPath: /data }]
+  ports: [{ name: http, port: 8080 }]
   service:
-    ports: [{ name: http, port: 8080 }]
-    expose: hostPort
+    ports: [{ port: http, hostPort: [internal] }]   # opened on the host's internal IP
   init:
     steps:
       - name: seed
@@ -114,9 +120,9 @@ spec:
 
 | Good to know | |
 |---|---|
-| `image` | Any image reference; `ubuntu-24.04` means `docker.io/library/ubuntu:24.04` |
-| `command` | The main process. Without it, the image's own (for `ubuntu-24.04`, one that sleeps, so it's a machine to `exec` into) |
+| `container.image` | Any registry reference; `ubuntu-24.04` means `docker.io/library/ubuntu:24.04`. A private registry takes `container.pull` ([Secrets]({{ '/secrets/' | relative_url }})) |
+| `container.command` | The main process. Without it, the image's own (for `ubuntu-24.04`, one that sleeps, so it's a machine to `exec` into) |
 | Init steps | **Init containers**: each step runs in a container of its own from the silo's image, on its network and volumes, **before** the main container starts |
 | Persistence | Volumes survive restarts; the container's own files stay on its host |
-| Secrets | `inject`, `broker`, `file` and `env`. `broker` secrets come from the [local endpoint]({{ '/secrets/#the-broker-for-everything-else' | relative_url }}), so the image needs `curl` or any HTTP client. Files and variables are written by the host into `/run`, which is always memory. Nothing of Kevaso's is put in your image |
+| Secrets | `inject`, `broker`, `file` and `env`. `broker` secrets come from the [local endpoint]({{ '/secrets/' | relative_url }}), so the image needs `curl` or any HTTP client. Files and variables are written by the host into `/run`, which is always memory. Nothing of Kevaso's is put in your image |
 | Volume `size` | Not enforced on containers |
