@@ -5,19 +5,19 @@ permalink: /ingress/
 
 # HTTPS sites (ingress)
 
-One public address, ports 80 and 443, many sites. An **ingress controller** reads HTTP, ends TLS,
-and sends each request to the right silo by host name and path. The silos themselves stay private.
+One address, ports 80 and 443, many sites. An **ingress controller** reads HTTP, ends TLS, and sends
+each request to the right service by host name and path. The silos themselves stay private.
 
 ```mermaid
 flowchart LR
-  user["Browser"] -->|"https://api.example.com"| host["Worker's public address<br/>ports 80 and 443"]
+  user["Browser"] -->|"https://api.example.com"| host["Controller's address<br/>ports 80 and 443"]
   host --> ic["Ingress controller silo<br/>TLS ends here"]
-  ic -->|"private name, port 8080"| api["silo api"]
-  ic -->|"private name, port 3000"| web["silo web"]
+  ic -->|"silo IP, port 8080"| api["silo api"]
+  ic -->|"silo IP, port 3000"| web["silo web"]
 ```
 
-Compare with [`hostPort`]({{ '/networking/' | relative_url }}#open-to-the-internet): that forwards
-raw TCP or UDP to **one** silo; an ingress reads HTTP and routes to **many**.
+Compare with a [`hostPort`]({{ '/networking/' | relative_url }}#on-the-hosts-address-hostport): that forwards raw
+TCP or UDP to **one** silo; an ingress reads HTTP and routes to **many**.
 
 ---
 
@@ -25,22 +25,124 @@ raw TCP or UDP to **one** silo; an ingress reads HTTP and routes to **many**.
 
 | Object | What it is |
 |---|---|
-| **Ingress controller** | An ordinary silo running a stock proxy (nginx, Caddy or Kong), exposed on 80 and 443 |
-| **IngressClass** | Which silo serves a class of Ingresses, and whether the class is public |
-| **Ingress** | Host names and paths → a silo's port, and where its certificate comes from |
+| **Ingress controller** | An ordinary silo running a stock proxy as its vendor ships it, with its ports 80 and 443 open on its host or a load balancer |
+| **IngressClass** | Which silo serves a class of Ingresses, with which proxy driver, and whether the class is public |
+| **Ingress** | Host names and paths → a service's port, and where its certificate comes from |
 | **Issuer** | Where certificates come from: an ACME server (Let's Encrypt) or the cluster's own CA |
 | **Certificate** | Made for each Ingress with TLS; issued into a Secret and renewed by Kevaso |
 
 Two issuers exist from the start: `letsencrypt` and `internal-ca`.
 
+The proxy is stock: Kevaso adds no program, token, socket or certificate authority to its silo, and the
+proxy never calls Kevaso. A **driver** turns the class's routes, certificates and ACME challenges into
+the proxy's own configuration. The host of the controller's silo writes it into the silo, checks it
+with the proxy's own test, and reloads the proxy.
+
 ---
 
 ## 1 · The controller
 
-The controller is an ordinary silo running a stock proxy (nginx, Caddy or Kong) exactly as its
-vendor ships it. Kevaso puts nothing in it. The host of the controller's silo writes the routes and
-certificates into the proxy's own configuration, checks it with the proxy's own test, and reloads it.
-How to set one up is not documented here yet.
+One command makes a controller silo and its class:
+
+```bash
+kvoadm ingress install --public
+```
+
+```text
+→ Namespace kevaso-system
+→ Silo ingress-public
+→ IngressClass public
+Ingress class public: nginx (docker.io/library/nginx:1.27) in silo kevaso-system/ingress-public, on its host's external IP. Kevaso writes its config from outside;
+see it with: kvo get ingressclass public -o yaml
+```
+
+It runs as an admin of your current `kvo` context. Anything that already exists is left as it is.
+The silo is in the namespace `kevaso-system`, named `ingress-CLASS`, with 1 CPU and 256Mi.
+
+| Flag | Meaning | Default |
+|---|---|---|
+| `--class NAME` | The IngressClass to make | `public` |
+| `--driver NAME` | The proxy: `nginx`, `caddy` or `kong` | `nginx` |
+| `--public` | The class is reachable from the internet (publishing on it needs its own permission, below) | private |
+| `--host-port internal\|external` | Open the proxy's ports on its host's internal or external address | `external` |
+| `--lb-class CLASS` | Open them on a load balancer of that class instead (not with `--host-port`) | |
+| `--image REF` | The proxy's image | The driver's vendor image |
+| `--runtime NAME` | The silo's runtime | `docker` |
+| `--option KEY=VALUE` | A driver option, repeatable (see below) | |
+| `--context NAME` | The `kvo` context to use | The current one |
+
+The host that runs it needs the runtime and, with `--host-port external`, an external IP.
+
+### The drivers
+
+| Driver | Image | Ports | How a change takes effect |
+|---|---|---|---|
+| `nginx` | `docker.io/library/nginx:1.27` | 80, 443 | One `nginx.conf`, checked with `nginx -t`, then `nginx -s reload` |
+| `caddy` | `docker.io/library/caddy:2.8` | 80, 443 | A Caddyfile with Caddy's automatic HTTPS off, checked with `caddy validate`, then `caddy reload` |
+| `kong` | `docker.io/library/kong:3.7` | 8000, 8443 | Kong without a database: the whole config sent to its admin API, which checks and swaps it in one step |
+
+`kvoadm ingress install` is made for `nginx` and `caddy`. Kong's image needs `KONG_DATABASE=off` and an
+admin listener, so for Kong you bring your own silo and name it in the class (below). The admin API is
+called from the host on the silo IP, so keep its port closed to everything else.
+
+**Options** go in the class (`spec.controller.options`, or `--option`). A name the driver doesn't know,
+or a value it won't take, is refused.
+
+| Driver | Option | Meaning (default) |
+|---|---|---|
+| `nginx` | `user` | The user worker processes run as (`nginx`) |
+| | `pid` | The pid file the image's nginx uses (`/var/run/nginx.pid`) |
+| | `worker-connections` | Per worker (`1024`) |
+| | `client-max-body-size` | Largest request body (`16m`) |
+| | `proxy-connect-timeout` | To a backend (`5s`) |
+| | `proxy-read-timeout` | Between two reads from a backend (`60s`) |
+| | `proxy-send-timeout` | Between two writes to a backend (`60s`) |
+| | `http2` | On 443, nginx 1.25.1 or later: `true` or `false` (`false`) |
+| `caddy` | `dial-timeout` | To a backend (`5s`) |
+| | `read-header-timeout` | For a client's request headers (`30s`) |
+| | `idle-timeout` | A kept-alive client connection (`2m`) |
+| `kong` | `admin-port` | Where Kong's admin API listens in the silo (`8001`) |
+| | `connect-timeout`, `read-timeout`, `write-timeout` | To a backend (`5s`), between two reads (`60s`), between two writes (`60s`) |
+
+**Annotations** go on an Ingress, prefixed with the driver's name, and only that driver reads them. An
+annotation for another driver is ignored.
+
+| Driver | Annotation | Meaning |
+|---|---|---|
+| `nginx` | `nginx/proxy-body-size` | Largest request body on this Ingress's routes |
+| | `nginx/proxy-connect-timeout`, `nginx/proxy-read-timeout`, `nginx/proxy-send-timeout` | Timeouts for this Ingress |
+| | `nginx/ssl-redirect` | `false`: also serve these routes on plain HTTP instead of redirecting |
+| | `nginx/buffering` | `false`: stream responses as they come (server-sent events) |
+| `caddy` | `caddy/dial-timeout` | To a backend |
+| | `caddy/flush-interval` | `-1`: stream responses as they come, or a duration such as `500ms` |
+| | `caddy/ssl-redirect` | `false`: also serve these routes on plain HTTP |
+| `kong` | `kong/connect-timeout`, `kong/read-timeout`, `kong/write-timeout` | Timeouts for this Ingress |
+| | `kong/strip-path` | `true`: drop the matched path prefix before passing the request on |
+| | `kong/ssl-redirect` | `false`: also serve these routes on plain HTTP |
+
+### Your own controller silo
+
+Any silo can be the controller: run the proxy image as shipped, open its ports, and name the silo in
+the class. `controller.siloSet` names a SiloSet instead: every instance gets the same configuration.
+
+```yaml
+apiVersion: kevaso/v1
+kind: Silo
+metadata: { name: ingress-edge, namespace: kevaso-system }
+spec:
+  runtime: docker
+  container: { image: docker.io/library/nginx:1.27 }
+  resources: { cpu: 1, memory: 256Mi }
+  ports:
+    - { name: http,  port: 80 }
+    - { name: https, port: 443 }
+  service:
+    ports:
+      - { port: http,  hostPort: [external] }
+      - { port: https, hostPort: [external] }
+```
+
+One silo is the controller of one class.
 
 ## 2 · The class
 
@@ -49,12 +151,24 @@ apiVersion: kevaso/v1
 kind: IngressClass
 metadata: { name: public }
 spec:
-  controller: { driver: nginx, silo: ingress-public, namespace: kevaso-system }
+  controller:
+    driver: nginx
+    namespace: kevaso-system
+    silo: ingress-public
+    options: { client-max-body-size: 32m }
   public: true
 ```
 
-A class says who serves it and whether it's public; where certificates come from is each Ingress's
-choice (below).
+| Field | Meaning |
+|---|---|
+| `controller.driver` | The proxy's driver: `nginx`, `caddy` or `kong` |
+| `controller.namespace` | The namespace of the controller silo (required) |
+| `controller.silo` or `controller.siloSet` | The silo, or the SiloSet whose instances all run the proxy (one of the two) |
+| `controller.options` | The driver's options |
+| `public` | Reachable from the internet |
+| `dns` | `{ provider, ttl }`: publish every host name of this class through a DNS provider, pointing at the controller's address. `ttl` is in seconds (300). See [Linode]({{ '/providers/linode/' | relative_url }}) |
+
+Where certificates come from is each Ingress's choice (below).
 
 > **Publishing on a public class is its own permission:** `create` on `ingresses/publish-public`
 > in the namespace. Namespace `admin`s have it, `editor`s don't, so nobody puts something on the
@@ -62,7 +176,8 @@ choice (below).
 
 ## 3 · A site
 
-The app, private (no `expose`):
+The app. It declares its port, and its service opens that port. With no `allowFrom` and no `hostPort`,
+nothing reaches it except what an Ingress adds:
 
 ```yaml
 apiVersion: kevaso/v1
@@ -70,13 +185,16 @@ kind: Silo
 metadata: { name: api, namespace: payments }
 spec:
   runtime: docker
-  image: docker.io/library/python:3.12-slim
-  command: [python3, -m, http.server, "8080"]
+  container:
+    image: docker.io/library/python:3.12-slim
+    command: [python3, -m, http.server, "8080"]
+  ports:
+    - { name: http, port: 8080 }
   service:
-    ports: [{ name: http, port: 8080 }]
+    ports: [{ port: http }]
 ```
 
-And its Ingress:
+And its Ingress, which names the **service** and one of its ports:
 
 ```yaml
 apiVersion: kevaso/v1
@@ -86,15 +204,18 @@ spec:
   ingressClass: public
   hosts: [api.example.com]
   rules:
-    - { path: /, silo: { name: api, port: http } }
+    - { path: /, service: { name: api, port: http } }
 ```
 
 ```bash
 kvo apply -f api.yaml
 ```
 
-The Ingress opens exactly one path through the firewall: from the class's controller to `api`'s
-`http` port. Nothing else can reach `api`.
+The Ingress opens exactly one path through the firewall: from the class's controller to the silo's
+`http` port. Nothing else can reach it. The service can be a silo's own (its `service.name`, or the
+silo's name) or a standalone `Service`, which sends to every silo it selects. If the silo is held
+back by [`routeWhen`]({{ '/silos/probes/' | relative_url }}), or isn't running, its route is left out until it is
+routed again.
 
 ## 4 · DNS
 
@@ -104,12 +225,14 @@ Point the host name at the controller's address. `kvo` shows it:
 kvo get ingresses -n payments
 ```
 
-```
+```text
 NAME   CLASS    HOSTS             ADDRESS        READY
 api    public   api.example.com   203.0.113.10   no (CertificatePending)
 ```
 
-Make an `A` record `api.example.com → 203.0.113.10` at your DNS provider.
+The address is the controller's load-balancer address, else its host's external IP, else its internal
+IP. Make an `A` record `api.example.com → 203.0.113.10` at your DNS provider, or set `dns` on the class
+and a provider plugin does it.
 
 ## 5 · The certificate
 
@@ -121,15 +244,17 @@ controller serves it:
 kvo get certificates -n payments
 ```
 
-```
+```text
 NAME      HOSTS             ISSUER        EXPIRES      READY
 api-tls   api.example.com   letsencrypt   2027-02-10   yes
 ```
 
-It's renewed by itself at two thirds of its life (after 60 of Let's Encrypt's 90 days).
+It's renewed by itself at two thirds of its life (after 60 of Let's Encrypt's 90 days). A failed
+attempt waits a minute, then doubles up to an hour, so a broken setup doesn't hammer the CA.
 `kvo describe certificate api-tls -n payments` shows its dates and, if something's wrong, why.
 
-Now `https://api.example.com` reaches the silo, and `http://` redirects to it.
+Now `https://api.example.com` reaches the silo. `http://` is redirected to it with a `308`, and a
+request for a host no Ingress names gets a `404` (`nginx` and `caddy`).
 
 ---
 
@@ -137,16 +262,52 @@ Now `https://api.example.com` reaches the silo, and `http://` redirects to it.
 
 | Field | Means |
 |---|---|
+| `ingressClass` | The class that serves it (required) |
 | `hosts` | The names this Ingress answers for |
-| `rules[].path` | A path prefix; the longest matching one wins (`/admin` before `/`) |
-| `rules[].silo` | A silo in the Ingress's namespace, and the name of one of its service ports |
-| `tls.issuer` | The Issuer its certificate comes from. Without one: the cluster's default for the class, `letsencrypt` on public classes and `internal-ca` on private ones (`kevasod --default-issuer-public` / `--default-issuer-private`) |
+| `rules[].path` | A path prefix, starting with `/`; the longest matching one wins (`/admin` before `/`). Default `/` |
+| `rules[].service` | `{ name, port }`: a service's name and one of its ports, by name |
+| `tls.issuer` | The Issuer its certificate comes from. Without one: the cluster's default for the class, `letsencrypt` on public classes and `internal-ca` on private ones (`kevasod control-plane --default-issuer-public` / `--default-issuer-private`) |
 | `tls.secretName` | A certificate you keep yourself, in that Secret (chain and key, PEM): no certificate is made |
 | `tls.none` | `true`: plain HTTP, on private classes only |
 
-At most one of the three.
+At most one of the three `tls` fields. Two Ingresses that claim the same host and path: the first by
+name keeps it, and the other's route is left out.
 
-The app sees the original `Host` and the browser's address in `X-Forwarded-For`.
+The app sees the original `Host`. `nginx` and `caddy` pass the client's address in `X-Real-IP`, and `nginx` also in `X-Forwarded-For`.
+
+---
+
+## When the proxy refuses a configuration
+
+A new configuration is checked inside the silo, with the proxy's own test, **before** the running proxy
+sees it. If the check refuses it, nothing is applied: the proxy keeps serving the last good
+configuration, the new files are removed, and Kevaso says why.
+
+| Where | What it shows |
+|---|---|
+| `kvo get ingressclass NAME -o yaml` | `status.controllers[]`, one per controller silo: `applied` (the configuration in effect), `rejected` (the proxy's own words), `blamed` (the Ingresses the refusal points at). The condition `Applied` is false with the reason `Rejected` |
+| `kvo get ingresses` | The Ingress that caused it has `READY` false. `Rejected`: the proxy blamed it. `Refused`: its driver refuses an annotation or a value before it gets that far |
+| `kvo describe ingress NAME` | Its conditions, with the reason and message |
+
+Other reasons an Ingress isn't ready: `NoClass` (the class doesn't exist), `NoDriver` (the class names
+a driver this cluster doesn't have) and `CertificatePending`.
+
+An annotation the driver doesn't know, a bad value, an unknown option or a host name, path or address
+with characters the driver won't paste into a configuration is refused the same way. Values are
+checked before they reach the configuration: nothing is quoted or escaped for you.
+
+Fix the Ingress and apply it again; the class recovers by itself.
+
+---
+
+## Not proven yet
+
+The drivers' output is checked in tests, including each proxy's own configuration test where its
+program is on the machine, and an agent applying configurations to a fake runtime. A run on real
+machines (stock nginx, HTTPS with Let's Encrypt's test server over HTTP-01 and DNS-01, a refused
+configuration keeping the last good one, Kong's admin call from the host) has not been done yet.
+Not built: drivers from plugins, request limits and authentication in front of a route, TCP and UDP
+routes, HTTP/3, and a proxy managing its own certificates.
 
 ---
 
