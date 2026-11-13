@@ -120,6 +120,10 @@ internet. If the silo is recreated on another Linode, the NodeBalancer follows i
 
 NodeBalancers here forward **TCP**. For UDP, use a shared IP.
 
+A standalone Service can have one too (`type: LoadBalancer`, `loadBalancerClass:
+linode-nodebalancer`): one NodeBalancer whose backends are every Linode with one of its endpoints,
+on the Service's node ports (32000 and up). See [Sets, images and updates](../../silos/sets/#an-outside-address).
+
 ---
 
 ## A volume

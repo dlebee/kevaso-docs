@@ -110,7 +110,8 @@ spec:
 ```
 
 > **Exposing publicly is its own permission:** `create` on `services/expose-public`. Namespace
-> `admin`s have it, `editor`s don't.
+> `admin`s have it, `editor`s don't. The same goes for a SiloSet whose instances would be exposed,
+> and a standalone Service of type `LoadBalancer` ([Sets, images and updates](../silos/sets/)).
 
 ---
 

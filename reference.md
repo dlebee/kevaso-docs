@@ -22,14 +22,25 @@ Every command on one page. `kvo` uses your current context (`kvo ctx`); `-n NS` 
 | `kvo delete KIND NAME` | Delete it |
 | `kvo watch KIND [-n NS \| -A]` | Print the current state, then every change |
 
-Kinds: `namespaces` (`ns`), `hosts`, `silos`, `secrets`, `grants`, `ippools`, `roles`,
-`rolebindings`, `clusterroles`, `clusterrolebindings`, `serviceaccounts` (`sa`).
+Kinds: `namespaces` (`ns`), `hosts`, `silos`, `silosets` (`ss`), `services` (`svc`), `images`
+(`img`), `secrets`, `grants`, `ippools`, `ingresses` (`ing`), `ingressclasses`, `certificates`
+(`cert`), `issuers`, `roles`, `rolebindings`, `clusterroles`, `clusterrolebindings`,
+`serviceaccounts` (`sa`).
 
 ### Silos
 
 | Command | Does |
 |---|---|
 | `kvo exec silo NAME -- CMD [ARGS…]` | Run a command inside; exits with its code; stdin passes through |
+| `kvo reset silo NAME` | Back onto its image: stopped, a fresh disk or container, volumes kept (a set's instance: onto the set's current image) |
+| `kvo protect silo NAME [--off]` | A set's scale-in never removes it |
+
+### Sets
+
+| Command | Does |
+|---|---|
+| `kvo scale siloset NAME --instances N` | Grow or shrink; shrinking lists the instances it deletes and needs `--yes` |
+| `kvo reset siloset NAME --rolling` | Reset every instance onto the current image, a few at a time |
 
 ### Secrets
 
