@@ -119,6 +119,14 @@ Fix the step in `hello.yaml` and `apply` again.
 
 ---
 
+## Next
+
+- Get a shell, or move files: [Terminals, files and the small UI]({{ '/silos/terminals/' | relative_url }}).
+- Keep a program running, or a check passing: [Daemons and upkeep]({{ '/silos/daemons/' | relative_url }}).
+- Show a status to the people watching: [Panes]({{ '/panes/' | relative_url }}).
+
+---
+
 ## Clean up
 
 ```bash

@@ -226,6 +226,13 @@ spec:
 
 ---
 
+## Other storage
+
+A silo can mix classes, and the narrowest one decides where it can go. The classes are listed on
+[JuiceFS]({{ '/providers/juicefs/#storage-classes' | relative_url }}).
+
+---
+
 ## Removing it
 
 ```bash

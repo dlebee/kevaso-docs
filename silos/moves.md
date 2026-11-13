@@ -21,7 +21,7 @@ happen when a silo has to leave its host:
 | A microVM's own disk (`local`) | Nowhere: it's pinned to its host |
 | A volume on `local` | Nowhere: pinned |
 | A volume on `linode-block` | Another Linode in the same region |
-| A volume on a global class (JuiceFS) | Any host |
+| A volume on a global class (`juicefs`: [JuiceFS]({{ '/providers/juicefs/' | relative_url }})) | Any host that runs the class's node side. Container silos only for now |
 | A container's own files | Not kept: only its volumes count |
 
 The narrowest one wins. See it in the `MOVABLE` column:

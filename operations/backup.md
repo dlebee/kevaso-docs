@@ -200,6 +200,18 @@ publishes them, and every worker picks them up.
 
 ---
 
+## Either store
+
+Backups look the same with the SQLite store and with [the etcd store]({{ '/operations/#the-store' | relative_url }}):
+the same command, the same file, sealed to the same key. With etcd, `kevasod` writes the objects out
+in SQLite's format for the backup (every object, with its revision).
+
+A restore always starts the restored cluster on SQLite, because `kvoadm init --restore` installs
+the default service. To go back to etcd, add `--store etcd` to it again. The first start moves the
+restored store into etcd, once.
+
+---
+
 ## Practise it
 
 A restore you've never tried is a hope, not a plan. Every few months, restore your latest backup
