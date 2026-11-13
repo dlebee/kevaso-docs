@@ -21,7 +21,7 @@ happen when a silo has to leave its host:
 | A microVM's own disk on `local` (the default) | Nowhere: it's pinned to its host |
 | A microVM's own disk on a [mount class]({{ '/silos/volumes/#a-microvm-that-can-move' | relative_url }}) (`disk: { class: juicefs }`) | Wherever the class goes: it's an image file on a volume |
 | A volume on `local` | Nowhere: pinned |
-| A volume on `linode-block` | Another Linode in the same region |
+| A volume on a region class (`block-storage`) | Another host in the same region |
 | A volume on a global class (`juicefs`: [JuiceFS]({{ '/providers/juicefs/' | relative_url }})) | Any host that runs the class's node side. On a microVM, shared into it over virtiofs ([Volumes]({{ '/silos/volumes/' | relative_url }})) |
 | A container's own files | Not kept: only its volumes count |
 
@@ -32,11 +32,11 @@ kvo get silos -o wide
 ```
 
 ```text
-NAME      RUNTIME            PHASE     HOST     MOVABLE
-api       cloud-hypervisor   Running   hv1      Pinned (hv1)
-db-1      docker             Running   cloud-1  Region (ca-central)
-runner    cloud-hypervisor   Running   hv1      Recreate
-dev       cloud-hypervisor   Running   hv1      Anywhere
+NAME   RUNTIME            PHASE     READY   HOST      MOVABLE              AGE
+api    cloud-hypervisor   Running   yes     hv1       Pinned (hv1)         3d
+db-1   docker             Running   yes     cloud-1   Region (ca-central)  3d
+runner cloud-hypervisor   Running   yes     hv1       Recreate             1d
+dev    cloud-hypervisor   Running   yes     hv1       Anywhere             2h
 ```
 
 ---
@@ -53,7 +53,7 @@ dev       cloud-hypervisor   Running   hv1      Anywhere
 spec:
   runtime: docker
   volumes:
-    - { name: data, class: linode-block, size: 200Gi, mountPath: /data }
+    - { name: data, class: block-storage, size: 200Gi, mountPath: /data }
   availability: { onHostLoss: Move }
 ```
 
@@ -75,13 +75,15 @@ kvo move silo db-1 --to cloud-2
 ```
 
 The old host stops the silo and lets go of its volumes first, then the new host starts it.
-`kvo describe silo db-1` shows which step it's on.
+`kvo describe silo db-1` shows `Moving from` while the old host is still letting go.
 
 | Flag | Meaning |
 |---|---|
 | `--to HOST` | Where to |
 | `--recreate` | A fresh copy from its image instead of its data (only for `onHostLoss: Recreate` silos) |
 | `--confirm-fenced` | Its host is lost, and you've made sure the old copy is stopped (powered off, or force-stopped at the provider) |
+
+`kvoadm host drain HOST` hands silos off the same way (the old host stops the silo first, and the new host starts it only after that). It does this only for silos with `onHostLoss: Recreate`, as a fresh copy from the image. Silos with `Wait` stay where they are, and drain says so for each. It does not take `--confirm-fenced`: it is for a host that is still up.
 
 A move from a **lost** host needs `--confirm-fenced`: nobody is there to stop the old copy, so
 you say it's stopped. Only say it when the old copy really is stopped: if two copies of a silo
@@ -106,32 +108,35 @@ sudo systemctl status kevaso-fence
 
 - The agent writes a record every second to `/run/kevaso-fence/`: when it last reached the control
   plane, and each silo's `onHostLoss`.
-- If the last contact is **older than 30 seconds**, the fence stops this host's `Recreate` and
-  `Move` silos. It does this whether the agent is cut off or **not running at all** (`kevasod`
+- If the last contact is **older than 30 seconds**, the fence kills this host's `Recreate` and
+  `Move` silos (a kill, not a graceful stop). It does this whether the agent is cut off or **not running at all** (`kevasod`
   stopped, or killed). `Wait` silos are left alone.
 - A quick restart of `kevasod` stops nothing.
 
 It is `kevasod fence-watch`, with `--fence-after` (default `30s`), `--dir`, `--data` and one
 `--runtime` per runtime on the host. You don't run it yourself.
 
-The timing, measured on Lima machines with a container silo:
+The timing, from the constants in the code:
 
 | | |
 |---|---|
+| The fence acts | When the last contact is older than **30 s** (checked every second) |
+| Every silo it stops is dead | By **36 s** after the last contact |
 | The control plane calls the host lost | After **40 s** without a heartbeat |
-| It starts the copy elsewhere | At least **30 s** after that: 70 s |
-| The fence stops the old copy | Within about **60 s** of the last contact |
+| It starts the copy elsewhere | **30 s** after that: **67 s** after the last contact at the earliest, allowing for clock skew |
 
-So the old copy is stopped about ten seconds before the new one starts. **That margin is thin.** On a
-test, a copy was stopped 46 to 48 seconds after `kevasod` stopped, and the new one started at
-about 66 to 69.
+So the old copy is dead at least about 30 seconds before the new one starts. A test of these
+constants holds the gap at 15 seconds or more. It has not been measured across two real machines.
 
 What the fence doesn't cover:
 
-- A silo with **no recorded policy** is treated as `Wait`. The record comes from what the agent
-  has synced, so a silo created while the agent was down isn't covered.
+- A silo with **no recorded policy** is not stopped. The agent records a silo before it starts it,
+  so a running silo without a record is a fault: the fence logs it, and the agent reports it once
+  it is back in contact.
 - A **control-plane host that is also a worker** (`kvoadm init --worker`, a system node that runs
-  silos) has no fence unit.
-- The fence stops a container with Docker's own 20-second grace; it is not a forced stop.
+  silos) has the fence unit, but it acts only when the rest of the control plane can carry on
+  without that host (another system node serves the API and the others hold a majority of the
+  store). A one-node or two-node control plane has nobody to start the silos elsewhere, so the
+  fence stops nothing there.
 
 If you can't live with that, use `Wait`, and when the host really is dead, `kvo move … --confirm-fenced`.

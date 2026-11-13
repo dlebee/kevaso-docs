@@ -81,6 +81,7 @@ with the real one.
 | Good to know | |
 |---|---|
 | Grants | Names and single addresses, TCP only, each port listed (at most 16 per rule) |
+| Secrets | `inject` only. `file`, `env`, `broker`, `sign` and approval are refused for these runtimes, with the reason |
 | Injection format | `Bearer {{value}}` in `Authorization`, or `{{value}}` in any header |
 | Init steps | Run as the sandbox's user, not root |
 | `kvo exec` stdin | At most 4 MiB (compress bigger files) |
@@ -124,5 +125,5 @@ spec:
 | `container.command` | The main process. Without it, the image's own (for `ubuntu-24.04`, one that sleeps, so it's a machine to `exec` into) |
 | Init steps | **Init containers**: each step runs in a container of its own from the silo's image, on its network and volumes, **before** the main container starts |
 | Persistence | Volumes survive restarts; the container's own files stay on its host |
-| Secrets | `inject`, `broker`, `file` and `env`. `broker` secrets come from the [local endpoint]({{ '/secrets/' | relative_url }}), so the image needs `curl` or any HTTP client. Files and variables are written by the host into `/run`, which is always memory. Nothing of Kevaso's is put in your image |
+| Secrets | `inject`, `broker`, `file` and `env`. `broker` secrets come from the [local endpoint]({{ '/secrets/' | relative_url }}), so the image needs `curl` or any HTTP client. `file` secrets are a read-only bind mount of a host tmpfs under `/run/secrets/…`. `env` secrets are set by Kevaso's own container runtime on Docker, so `docker inspect` and Docker's disk don't hold them; where that isn't available (podman, rootless Docker) they go through `--env-file` and admission warns. Nothing of Kevaso's is put in your image |
 | Volume `size` | Not enforced on containers |

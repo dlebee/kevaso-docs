@@ -5,7 +5,7 @@ permalink: /silos/terminals/
 
 # Terminals, files and the small UI
 
-Four ways in, all through the same channel as `kvo exec`: your `kvo` talks to the control plane,
+Five ways in, all through the same channel as `kvo exec`: your `kvo` talks to the control plane,
 which asks the silo's host to run the command inside the silo. No SSH server runs in the silo, and
 Kevaso installs nothing in it.
 
@@ -48,8 +48,7 @@ What was checked, and what wasn't:
 | Runtime | Checked on a real machine? |
 |---|---|
 | `docker`, `podman` | Yes, on real Linux (Alpine, Ubuntu and Debian containers) |
-| `cloud-hypervisor` | In tests with a simulated guest only. Not yet on a real VM. |
-| `openshell`, `openshell-container` | In tests only. Not yet against a real OpenShell gateway: it isn't known whether its CLI passes window resizes or takes a terminal. |
+| `cloud-hypervisor`, `openshell`, `openshell-container` | Yes, on Lima virtual machines: terminal size and resize, exit code, Ctrl-C, and the command stopped when the client is killed. Not on bare metal. |
 
 ### When your client drops
 
@@ -62,8 +61,9 @@ What can still **escape**: a program that leaves the tree and the session on pur
 fork, `setsid`, exit the parent) and carries none of Kevaso's marker (`KEVASO_EXEC`) in its
 environment. For something meant to outlive you, use a [daemon]({{ '/silos/daemons/' | relative_url }}).
 
-On a microVM, `kvo exec` runs the command through `sudo` in the guest, so the whole command line
-lands in the guest's journal. **Don't put a secret on a command line.**
+On a microVM, the command line is visible inside the guest while it runs (in `ps`), and to the guest's
+SSH server if it logs at debug level and to an audit daemon if the image has one. It is in no log
+on the host or the control plane. **Don't put a secret on a command line.**
 
 ---
 

@@ -63,7 +63,7 @@ are refused. `silo` and `siloUID` are ignored: Kevaso fills them in.
 | `fields` | A list of `{"label": …, "value": …}` |
 | `bundle` | `html` only: the bundle's digest, `sha256:` and 64 hex digits |
 | `data` | `html` only: JSON pushed to the page |
-| `ttl` | Past it without an update the pane is stale. Default: three times `every` |
+| `ttl` | Past it without an update the pane is stale. Default: three times `every`, at least 10 seconds. At most 1 hour |
 
 For example, with a web server answering `GET /panes`:
 
@@ -79,8 +79,9 @@ kind not in `allow`, a report over the [limits](#limits), a bundle whose digest 
 Meanwhile the panes go stale. The silo's `Panes` condition says why: `CutOff`, or `Unreachable` while
 nothing answers (which isn't held against it).
 
-> **Not proven on real machines:** panes have run on local VMs and containers, not yet on a real
-> cloud host. See [What's proven where]({{ '/operations/#whats-proven-where' | relative_url }}).
+> **Proven on one bare-metal machine, for status panes only:** a microVM and a container silo served
+> panes, the host fetched them, `kvo get panes` showed them, and a silo that answered too much was cut
+> off with the `CutOff` reason. `html` panes were not part of that test. See [What's proven where]({{ '/operations/#whats-proven-where' | relative_url }}).
 
 ---
 

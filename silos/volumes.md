@@ -12,7 +12,7 @@ runtime, and what makes a microVM movable.
 | Class | Where it lives | The silo can move to |
 |---|---|---|
 | `local` (default) | On the silo's host | Nowhere: pinned |
-| `linode-block` | A Block Storage volume | Another Linode in the same region ([Linode]({{ '/providers/linode/' | relative_url }})) |
+| `block-storage` | A cloud block volume | Another host in the same region ([provider page]({{ '/providers/linode/' | relative_url }})) |
 | `juicefs` (or any name you give it) | A bucket and a database | Any host that runs the class's node side ([JuiceFS]({{ '/providers/juicefs/' | relative_url }})) |
 
 ```yaml
@@ -55,14 +55,16 @@ A microVM can have volumes too. How one reaches the guest depends on where it li
 | The volume is… | It reaches the guest as… |
 |---|---|
 | `local` | A disk of its own (a thin logical volume on the host). The guest formats it once, with ext4, **only if nothing at all is on it**, and mounts it |
-| On a class whose storage is a **folder on the host** (a mount class such as `juicefs`, or a device class such as `linode-block` that the host has mounted) | A **virtiofs** share of that folder. The guest never sees a cloud block device |
+| On a class whose storage is a **folder on the host** (a mount class such as `juicefs`, or a device class such as `block-storage` that the host has mounted) | A **virtiofs** share of that folder. The guest never sees a cloud block device |
 
 - **The guest mounts them by itself**, before your init steps run, and again
   on every boot (the lines are in a block of `/etc/fstab` that the host owns, with `nofail`, so a
   missing one never holds a boot).
-- **Each shared folder has its own `virtiofsd`**, run as the user `kevaso-vfs`, with no network, no
-  device nodes, no set-uid files, and a view of nothing but that folder. Installing the
-  `cloud-hypervisor` runtime on a host adds the `virtiofsd` package and the user.
+- **Each shared folder has its own `virtiofsd`**, in a locked-down unit of its own: no network, no
+  device nodes, and once it is serving it sees nothing but that folder. It runs as root but holds
+  only the capabilities it needs to act for the guest's users; it can't create device nodes, set-uid
+  files or file capabilities. Installing the `cloud-hypervisor` runtime on a host adds the
+  `virtiofsd` package.
 - **Changing the volume list restarts the microVM.** There is no adding a disk to a running one.
 - **A volume taken out of the spec keeps its data** until the silo is deleted: put it back and the
   same data is there.
@@ -71,10 +73,10 @@ A microVM can have volumes too. How one reaches the guest depends on where it li
 - `size` on a `local` volume of a microVM sets the disk's size when it's made, and **doesn't grow**
   later. On a shared folder it isn't enforced.
 
-> **Not proven on a real machine.** This is built and tested with fakes. It has not yet run on a
-> real host: how virtiofs behaves under load, and whether a JuiceFS mount stays visible to
-> `virtiofsd` if the plugin's daemons die (a share would keep serving a dead mount until the silo
-> restarts).
+> **Proven only on virtual machines.** Local volumes and a mount class's volume over virtiofs have
+> run on Lima machines with a test provider plugin. Not proven: virtiofs under load, a JuiceFS
+> volume under a microVM, and whether a JuiceFS mount stays visible to `virtiofsd` if the plugin's
+> daemons die (a share would keep serving a dead mount until the silo restarts).
 
 ---
 
@@ -106,11 +108,12 @@ by a reset. A silo whose root disk and volumes are all on global classes is mova
   host mounts it.
 - **After a move** the guest takes the new host's key (and only that key) for exec, and has a new
   host key and address.
-- **A device class** (`linode-block`) can't hold a root disk yet. It is refused, with the reason.
+- **A device class** (`block-storage`) can't hold a root disk yet. It is refused: a VM's disk can live on a mount class, not a device class.
 - `kvo get silos -o wide` shows the result in the `MOVABLE` column.
 
-> **Not proven on a real machine** either: a microVM on a JuiceFS root disk has run only against
-> fakes.
+> **Proven on shared network storage between two Lima machines, not on JuiceFS.** Two moves, and a
+> `Move` after the old host was cut off, kept one copy running and kept the files. A microVM on a
+> JuiceFS root disk has not run.
 
 ---
 

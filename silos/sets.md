@@ -134,11 +134,11 @@ spec:
 Kevaso refuses:
 
 - automatic failover (`onHostLoss` other than `Wait`);
-- start-first updates (`update.strategy: StartFirst`);
-- extra instances during a set's rollout.
+- extra instances during a set's rollout (`maxSurge`, `StartFirst`). An exclusive instance is
+  always updated one at a time, stop-first.
 
-> A single silo's `StartFirst` (start the new copy, switch, then stop the old one) needs its disk
-> cloned, which comes with moves. Sets can already do it, by starting an extra instance instead.
+> A single silo can't use `update.strategy: StartFirst` at all: Kevaso refuses it, since it would
+> need the disk cloned. A set can use it, by starting an extra instance instead.
 
 ### Readiness
 
@@ -173,6 +173,9 @@ and volumes. Nothing is replaced to "heal" one: if it breaks, its host restarts 
 
 ```bash
 kvo get silosets -n payments
+```
+
+```bash
 kvo describe siloset api-pool -n payments
 ```
 
@@ -236,7 +239,7 @@ metadata: { name: api, namespace: payments }
 spec:
   selector: { app: api }
   ports:
-    - { name: http, port: 8080, targetPort: http }   # a port name of the silos' own service, or a number
+    - { name: http, port: 8080, targetPort: http }   # a port name the silos declare (default: this port's name)
 ```
 
 - It gets a virtual IP (its cluster IP) and the name `api.payments.kevaso`.
@@ -256,7 +259,7 @@ kvo describe service api -n payments      # its address and endpoints
 ```yaml
 spec:
   type: LoadBalancer
-  loadBalancerClass: linode-nodebalancer
+  loadBalancerClass: lb-class
 ```
 
 - The address is an [IP]({{ '/networking/ips/' | relative_url }}): by default the namespace's shared one for the
@@ -270,6 +273,6 @@ spec:
   (`running`). It is required when the silos it selects have a readiness probe; an endpoint that is held
   shows in `kvo describe service`. See [probes and routing]({{ '/silos/probes/' | relative_url }}).
 - Only classes that spread over hosts fit. A shared IP that follows one silo is for a silo's own
-  service. See [Linode]({{ '/providers/linode/' | relative_url }}).
+  service. See the [provider page]({{ '/providers/linode/' | relative_url }}).
 
 Full examples are in the repo: `examples/07-siloset-service.yaml` and `examples/08-images-and-registries.yaml`.

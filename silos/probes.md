@@ -179,7 +179,10 @@ and, from liveness or [upkeep]({{ '/silos/daemons/' | relative_url }}), `Degrade
 
 ## What was checked
 
-Probes and `routeWhen` are built and tested in-process: a control plane and host agent with a fake
-runtime and fake network dials, and the rules that hold traffic back. They have **not yet** been run on a
-real VM, on a real container, or on real cloud machines. What a real load balancer does with a held silo
-is not checked either.
+Probes and `routeWhen` are tested in-process: a control plane and host agent with a fake runtime
+and fake network dials. One test has run on a single bare-metal machine: an `exec` readiness probe on
+a container silo, where `routeWhen: ready` holds the silo's name and its external port until the
+probe passes and holds them again when it fails, and `routeWhen: running` never holds them.
+
+Not run on a real machine: `startup` and `liveness` (including `onFailure: restart`), `tcp` and
+`http` checks, probes on a microVM, and what a real load balancer or Ingress does with a held silo.

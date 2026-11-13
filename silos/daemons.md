@@ -119,7 +119,7 @@ done; after that, `every` after the last one.
 ### `Degraded`
 
 A silo with a `Failed` upkeep task gets the condition `Degraded` with the reason `UpkeepFailed` and
-the failing tasks' names. It clears by itself, with the reason `UpkeepOK`, the next time every task
+the failing tasks' names. It clears by itself (status `False`, reason `Healthy`) the next time every task
 passes. A failing [liveness probe]({{ '/silos/probes/#liveness' | relative_url }}) marks the silo `Degraded` too.
 
 `Degraded` is a warning. It doesn't stop the silo, change its phase or make it not `Ready`, and

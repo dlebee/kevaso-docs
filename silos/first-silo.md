@@ -80,12 +80,15 @@ bin/kvo watch silos -n demo
 ```
 
 ```
-NOW  silo/demo/hello  phase=Pending  host=-
-NOW  silo/demo/hello  phase=Scheduled  host=hv1
-NOW  silo/demo/hello  phase=Starting  host=hv1  Ready: creating on hv1
-NOW  silo/demo/hello  phase=Starting  host=hv1  init=0/2  Ready: init step hello
-NOW  silo/demo/hello  phase=Running  host=hv1  init=2/2  address=10.64.1.2
+14:02:11 NOW      silo/demo/hello  phase=Pending  host=-
+14:02:11 MODIFIED silo/demo/hello  phase=Scheduled  host=hv1
+14:02:13 MODIFIED silo/demo/hello  phase=Starting  host=hv1  Ready: creating on hv1
+14:03:40 MODIFIED silo/demo/hello  phase=Starting  host=hv1  init=0/2  Ready: init step hello
+14:03:52 MODIFIED silo/demo/hello  phase=Running  host=hv1  init=2/2  address=10.64.1.2
 ```
+
+`apply` refuses a field the kind doesn't have, and the error names it
+(`decode Silo: json: unknown field "runtim"`), so a typo is never silently dropped.
 
 The first silo on a host takes a few minutes (the image is copied onto its disk); later ones are
 faster. Ctrl-C stops watching, not the silo.
@@ -105,6 +108,10 @@ bin/kvo describe silo hello -n demo
 `describe` shows everything about it: where it runs, its silo IP, its init steps with their exit
 codes and durations, and its conditions (the *why* when something isn't Ready). `get silos` has a
 `READY` column next to the phase.
+
+Text that silos and hosts write into their status (a check's output, a runtime's message) is
+filtered before `get`, `describe` and `watch` print it: escape sequences and other control
+characters are removed, so a silo can't drive your terminal.
 
 ---
 
@@ -152,8 +159,8 @@ failed and the end of its output:
 
 ```
 Conditions:
-  TYPE        STATUS  REASON      MESSAGE
-  InitFailed  True    StepFailed  step python exited 1: …
+  TYPE        STATUS  REASON      SINCE  MESSAGE
+  InitFailed  True    StepFailed  12s    step python exited 1: …
 ```
 
 Fix the step in `hello.yaml` and `apply` again.
