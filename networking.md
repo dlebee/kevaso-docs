@@ -130,8 +130,54 @@ spec:
       source: sameAsService     # host (default) | sameAsService | pool
 ```
 
+| `source` | Outgoing traffic leaves from |
+|---|---|
+| `host` (default) | The host's own address |
+| `sameAsService` | The address the silo is reached on (its `Public IP`) |
+| `pool` | An address from an `IPPool`; also set `egress: { source: pool, pool: NAME }` |
+
 `sameAsService` is what P2P nodes need: they advertise the address they're reached on, so their
-outbound traffic must come from it too.
+outbound traffic must come from it too. It needs a service exposed with `hostPort` or
+`loadBalancer`. Whether it can work depends on how the silo is exposed:
+[next section](#can-a-silo-use-the-same-ip-out-as-in). A fourth source, `gateway` (leave from a
+chosen host), is not built.
+
+---
+
+## Can a silo use the same IP out as in?
+
+Only some ways of exposing a silo let it. This is what the code does today:
+
+| Exposed with | The address people reach it on | Same address for outgoing traffic? |
+|---|---|---|
+| Private (no `expose`) | None | Nothing to match. Outgoing uses `host` (default) or `pool`. `sameAsService` is refused. |
+| `hostPort` | The host's address | **Yes.** `host` and `sameAsService` are the same address here, so the default is already that. |
+| `loadBalancer`, class `worker-ip` | The host's address | **Yes**, same as `hostPort`. |
+| `loadBalancer`, class `ip-pool` | An address of its own from the pool | **Yes**, with `sameAsService` (or `pool` with the same pool). That address is on the host, so the host sends from it. |
+| `loadBalancer`, a provider's announced address (`linode-shared-ip`) | The shared IP | **Yes**, with `sameAsService`. The silo's host holds the address while the silo is there, and the address moves with it. |
+| `loadBalancer`, a provider's balancer in front (`linode-nodebalancer`) | The balancer's IP | **No.** That address is on no host, so nothing can send from it. Use `host` or `pool`. |
+| Behind an [Ingress]({{ '/ingress/' | relative_url }}) | The ingress controller's address | **No.** That address belongs to the controller, not to your silo. The silo is private, so use `host` or `pool`. |
+
+**Not refused yet:** `sameAsService` on a silo behind a balancer (`linode-nodebalancer`) is accepted
+when you apply it, but it can't work: outgoing connections would be sent from an address the host
+doesn't hold. Don't set it. Kevaso will refuse it in a later change.
+
+To see both addresses for a running silo:
+
+```bash
+kvo describe silo web -n shop
+```
+
+```text
+Exposure:    loadBalancer (linode-shared-ip)
+Public IP:   172.105.3.63
+Egress IP:   172.105.3.63 (sameAsService)
+```
+
+`Public IP` is where people reach it. `Egress IP` is where its outgoing traffic leaves from, with the
+`source` you chose in brackets. With the default (`host`) the bracket is absent and the address is
+the host's. A `-` means there is none (for example, a host that is behind NAT). If the silo is
+announced, `describe` also prints an `Announced` line.
 
 ---
 

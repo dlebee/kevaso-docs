@@ -120,6 +120,10 @@ internet. If the silo is recreated on another Linode, the NodeBalancer follows i
 
 NodeBalancers here forward **TCP**. For UDP, use a shared IP.
 
+**Outgoing traffic can't leave from the NodeBalancer's address.** It belongs to no Linode, so
+`egress.source: sameAsService` can't work behind one (it isn't refused yet). See
+[Can a silo use the same IP out as in?]({{ '/networking/' | relative_url }}#can-a-silo-use-the-same-ip-out-as-in).
+
 A standalone Service can have one too (`type: LoadBalancer`, `loadBalancerClass:
 linode-nodebalancer`): one NodeBalancer whose backends are every Linode with one of its endpoints,
 on the Service's node ports (32000 and up). See [Sets, images and updates](../../silos/sets/#an-outside-address).
@@ -172,6 +176,10 @@ spec:
 When the worker running it goes down, the silo is recreated on another Linode worker, and the
 address answers from there. In our test that took 1m13s, nearly all of it the time Kevaso waits
 before deciding a host is lost and recreating its silo. The address itself moves in seconds.
+
+**Outgoing traffic can leave from the shared IP too.** Set `network: { egress: { source: sameAsService } }`
+on the silo, and its connections go out from the address people reach it on. See
+[Can a silo use the same IP out as in?]({{ '/networking/' | relative_url }}#can-a-silo-use-the-same-ip-out-as-in).
 
 The workers announce it with the plugin's node side. Install it on each Linode worker, giving its
 region:
