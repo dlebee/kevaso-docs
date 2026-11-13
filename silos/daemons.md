@@ -5,6 +5,11 @@ permalink: /silos/daemons/
 
 # Inside a silo: daemons and upkeep
 
+> **None of this is required.** A silo doesn't need init steps, daemons, upkeep or a readiness
+> check. A silo with none of them is a complete, supported silo: a stateful machine that Kevaso
+> keeps started and otherwise leaves alone. This page is for when you *do* want Kevaso to keep
+> something true inside it. The smallest silo is on [Your first silo]({{ '/silos/first-silo/' | relative_url }}#the-smallest-silo).
+
 Two lists in a silo's spec keep the inside of it the way you want:
 
 | List | What it is | Like |
@@ -12,7 +17,7 @@ Two lists in a silo's spec keep the inside of it the way you want:
 | `daemons` | A process that must keep running. If it dies, it's started again. | A tiny process supervisor |
 | `upkeep` | A **check** that runs now and then, and a **fix** that runs only when the check fails. | A cron job that looks first |
 
-Both run after the silo's [init steps]({{ '/silos/first-silo/' | relative_url }}) are done, for as
+Both are optional, and you can use one without the other. They run after the silo's [init steps]({{ '/silos/first-silo/' | relative_url }}) (if it has any) are done, for as
 long as the silo is running. Nothing of Kevaso's is installed in the silo: the host's agent starts
 and checks them by running ordinary commands inside it, the same way `kvo exec` does.
 

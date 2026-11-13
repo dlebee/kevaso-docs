@@ -10,6 +10,28 @@ up, and step inside.
 
 ---
 
+## The smallest silo
+
+A silo needs nothing ensured inside it. Init steps, [daemons and upkeep]({{ '/silos/daemons/' | relative_url }})
+and a [readiness check]({{ '/silos/sets/' | relative_url }}#readiness) are all optional. A silo with none of them is a normal,
+stateful machine: Kevaso creates it, keeps it started, and otherwise leaves it alone. This is the
+whole manifest:
+
+```yaml
+apiVersion: kevaso/v1
+kind: Silo
+metadata: { name: plain, namespace: demo }
+spec:
+  runtime: cloud-hypervisor
+  image: ubuntu-24.04
+```
+
+With no `resources` or `disk`, a microVM gets 1 CPU, 1 GiB of memory and a 20 GiB disk. With no
+`init` it is `Running` and `Ready` as soon as it has booted. Whatever you put on its disk stays
+there across stops and restarts. The rest of this page adds an init step to that, as an example.
+
+---
+
 ## Describe it
 
 Save this as `hello.yaml`:
@@ -27,7 +49,7 @@ spec:
   image: ubuntu-24.04
   resources: { cpu: 1, memory: 1Gi }
   disk: { size: 10Gi }             # its own disk, kept for its whole life
-  init:                            # run inside, in order, before it's Ready
+  init:                            # optional: run inside, in order, before it's Ready
     steps:
       - name: hello
         run: echo "hello from $(hostname)" > /root/hello
@@ -43,7 +65,7 @@ spec:
 | `image` | What it boots. `ubuntu-24.04` is built in (downloaded once per host, digest-checked). |
 | `resources` | CPUs and memory it may use. The scheduler only places it where they fit. |
 | `disk` | Its root disk. It lives on the host it was created on. |
-| `init.steps` | Scripts, run as root inside the silo, in order. The silo is Ready only after the last one succeeds. |
+| `init.steps` | Optional. Scripts, run as root inside the silo, in order. If you give any, the silo is Ready only after the last one succeeds. |
 
 ---
 
@@ -122,7 +144,7 @@ Fix the step in `hello.yaml` and `apply` again.
 ## Next
 
 - Get a shell, or move files: [Terminals, files and the small UI]({{ '/silos/terminals/' | relative_url }}).
-- Keep a program running, or a check passing: [Daemons and upkeep]({{ '/silos/daemons/' | relative_url }}).
+- Keep a program running, or a check passing, if you want that (a silo doesn't need it): [Daemons and upkeep]({{ '/silos/daemons/' | relative_url }}).
 - Show a status to the people watching: [Panes]({{ '/panes/' | relative_url }}).
 
 ---

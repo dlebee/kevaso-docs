@@ -50,7 +50,7 @@ flowchart LR
 | **Silo** | One isolated machine: a microVM or a container, with its own disk or volumes, address and name. Silos live in a namespace. |
 | **Runtime** | What a silo is made of: `cloud-hypervisor` (microVM), `openshell` / `openshell-container` (NVIDIA OpenShell sandboxes), `docker` / `podman` (containers). See [Runtimes]({{ '/silos/runtimes/' | relative_url }}). |
 | **Namespace** | A folder for silos and the things they use (secrets, grants, roles). Access is given per namespace. |
-| **Init steps** | Scripts that run inside a new silo before it counts as Ready: install tools, clone a repo. |
+| **Init steps** | Optional. Scripts that run inside a new silo before it counts as Ready: install tools, clone a repo. A silo with none is fine. |
 | **Grant** | What a silo may reach outside the cluster and which secrets it gets, and how. Nothing outside is reachable without one. |
 | **Secret** | A value (an API key, a password, a signing key) kept encrypted. Silos get it only through Grants. |
 | **Context** | In `kvo`, a saved combination of cluster, identity and default namespace, like a kubeconfig context. |
@@ -64,7 +64,7 @@ Everything in Kevaso is an object with a **spec** (what you want) and a **status
 1. You `kvo apply` a silo. The API checks it (types, rules, your permissions) and stores it.
 2. The **scheduler** picks a host that fits (runtime installed, enough CPU and memory, labels,
    region) and writes it into the silo's status.
-3. That host's **agent** sees the silo, creates it with the runtime, starts it, runs its init steps,
+3. That host's **agent** sees the silo, creates it with the runtime, starts it, runs its init steps (if it has any),
    and reports `Running` and `Ready`.
 4. If anything drifts later (the VM dies, the host restarts), the agent puts it back. That's the
    loop: *declare, and Kevaso keeps it so*.
