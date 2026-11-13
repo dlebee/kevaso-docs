@@ -37,7 +37,7 @@
   <rect x="30" y="206" width="382" height="330" rx="12" fill="#11151e" stroke="#2a3040" stroke-dasharray="6 5"/>
   <g>
     <rect x="46" y="264" width="170" height="220" rx="10" fill="#141822" stroke="#2a3040"/>
-    <text x="58" y="287" class="h">host ovh-1</text>
+    <text x="58" y="287" class="h">host baremetal-1</text>
     <rect x="58" y="298" width="146" height="42" rx="7" fill="#1b2130" stroke="#f2b45a"/>
     <text x="68" y="314" class="k" fill="#f2b45a">EXTERNAL IP</text><text x="68" y="331" class="v mono">51.38.10.20</text>
     <rect x="58" y="352" width="146" height="118" rx="9" fill="#0d1017" stroke="#5ef0c0"/>
@@ -50,7 +50,7 @@
   </g>
   <g>
     <rect x="226" y="264" width="170" height="220" rx="10" fill="#141822" stroke="#2a3040"/>
-    <text x="238" y="287" class="h">host ovh-2</text>
+    <text x="238" y="287" class="h">host baremetal-2</text>
     <rect x="238" y="298" width="146" height="42" rx="7" fill="#1b2130" stroke="#f2b45a"/>
     <text x="248" y="314" class="k" fill="#f2b45a">EXTERNAL IP</text><text x="248" y="331" class="v mono">51.38.10.21</text>
     <rect x="238" y="352" width="146" height="118" rx="9" fill="#0d1017" stroke="#5ef0c0"/>

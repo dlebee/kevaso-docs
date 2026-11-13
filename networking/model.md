@@ -31,7 +31,7 @@ A host has at least one of internal and external:
 
 ```yaml
 kind: Host
-metadata: { name: ovh-1 }
+metadata: { name: baremetal-1 }
 spec:
   internalIP: 10.0.0.5
   externalIP: 51.38.10.20
@@ -125,7 +125,7 @@ HOST    . NETWORK                 . kevaso
 
 `NETWORK` is `mesh`, `internal` or `external`. Those three words can't be namespace names.
 
-For the service above, on host `ovh-1`:
+For the service above, on host `baremetal-1`:
 
 | Name | Answer |
 |---|---|
@@ -133,9 +133,9 @@ For the service above, on host `ovh-1`:
 | `api.payments.internal.kevaso` | `10.0.0.5`, because `metrics` and `debug` have `hostPort: [internal]` |
 | `api.payments.external.kevaso` | `51.38.10.20`, because `https` has `hostPort: [external]` |
 | `api.payments.kevaso` | The best of the three for whoever asks |
-| `ovh-1.mesh.kevaso` | `10.63.0.2` |
-| `ovh-1.internal.kevaso` | `10.0.0.5` |
-| `ovh-1.external.kevaso` | `51.38.10.20` |
+| `baremetal-1.mesh.kevaso` | `10.63.0.2` |
+| `baremetal-1.internal.kevaso` | `10.0.0.5` |
+| `baremetal-1.external.kevaso` | `51.38.10.20` |
 
 **The plain name is dynamic.** Leave the network out and Kevaso answers with the address that works
 from where you are:

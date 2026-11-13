@@ -33,7 +33,7 @@
   <text x="406" y="114" class="s" font-weight="600">BARE METAL (each on the internet directly)</text>
   <g>
     <rect x="410" y="130" width="290" height="200" rx="10" fill="#141822" stroke="#2a3040"/>
-    <text x="426" y="156" class="h">host ovh-1</text><text x="684" y="156" class="s" text-anchor="end">worker</text>
+    <text x="426" y="156" class="h">host baremetal-1</text><text x="684" y="156" class="s" text-anchor="end">worker</text>
     <rect x="426" y="170" width="258" height="38" rx="7" fill="#1b2130" stroke="#f2b45a"/>
     <text x="438" y="186" class="k" fill="#f2b45a">EXTERNAL IP</text><text x="672" y="194" class="v mono" text-anchor="end">51.38.10.20</text>
     <rect x="426" y="216" width="258" height="38" rx="7" fill="#141822" stroke="#3a4152" stroke-dasharray="5 4"/>
@@ -44,7 +44,7 @@
   </g>
   <g>
     <rect x="410" y="344" width="290" height="200" rx="10" fill="#141822" stroke="#2a3040"/>
-    <text x="426" y="370" class="h">host ovh-2</text><text x="684" y="370" class="s" text-anchor="end">worker</text>
+    <text x="426" y="370" class="h">host baremetal-2</text><text x="684" y="370" class="s" text-anchor="end">worker</text>
     <rect x="426" y="384" width="258" height="38" rx="7" fill="#1b2130" stroke="#f2b45a"/>
     <text x="438" y="400" class="k" fill="#f2b45a">EXTERNAL IP</text><text x="672" y="408" class="v mono" text-anchor="end">51.38.10.21</text>
     <rect x="426" y="430" width="258" height="38" rx="7" fill="#141822" stroke="#3a4152" stroke-dasharray="5 4"/>
@@ -93,7 +93,7 @@
   <!-- notes under linode -->
   <text x="30" y="372" fill="#eef0f5" font-size="13" font-weight="600">What a host port means on each</text>
   <g class="s">
-    <text x="30" y="396"><tspan class="mono" fill="#f2b45a">hostPort: [external]</tspan> on ovh-1</text>
+    <text x="30" y="396"><tspan class="mono" fill="#f2b45a">hostPort: [external]</tspan> on baremetal-1</text>
     <text x="44" y="414">opens <tspan class="mono" fill="#eef0f5">51.38.10.20:443</tspan>, reachable by anyone.</text>
     <text x="30" y="442"><tspan class="mono" fill="#8f7bff">hostPort: [internal]</tspan> on lan-1</text>
     <text x="44" y="460">opens <tspan class="mono" fill="#eef0f5">192.168.1.11:443</tspan>, reachable on the LAN.</text>
@@ -108,7 +108,7 @@
   <path d="M324 281H375V690M555 544V690M950 650V690" fill="none" stroke="#5ef0c0" stroke-width="1.6" stroke-dasharray="5 4"/>
   <rect x="30" y="690" width="1120" height="62" rx="10" fill="#141822" stroke="#5ef0c0"/>
   <text x="50" y="715" fill="#eef0f5" font-size="14" font-weight="600">One mesh for all six hosts · 10.63.0.0/16 · WireGuard</text>
-  <text x="50" y="737" class="s">A silo on lan-2 reaches a silo on ovh-1 by name over this. The LAN hosts dial out through their router to join it; nothing is forwarded to them.</text>
+  <text x="50" y="737" class="s">A silo on lan-2 reaches a silo on baremetal-1 by name over this. The LAN hosts dial out through their router to join it; nothing is forwarded to them.</text>
 
   <!-- legend -->
   <g font-size="12">
