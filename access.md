@@ -80,10 +80,28 @@ role to people in a namespace. The built-in roles:
 
 | Role | Can |
 |---|---|
-| `viewer` | Read silos, service accounts, grants; see that secrets exist and which silos wait for an approval |
-| `editor` | Everything `viewer` can, plus create and change silos, `exec`, service-account tokens; create and *use* secrets (never read a value back) |
-| `admin` | Everything `editor` can, plus roles and bindings in the namespace, exposing silos publicly, reading secret values, answering approvals |
+| `viewer` | Read silos, service accounts, grants; see that secrets exist, which silos wait for an approval, and the [panes]({{ '/panes/' | relative_url }}) silos report |
+| `editor` | Everything `viewer` can, plus create and change silos, `exec`, terminals and files (`silos/ssh`, `silos/files`), moves, service-account tokens; create and *use* secrets (never read a value back) |
+| `admin` | Everything `editor` can, plus roles and bindings in the namespace, exposing silos publicly, reading secret values, answering approvals, deleting panes |
 | `cluster-admin` | Everything, everywhere (what `kvoadm init` gives you) |
+
+The permissions beyond plain read and write are their own *subresources*:
+
+| Resource | Verb | Lets you | `viewer` | `editor` | `admin` |
+|---|---|---|---|---|---|
+| `silos/exec` | `create` | `kvo exec` | | yes | yes |
+| `silos/ssh` | `create` | `kvo ssh`, the terminal in `kvo ui` | | yes | yes |
+| `silos/files` | `get` | Read and list a silo's files (`kvo cp` out, `kvo ui` browsing) | | yes | yes |
+| `silos/files` | `create` | Write files into a silo (`kvo cp` in, `kvo ui` upload) | | yes | yes |
+| `silos/move` | `create` | `kvo move` | | yes | yes |
+| `panes` | `get`, `list`, `watch` | `kvo get panes`, `kvo pane watch`, `kvo pane bundle` | yes | yes | yes |
+| `panes` | `delete` | Clear a pane | | | yes |
+
+[Terminals, files and the small UI]({{ '/silos/terminals/' | relative_url }}) are as strong as `exec`: give them the same care.
+
+**Kinds you define** are named by their resource, `PLURAL.GROUP` (`databases.acme.dev`), with
+`PLURAL.GROUP/status` for the status. No built-in role has them, only `cluster-admin`; you
+write a role, as in [Defining your own kind]({{ '/extending/kinds/' | relative_url }}#roles).
 
 Ask the cluster what you may do:
 

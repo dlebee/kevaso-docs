@@ -33,6 +33,9 @@ sections:
       - { title: Runtimes, url: /silos/runtimes/ }
       - { title: Sets, images and updates, url: /silos/sets/ }
       - { title: Host loss and moves, url: /silos/moves/ }
+      - { title: Daemons and upkeep, url: /silos/daemons/ }
+      - { title: Terminals, files and the small UI, url: /silos/terminals/ }
+      - { title: Panes, url: /panes/ }
   - title: Networking and secrets
     pages:
       - { title: Networking, url: /networking/ }
@@ -41,6 +44,11 @@ sections:
   - title: Providers
     pages:
       - { title: Linode, url: /providers/linode/ }
+      - { title: JuiceFS, url: /providers/juicefs/ }
+  - title: Extending
+    pages:
+      - { title: Defining your own kind, url: /extending/kinds/ }
+      - { title: Policies, url: /extending/policies/ }
   - title: Running it
     pages:
       - { title: People and access, url: /access/ }

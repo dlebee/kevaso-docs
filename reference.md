@@ -25,17 +25,37 @@ Every command on one page. `kvo` uses your current context (`kvo ctx`); `-n NS` 
 Kinds: `namespaces` (`ns`), `hosts`, `silos`, `silosets` (`ss`), `services` (`svc`), `images`
 (`img`), `secrets`, `grants`, `ippools`, `ingresses` (`ing`), `ingressclasses`, `certificates`
 (`cert`), `issuers`, `roles`, `rolebindings`, `clusterroles`, `clusterrolebindings`,
-`serviceaccounts` (`sa`).
+`serviceaccounts` (`sa`), `approvals`, `panes`, `kinddefinitions` (`kd`), `validationpolicies`,
+`mutationpolicies`, and any [kind you define]({{ '/extending/kinds/' | relative_url }}) (by its plural,
+or `PLURAL.GROUP` when two share one).
+
+| Command | Does |
+|---|---|
+| `kvo get kinds` | Every kind the cluster serves, built-in and defined, with its group and version |
 
 ### Silos
 
 | Command | Does |
 |---|---|
 | `kvo exec silo NAME -- CMD [ARGS…]` | Run a command inside; exits with its code; stdin passes through |
+| `kvo exec -it silo NAME -- CMD [ARGS…]` | The same on a terminal (`-t`; `-i` is accepted and changes nothing). [Terminals]({{ '/silos/terminals/' | relative_url }}) |
+| `kvo ssh silo NAME` | A login shell on a terminal (`bash -l` or `sh -l`). Not SSH: the same channel as `exec` |
+| `kvo cp SRC DST [--max-size SIZE]` | Copy a file or folder in or out. One side is `silo/NAME:/ABSOLUTE/PATH`. Default limit `1GiB` |
+| `kvo ui silo NAME [--no-browser]` | A web page on `127.0.0.1` with the silo's terminal and files. Ctrl-C stops it |
 | `kvo reset silo NAME` | Back onto its image: stopped, a fresh disk or container, volumes kept (a set's instance: onto the set's current image) |
 | `kvo protect silo NAME [--off]` | A set's scale-in never removes it |
 | `kvo move silo NAME --to HOST` | Move it with its data (`--recreate`: a fresh copy; `--confirm-fenced`: from a lost host) |
 | `kvo get silos -o wide` | Adds `MOVABLE`: where each silo could go |
+
+### Panes
+
+| Command | Does |
+|---|---|
+| `kvo get panes [-n NS \| -A]` | The panes silos report: `SILO`, `PANE`, `KIND`, `STATE`, `UPDATED` |
+| `kvo pane watch SILO` | Print a silo's panes, then every change, as plain text |
+| `kvo pane bundle SILO.PANE -o FILE` | Save an HTML pane's page to a file (never printed) |
+
+See [Panes]({{ '/panes/' | relative_url }}).
 
 ### Sets
 
@@ -76,6 +96,20 @@ Kinds: `namespaces` (`ns`), `hosts`, `silos`, `silosets` (`ss`), `services` (`sv
 | `KVO_CONFIG` | The config file (default `~/.kevaso/config.yaml`) |
 | `KVO_TOKEN`, `KVO_CA_FILE` | A service-account token and the cluster CA, for CI |
 | `KVO_SERVER` | A plain-HTTP server (`kevasod dev`, local experiments) |
+
+---
+
+## kvo-guest: inside a silo
+
+The silo's helper for talking to its host. In microVM silos it's installed on first boot; in a
+container silo only if the image has it. [Secrets]({{ '/secrets/' | relative_url }}) lists its other commands.
+
+| Command | Does |
+|---|---|
+| `kvo-guest pane report NAME [--state S] [--progress P] [--title T] [--message M] [--field LABEL=VALUE]… [--ttl D]` | Report a status pane. `S`: `idle`, `running`, `needs-you`, `done`, `failed`. `P`: 0 to 1. `D`: up to `1h`. Prints `ok` |
+| `kvo-guest pane html NAME --bundle FILE [--data JSON \| --data -] [--title T] [--ttl D]` | Report an HTML pane: uploads the page, then reports it. The silo needs `spec.panes.allow: [status, html]` |
+
+Both need `spec.panes.enabled: true` on the silo. [Panes]({{ '/panes/' | relative_url }}) has the limits.
 
 ---
 
@@ -126,7 +160,7 @@ Both look at the machine first and stop, changing nothing, if something won't wo
 |---|---|
 | `kvoadm backup [USER@]ADDR --ssh-key KEY --output FILE` | A backup of the control plane, sealed to the recovery key |
 | `kvoadm init [USER@]ADDR … --restore FILE` | A fresh machine from a backup; asks for the recovery key (or reads it from stdin), then reconnects the workers |
-| `kvoadm plugin install [USER@]ADDR --name N --binary FILE [--credential NAME=FILE]… [--config FILE] [--side node]` | A provider plugin as a hardened service (credentials read from files, root-only on the host) |
+| `kvoadm plugin install [USER@]ADDR --name N --binary FILE [--credential NAME=FILE]… [--config FILE] [--side controller\|node]` | A provider plugin as a hardened service (credentials read from files, root-only on the host) |
 | `kvoadm plugin remove [USER@]ADDR --name N` | Removes it: unit, program, credentials |
 
 ---
@@ -141,6 +175,9 @@ You rarely run it yourself; `kvoadm` installs it as a service.
 | `kevasod worker --name N --server URL` | A worker-only host |
 | `kevasod admin recovery-key` / `kms-rotate [--new-recovery-key]` / `backup` | Through the admin socket, as root |
 | `kevasod admin restore [--data DIR]` | Put a backup into a fresh data directory (`kvoadm init --restore` runs it) |
+| `kevasod control-plane --store sqlite\|etcd` | Where objects live: SQLite (default) or an embedded etcd member. The first `etcd` start moves `store.db` into it. [Operations]({{ '/operations/#the-store' | relative_url }}) |
+| `kevasod control-plane --etcd-client-listen ADDR` | With `--store etcd`: the member's client address (default `127.0.0.1:2379`; keep it on loopback) |
+| `kevasod control-plane --etcd-peer-listen ADDR` / `--etcd-advertise-peer ADDR` | With `--store etcd`: where other members connect, and what they dial. Without the first, no peer port is opened |
 | `kevasod control-plane --plugins-dir DIR` | Where provider plugins' sockets are (default `/run/kevaso-plugins`) |
 | `kevasod control-plane --cert-controller N=PROGRAM` / `--dns-provider N=PROGRAM` | Register programs (also picked up from `/etc/kevaso/cert-controllers/` and `/etc/kevaso/dns-providers/`) |
 | `kevasod dev` | The API without authentication on loopback, for trying `kvo` locally |

@@ -25,6 +25,8 @@ entering it.
 | Try it on your own computer in 15 minutes | [Quick start]({{ '/quickstart/' | relative_url }}) |
 | Decide how to set up a real cluster | [Choosing a setup]({{ '/setup/' | relative_url }}) |
 | Set up a machine, step by step | [Prepare a machine]({{ '/setup/prepare/' | relative_url }}) |
+| Run things inside a silo, or get a shell and files | [Daemons and upkeep]({{ '/silos/daemons/' | relative_url }}), [Terminals and files]({{ '/silos/terminals/' | relative_url }}), [Panes]({{ '/panes/' | relative_url }}) |
+| Add your own kinds and rules | [Defining your own kind]({{ '/extending/kinds/' | relative_url }}), [Policies]({{ '/extending/policies/' | relative_url }}) |
 | Look up a command | [Command reference]({{ '/reference/' | relative_url }}) |
 
 ---
