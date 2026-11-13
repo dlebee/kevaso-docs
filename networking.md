@@ -10,33 +10,14 @@ traffic is opened, one rule at a time.
 
 ---
 
-## Addresses: who gets what
+## The words used on this page
 
-![Two hosts with their external, internal and mesh IPs, and silos with cluster IPs and names]({{ '/assets/addresses.svg' | relative_url }})
+Internal IP, external IP, mesh IP, silo IP and cluster IP each mean one thing in Kevaso, and so do
+"port", "service" and a `.kevaso` name. They're defined, with pictures, in
+[Addresses, ports and names]({{ '/networking/model/' | relative_url }}). That page also says which parts of
+the model are in the code today.
 
-**A host** has up to three addresses:
-
-| Address | Who sets it | What it's for |
-|---|---|---|
-| **Internal IP** | You, when you add the machine | Its address on its own network |
-| **External IP** | You, optional | Its address reachable from outside that network. A machine behind NAT has none |
-| **Mesh IP** | Kevaso | Its address on the encrypted network between hosts. You never use it directly |
-
-**A silo** gets:
-
-| Thing | Where it comes from | If the silo moves to another host |
-|---|---|---|
-| **Cluster IP** | Its host's range, when it starts there | It changes |
-| **Name**, like `app.payments.kevaso` | Its name and namespace | It stays. Use the name, not the address |
-| **A host port** | Only if you ask for one | It opens on the new host's address |
-
-A silo never has an internal or external IP of its own. Those belong to hosts, and a silo uses its
-host's when one of its ports asks for a host port.
-
-> **Not all of this is built yet.** Today a host has one address (the one you added it with), and
-> `expose: hostPort` opens the service's ports on that address. Declaring an internal and an external
-> IP on a host, and choosing per port with `hostPort: internal` or `hostPort: external` as the picture
-> shows, is the agreed design and is not in the code yet.
+---
 
 ## The defaults
 

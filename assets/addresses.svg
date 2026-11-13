@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 640" role="img" aria-labelledby="t d" font-family="Inter, system-ui, -apple-system, 'Segoe UI', sans-serif">
   <title id="t">Addresses in a Kevaso cluster</title>
-  <desc id="d">Two hosts. Each has an internal IP that you set, an optional external IP that you set, and a mesh IP that Kevaso assigns. Each silo has a cluster IP and a name. A port is reachable from other silos only, unless it asks for a host port on the host's internal or external IP.</desc>
+  <desc id="d">Two hosts. Each has an internal IP that you set, an optional external IP that you set, and a mesh IP that Kevaso assigns. Each silo has a silo IP, and a name if it has a service. A port is reachable from other silos only, unless it asks for a host port on the host's internal or external IP.</desc>
   <defs>
     <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#aab0bd"/></marker>
     <marker id="am" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#5ef0c0"/></marker>
@@ -29,31 +29,31 @@
   <!-- silo app -->
   <rect x="50" y="176" width="410" height="176" rx="10" fill="#0d1017" stroke="#5ef0c0"/>
   <text x="66" y="200" fill="#eef0f5" font-size="14" font-weight="600">silo app</text>
-  <text x="444" y="200" fill="#5ef0c0" font-size="12" text-anchor="end" font-family="'IBM Plex Mono', ui-monospace, monospace">cluster IP 10.64.1.7</text>
+  <text x="444" y="200" fill="#5ef0c0" font-size="12" text-anchor="end" font-family="'IBM Plex Mono', ui-monospace, monospace">silo IP 10.64.1.7</text>
   <text x="66" y="220" fill="#aab0bd" font-size="12" font-family="'IBM Plex Mono', ui-monospace, monospace">app.payments.kevaso</text>
   <text x="66" y="250" fill="#aab0bd" font-size="11" font-weight="600">PORT</text>
   <text x="140" y="250" fill="#aab0bd" font-size="11" font-weight="600">ASKS FOR</text>
-  <text x="290" y="250" fill="#aab0bd" font-size="11" font-weight="600">REACHED AT</text>
+  <text x="312" y="250" fill="#aab0bd" font-size="11" font-weight="600">REACHED AT</text>
   <path d="M66 258H444" stroke="#2a3040"/>
   <g font-size="12.5" font-family="'IBM Plex Mono', ui-monospace, monospace">
     <text x="66" y="280" fill="#eef0f5">9000</text>
-    <text x="140" y="280" fill="#aab0bd">nothing</text>
-    <text x="290" y="280" fill="#5ef0c0">10.64.1.7:9000</text>
+    <text x="140" y="280" fill="#aab0bd">no hostPort</text>
+    <text x="312" y="280" fill="#5ef0c0">10.64.1.7:9000</text>
     <text x="66" y="306" fill="#eef0f5">9090</text>
-    <text x="140" y="306" fill="#aab0bd">hostPort: internal</text>
-    <text x="290" y="306" fill="#8f7bff">10.0.0.5:9090</text>
+    <text x="140" y="306" fill="#aab0bd">hostPort: [internal]</text>
+    <text x="312" y="306" fill="#8f7bff">10.0.0.5:9090</text>
     <text x="66" y="332" fill="#eef0f5">443</text>
-    <text x="140" y="332" fill="#aab0bd">hostPort: external</text>
-    <text x="290" y="332" fill="#f2b45a">51.38.10.20:443</text>
+    <text x="140" y="332" fill="#aab0bd">hostPort: [external]</text>
+    <text x="312" y="332" fill="#f2b45a">51.38.10.20:443</text>
   </g>
 
   <!-- silo db -->
   <rect x="50" y="368" width="410" height="66" rx="10" fill="#0d1017" stroke="#5ef0c0"/>
   <text x="66" y="392" fill="#eef0f5" font-size="14" font-weight="600">silo db</text>
-  <text x="444" y="392" fill="#5ef0c0" font-size="12" text-anchor="end" font-family="'IBM Plex Mono', ui-monospace, monospace">cluster IP 10.64.1.8</text>
-  <text x="66" y="416" fill="#aab0bd" font-size="12">port 5432 asks for nothing: only silos it allows can reach it</text>
+  <text x="444" y="392" fill="#5ef0c0" font-size="12" text-anchor="end" font-family="'IBM Plex Mono', ui-monospace, monospace">silo IP 10.64.1.8</text>
+  <text x="66" y="416" fill="#aab0bd" font-size="12">port 5432 has no hostPort: only silos it allows can reach it</text>
 
-  <text x="50" y="476" fill="#aab0bd" font-size="12">silos here get a cluster IP from</text>
+  <text x="50" y="476" fill="#aab0bd" font-size="12">silos here get a silo IP from</text>
   <text x="252" y="476" fill="#5ef0c0" font-size="12" font-family="'IBM Plex Mono', ui-monospace, monospace">10.64.1.0/24</text>
 
   <!-- host 2 -->
@@ -68,13 +68,13 @@
 
   <rect x="540" y="176" width="390" height="124" rx="10" fill="#0d1017" stroke="#5ef0c0"/>
   <text x="556" y="200" fill="#eef0f5" font-size="14" font-weight="600">silo worker</text>
-  <text x="914" y="200" fill="#5ef0c0" font-size="12" text-anchor="end" font-family="'IBM Plex Mono', ui-monospace, monospace">cluster IP 10.64.2.4</text>
+  <text x="914" y="200" fill="#5ef0c0" font-size="12" text-anchor="end" font-family="'IBM Plex Mono', ui-monospace, monospace">silo IP 10.64.2.4</text>
   <text x="556" y="220" fill="#aab0bd" font-size="12" font-family="'IBM Plex Mono', ui-monospace, monospace">worker.payments.kevaso</text>
   <text x="556" y="250" fill="#aab0bd" font-size="12">Reaches <tspan fill="#eef0f5" font-family="'IBM Plex Mono', ui-monospace, monospace">db.payments.kevaso:5432</tspan></text>
   <text x="556" y="270" fill="#aab0bd" font-size="12">because db lists it in <tspan fill="#eef0f5" font-family="'IBM Plex Mono', ui-monospace, monospace">allowFrom</tspan>.</text>
-  <text x="556" y="290" fill="#aab0bd" font-size="12">A port asking for <tspan fill="#eef0f5" font-family="'IBM Plex Mono', ui-monospace, monospace">hostPort: external</tspan> can't land here.</text>
+  <text x="556" y="290" fill="#aab0bd" font-size="12">A port asking for <tspan fill="#eef0f5" font-family="'IBM Plex Mono', ui-monospace, monospace">hostPort: [external]</tspan> can't land here.</text>
 
-  <text x="540" y="476" fill="#aab0bd" font-size="12">silos here get a cluster IP from</text>
+  <text x="540" y="476" fill="#aab0bd" font-size="12">silos here get a silo IP from</text>
   <text x="742" y="476" fill="#5ef0c0" font-size="12" font-family="'IBM Plex Mono', ui-monospace, monospace">10.64.2.0/24</text>
 
   <!-- silo to silo -->
@@ -92,6 +92,6 @@
   <g font-size="12">
     <rect x="30" y="596" width="12" height="12" rx="3" fill="#f2b45a"/><text x="50" y="607" fill="#aab0bd">external IP: reachable from outside the host's network</text>
     <rect x="390" y="596" width="12" height="12" rx="3" fill="#8f7bff"/><text x="410" y="607" fill="#aab0bd">internal IP: the host's own network</text>
-    <rect x="660" y="596" width="12" height="12" rx="3" fill="#5ef0c0"/><text x="680" y="607" fill="#aab0bd">cluster IP: inside the cluster only</text>
+    <rect x="660" y="596" width="12" height="12" rx="3" fill="#5ef0c0"/><text x="680" y="607" fill="#aab0bd">silo IP: inside the cluster only</text>
   </g>
 </svg>

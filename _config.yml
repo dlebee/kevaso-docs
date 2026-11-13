@@ -39,6 +39,7 @@ sections:
       - { title: Panes, url: /panes/ }
   - title: Networking and secrets
     pages:
+      - { title: Addresses, ports and names, url: /networking/model/ }
       - { title: Networking, url: /networking/ }
       - { title: Port leases, url: /networking/leases/ }
       - { title: HTTPS sites (ingress), url: /ingress/ }

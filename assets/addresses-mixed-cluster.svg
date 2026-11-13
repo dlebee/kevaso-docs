@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 800" role="img" aria-labelledby="t d" font-family="Inter, system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <title id="t">One cluster: a Linode system node, two bare-metal hosts, three hosts on a LAN</title>
+  <desc id="d">Six hosts in one cluster. The Linode has an external and an internal IP. The two bare-metal hosts have an external IP only. The three LAN hosts have an internal IP only and share one public address that belongs to their router. All six are on one mesh network.</desc>
+  <defs>
+    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#aab0bd"/></marker>
+  </defs>
+  <style>
+    .mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+    .h{fill:#eef0f5;font-size:15px;font-weight:600}
+    .s{fill:#aab0bd;font-size:12px}
+    .k{font-size:10.5px;font-weight:600}
+    .v{fill:#eef0f5;font-size:12.5px}
+  </style>
+  <rect width="1180" height="800" rx="14" fill="#0d1017"/>
+  <text x="30" y="40" fill="#eef0f5" font-size="18" font-weight="600">One cluster, three kinds of machine</text>
+  <text x="30" y="62" class="s">You set each host's internal and external IP when you add it. Kevaso gives each one a mesh IP.</text>
+
+  <!-- ===== Linode ===== -->
+  <rect x="30" y="90" width="330" height="250" rx="12" fill="#11151e" stroke="#2a3040" stroke-dasharray="6 5"/>
+  <text x="46" y="114" class="s" font-weight="600">LINODE (a cloud VM)</text>
+  <rect x="50" y="130" width="290" height="190" rx="10" fill="#141822" stroke="#2a3040"/>
+  <text x="66" y="156" class="h">host cp-1</text>
+  <text x="324" y="156" class="s" text-anchor="end">system node · no silos</text>
+  <rect x="66" y="170" width="258" height="38" rx="7" fill="#1b2130" stroke="#f2b45a"/>
+  <text x="78" y="186" class="k" fill="#f2b45a">EXTERNAL IP</text><text x="312" y="194" class="v mono" text-anchor="end">172.105.20.8</text>
+  <rect x="66" y="216" width="258" height="38" rx="7" fill="#1b2130" stroke="#8f7bff"/>
+  <text x="78" y="232" class="k" fill="#8f7bff">INTERNAL IP</text><text x="312" y="240" class="v mono" text-anchor="end">192.168.130.5</text>
+  <rect x="66" y="262" width="258" height="38" rx="7" fill="#1b2130" stroke="#5ef0c0"/>
+  <text x="78" y="278" class="k" fill="#5ef0c0">MESH IP</text><text x="312" y="286" class="v mono" text-anchor="end">10.63.0.1</text>
+
+  <!-- ===== Bare metal ===== -->
+  <rect x="390" y="90" width="330" height="470" rx="12" fill="#11151e" stroke="#2a3040" stroke-dasharray="6 5"/>
+  <text x="406" y="114" class="s" font-weight="600">BARE METAL (each on the internet directly)</text>
+  <g>
+    <rect x="410" y="130" width="290" height="200" rx="10" fill="#141822" stroke="#2a3040"/>
+    <text x="426" y="156" class="h">host ovh-1</text><text x="684" y="156" class="s" text-anchor="end">worker</text>
+    <rect x="426" y="170" width="258" height="38" rx="7" fill="#1b2130" stroke="#f2b45a"/>
+    <text x="438" y="186" class="k" fill="#f2b45a">EXTERNAL IP</text><text x="672" y="194" class="v mono" text-anchor="end">51.38.10.20</text>
+    <rect x="426" y="216" width="258" height="38" rx="7" fill="#141822" stroke="#3a4152" stroke-dasharray="5 4"/>
+    <text x="438" y="232" class="k" fill="#737a88">INTERNAL IP</text><text x="672" y="240" fill="#737a88" font-size="12" text-anchor="end">none</text>
+    <rect x="426" y="262" width="258" height="38" rx="7" fill="#1b2130" stroke="#5ef0c0"/>
+    <text x="438" y="278" class="k" fill="#5ef0c0">MESH IP</text><text x="672" y="286" class="v mono" text-anchor="end">10.63.0.2</text>
+    <text x="426" y="320" class="s">silos: <tspan class="mono" fill="#5ef0c0">10.64.2.0/24</tspan></text>
+  </g>
+  <g>
+    <rect x="410" y="344" width="290" height="200" rx="10" fill="#141822" stroke="#2a3040"/>
+    <text x="426" y="370" class="h">host ovh-2</text><text x="684" y="370" class="s" text-anchor="end">worker</text>
+    <rect x="426" y="384" width="258" height="38" rx="7" fill="#1b2130" stroke="#f2b45a"/>
+    <text x="438" y="400" class="k" fill="#f2b45a">EXTERNAL IP</text><text x="672" y="408" class="v mono" text-anchor="end">51.38.10.21</text>
+    <rect x="426" y="430" width="258" height="38" rx="7" fill="#141822" stroke="#3a4152" stroke-dasharray="5 4"/>
+    <text x="438" y="446" class="k" fill="#737a88">INTERNAL IP</text><text x="672" y="454" fill="#737a88" font-size="12" text-anchor="end">none</text>
+    <rect x="426" y="476" width="258" height="38" rx="7" fill="#1b2130" stroke="#5ef0c0"/>
+    <text x="438" y="492" class="k" fill="#5ef0c0">MESH IP</text><text x="672" y="500" class="v mono" text-anchor="end">10.63.0.3</text>
+    <text x="426" y="534" class="s">silos: <tspan class="mono" fill="#5ef0c0">10.64.3.0/24</tspan></text>
+  </g>
+
+  <!-- ===== LAN ===== -->
+  <rect x="750" y="90" width="400" height="560" rx="12" fill="#11151e" stroke="#2a3040" stroke-dasharray="6 5"/>
+  <text x="766" y="114" class="s" font-weight="600">A LAN (three machines behind one router)</text>
+  <rect x="770" y="126" width="360" height="58" rx="9" fill="#1b2130" stroke="#3a4152"/>
+  <text x="786" y="148" fill="#eef0f5" font-size="13" font-weight="600">the router</text>
+  <text x="1114" y="148" class="v mono" text-anchor="end">203.0.113.7</text>
+  <text x="786" y="170" class="s">The LAN's one public address. It's the router's, not a host's.</text>
+
+  <g>
+    <rect x="770" y="198" width="360" height="138" rx="10" fill="#141822" stroke="#2a3040"/>
+    <text x="786" y="222" class="h">host lan-1</text><text x="1114" y="222" class="s" text-anchor="end">worker · no external IP</text>
+    <rect x="786" y="234" width="328" height="34" rx="7" fill="#1b2130" stroke="#8f7bff"/>
+    <text x="798" y="255" class="k" fill="#8f7bff">INTERNAL IP</text><text x="1102" y="256" class="v mono" text-anchor="end">192.168.1.11</text>
+    <rect x="786" y="274" width="328" height="34" rx="7" fill="#1b2130" stroke="#5ef0c0"/>
+    <text x="798" y="295" class="k" fill="#5ef0c0">MESH IP</text><text x="1102" y="296" class="v mono" text-anchor="end">10.63.0.4</text>
+    <text x="786" y="326" class="s">silos: <tspan class="mono" fill="#5ef0c0">10.64.4.0/24</tspan></text>
+  </g>
+  <g>
+    <rect x="770" y="346" width="360" height="138" rx="10" fill="#141822" stroke="#2a3040"/>
+    <text x="786" y="370" class="h">host lan-2</text><text x="1114" y="370" class="s" text-anchor="end">worker · no external IP</text>
+    <rect x="786" y="382" width="328" height="34" rx="7" fill="#1b2130" stroke="#8f7bff"/>
+    <text x="798" y="403" class="k" fill="#8f7bff">INTERNAL IP</text><text x="1102" y="404" class="v mono" text-anchor="end">192.168.1.12</text>
+    <rect x="786" y="422" width="328" height="34" rx="7" fill="#1b2130" stroke="#5ef0c0"/>
+    <text x="798" y="443" class="k" fill="#5ef0c0">MESH IP</text><text x="1102" y="444" class="v mono" text-anchor="end">10.63.0.5</text>
+    <text x="786" y="474" class="s">silos: <tspan class="mono" fill="#5ef0c0">10.64.5.0/24</tspan></text>
+  </g>
+  <g>
+    <rect x="770" y="494" width="360" height="138" rx="10" fill="#141822" stroke="#2a3040"/>
+    <text x="786" y="518" class="h">host lan-3</text><text x="1114" y="518" class="s" text-anchor="end">worker · no external IP</text>
+    <rect x="786" y="530" width="328" height="34" rx="7" fill="#1b2130" stroke="#8f7bff"/>
+    <text x="798" y="551" class="k" fill="#8f7bff">INTERNAL IP</text><text x="1102" y="552" class="v mono" text-anchor="end">192.168.1.13</text>
+    <rect x="786" y="570" width="328" height="34" rx="7" fill="#1b2130" stroke="#5ef0c0"/>
+    <text x="798" y="591" class="k" fill="#5ef0c0">MESH IP</text><text x="1102" y="592" class="v mono" text-anchor="end">10.63.0.6</text>
+    <text x="786" y="622" class="s">silos: <tspan class="mono" fill="#5ef0c0">10.64.6.0/24</tspan></text>
+  </g>
+
+  <!-- notes under linode -->
+  <text x="30" y="372" fill="#eef0f5" font-size="13" font-weight="600">What a host port means on each</text>
+  <g class="s">
+    <text x="30" y="396"><tspan class="mono" fill="#f2b45a">hostPort: [external]</tspan> on ovh-1</text>
+    <text x="44" y="414">opens <tspan class="mono" fill="#eef0f5">51.38.10.20:443</tspan>, reachable by anyone.</text>
+    <text x="30" y="442"><tspan class="mono" fill="#8f7bff">hostPort: [internal]</tspan> on lan-1</text>
+    <text x="44" y="460">opens <tspan class="mono" fill="#eef0f5">192.168.1.11:443</tspan>, reachable on the LAN.</text>
+    <text x="44" y="478">To publish it, forward the router's</text>
+    <text x="44" y="496"><tspan class="mono" fill="#eef0f5">203.0.113.7:443</tspan> to it. That's your</text>
+    <text x="44" y="514">router's job; Kevaso doesn't touch it.</text>
+    <text x="30" y="542"><tspan class="mono" fill="#f2b45a">hostPort: [external]</tspan> can't land on</text>
+    <text x="44" y="560">lan-1, lan-2 or lan-3: they have none.</text>
+  </g>
+
+  <!-- mesh -->
+  <path d="M324 281H375V690M555 544V690M950 650V690" fill="none" stroke="#5ef0c0" stroke-width="1.6" stroke-dasharray="5 4"/>
+  <rect x="30" y="690" width="1120" height="62" rx="10" fill="#141822" stroke="#5ef0c0"/>
+  <text x="50" y="715" fill="#eef0f5" font-size="14" font-weight="600">One mesh for all six hosts · 10.63.0.0/16 · WireGuard</text>
+  <text x="50" y="737" class="s">A silo on lan-2 reaches a silo on ovh-1 by name over this. The LAN hosts dial out through their router to join it; nothing is forwarded to them.</text>
+
+  <!-- legend -->
+  <g font-size="12">
+    <rect x="30" y="770" width="12" height="12" rx="3" fill="#f2b45a"/><text x="50" y="781" fill="#aab0bd">external IP: you set it, optional</text>
+    <rect x="290" y="770" width="12" height="12" rx="3" fill="#8f7bff"/><text x="310" y="781" fill="#aab0bd">internal IP: you set it, optional</text>
+    <rect x="550" y="770" width="12" height="12" rx="3" fill="#5ef0c0"/><text x="570" y="781" fill="#aab0bd">mesh IP and silo ranges: Kevaso sets them</text>
+  </g>
+</svg>
