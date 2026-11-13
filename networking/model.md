@@ -9,10 +9,6 @@ This page is the reference for how things are addressed in Kevaso: what address 
 have, how a port becomes reachable, and what names resolve to. Every other page uses these words the
 way they are defined here.
 
-> **Status.** This is the model Kevaso is being moved to. Parts of it are in the code today and parts
-> are not: see [what's built](#whats-built) at the end. The rest of the docs still use the older
-> forms where the code does.
-
 ---
 
 ## The five addresses
@@ -27,7 +23,7 @@ way they are defined here.
 | **Silo IP** | A silo | Kevaso | The silo's own address inside the cluster. It changes when the silo changes host |
 | **Cluster IP** | A `Service` | Kevaso | One stable address in front of several silos. Never one silo's address |
 
-A host has at least one of internal and external:
+A host has at least one of internal and external. Both are IPv4 and they can't be the same address.
 
 ```yaml
 kind: Host
@@ -36,6 +32,10 @@ spec:
   internalIP: 10.0.0.5
   externalIP: 51.38.10.20
 ```
+
+`kvoadm init` and `kvoadm host add` take them as `--internal-ip` and `--external-ip`. Give neither and
+the address you connect to over SSH becomes the internal IP. A machine from a provider whose plugin
+reports a private address uses it as the internal IP when you set none.
 
 | Machine | Internal IP | External IP |
 |---|---|---|
@@ -73,7 +73,7 @@ spec:
       - { port: debug,   hostPort: [internal], lease: { max: 2h } }
 ```
 
-**`spec.ports`** says what exists.
+**`spec.ports`** says what exists. Each has a `name`, a `port` and a `protocol` (`TCP`, the default, or `UDP`).
 
 - A port that isn't declared can never be reached, by anything. A service that names one is refused.
 - The program inside may listen on other ports. Nothing can connect to them.
@@ -84,18 +84,22 @@ spec:
 |---|---|---|
 | `name` | The service | The name others use. Leave it out and it's the silo's name |
 | `port` | A service port | Which declared port this is about |
-| `allowFrom` | A service port | The silos that may connect: `NAME`, or `NAMESPACE/NAME` |
-| `hostPort` | A service port | Which of the host's addresses it opens on: `[internal]`, `[external]`, or both. Absent: not on the host |
-| `as` | A service port | The number on the host, when it differs from the silo's |
-| `sources` | A service port | The network ranges that may connect on the host. Absent: anyone who can reach that address |
-| `lease` | A service port | The port opens only for a time, on request. See [Port leases]({{ '/networking/leases/' | relative_url }}) |
+| `allowFrom` | A service port | The silos that may connect to it on the silo IP: `NAME`, or `NAMESPACE/NAME`. A network range here is refused: ranges go in `sources` |
+| `hostPort` | A service port | Which of the host's addresses it opens on: `[internal]`, `[external]`, or both. Absent: not on the host. It never answers on Kevaso's own networks (the mesh, silo and cluster ranges) |
+| `as` | A service port | The number on the host or the load balancer, when it differs from the silo's. Only with `hostPort` or `loadBalancer` |
+| `sources` | A service port | The network ranges (CIDRs or single addresses) that may connect on the host or the load balancer. Absent: anyone who can reach that address. Only with `hostPort` or `loadBalancer` |
+| `lease` | A service port | The port opens on the host or the load balancer only for a time, on request. See [Port leases]({{ '/networking/leases/' | relative_url }}) |
+| `loadBalancer` | A service port | `true`: the port is also reachable on the service's load-balancer address. See [below](#a-load-balancer-in-front) |
+| `routeWhen` | The service | When traffic is sent to the silo: `ready` or `running`. See [Probes]({{ '/silos/probes/' | relative_url }}) |
 
 **A silo with no service** has a silo IP for its own outgoing traffic, no name, and nothing anyone
 can connect to. That is a normal silo: a worker that only calls out needs nothing more.
 
 **Where a silo can run** follows from its ports. A port with `hostPort: [external]` needs a host that
-has an external IP, and a host where no other silo already holds that address and number.
-`kvo describe silo` says which rule excluded each host.
+has an external IP, and a host where no other silo already holds that address, number and protocol.
+The same number on the same network twice in one silo is refused when you apply it. `kvo describe silo`
+says which rule excluded each host, for example `no external IP, which port 443/TCP asks for
+(hostPort: [external])`.
 
 ---
 
@@ -111,6 +115,31 @@ has an external IP, and a host where no other silo already holds that address an
 
 The second and third are written the same way. What sits in front is your network's business:
 Kevaso opens the port on the host and stops there.
+
+### A load balancer in front
+
+When Kevaso should manage the address in front, the port says `loadBalancer: true` and the service
+names where the address comes from:
+
+```yaml
+spec:
+  ports:
+    - { name: http, port: 8080 }
+  service:
+    ports:
+      - { port: http, loadBalancer: true, as: 80 }
+    loadBalancer: { class: ip-pool }
+```
+
+| Field | Meaning |
+|---|---|
+| `class` | `ip-pool` (an extra address routed to the silo's host) or a class a [provider plugin]({{ '/extending/plugins/' | relative_url }}) offers |
+| `ip` | The [`IP` object]({{ '/networking/ips/' | relative_url }}) whose address this is. Absent: the namespace's shared one for the class |
+| `dedicated` | `true`: an address of its own instead of the namespace's shared one |
+
+`service.loadBalancer` is refused when no port has `loadBalancer: true`, and a port with it needs the
+`class`. A port can be on the host and on the load balancer at once. Addresses you keep, sharing and
+`dedicated` are on [Addresses you keep]({{ '/networking/ips/' | relative_url }}).
 
 ---
 
@@ -143,10 +172,11 @@ from where you are:
 | Who asks for `api.payments.kevaso` | Gets |
 |---|---|
 | A silo | The silo IP |
-| A machine on the host's network | The host's internal IP |
+| A machine on the host's network | The host's internal IP. If no port of the service opens on it, the external IP |
 | Anyone else | The host's external IP |
 
-If the service isn't reachable from there, there is no answer.
+If the service isn't reachable from there, there is no answer. A silo that isn't running, or that
+[`routeWhen`]({{ '/silos/probes/' | relative_url }}) is holding back, has a name with no address.
 
 **Short names** work inside a silo: `api` in the same namespace, `api.payments` from another.
 
@@ -168,22 +198,101 @@ Two more rules:
 
 - **Resolving a name isn't permission.** `allowFrom` decides whether a silo's connection is accepted.
 - **`.kevaso` names are answered by Kevaso's own DNS**, which runs on its hosts. A machine outside
-  the cluster resolves them only if it asks a Kevaso host. Your public hostnames stay in your own
-  DNS, pointing at a host's external IP or at whatever you put in front.
+  the cluster resolves them only if it asks a Kevaso host, and only if that host is set to answer
+  there ([next section](#letting-machines-outside-the-cluster-ask)). Your public hostnames stay in
+  your own DNS, pointing at a host's external IP or at whatever you put in front.
+
+A name that isn't Kevaso's (`example.com`) is forwarded upstream for a silo and never for anyone
+else: a Kevaso host is not an open resolver. A refused question says nothing about whether the name
+exists.
+
+### Letting machines outside the cluster ask
+
+Each host answers on its silos' gateway and on its mesh IP, always. It answers on its own internal
+IP, its external IP, or both, only when you list them:
+
+```yaml
+kind: Host
+metadata: { name: baremetal-1 }
+spec:
+  internalIP: 10.0.0.5
+  externalIP: 51.38.10.20
+  network:
+    dns: [internal]
+```
+
+| `network.dns` | The host also answers | Who can ask | What they get |
+|---|---|---|---|
+| Absent | Nothing beyond its silos and the mesh | | |
+| `internal` | On its internal IP, port 53 | Machines on its network | Internal and external names |
+| `external` | On its external IP, port 53 | Anyone who can reach it | External names only |
+
+Listing `external` needs the host to have an external IP. An external listener answers anyone who
+can reach it, so it is off until you ask for it. Kevaso doesn't open port 53 in the host's own
+firewall: that is yours to do. Change it by editing the Host (`kvo get host baremetal-1 -o yaml`, then
+`kvo apply -f`). `kvo describe host` shows it:
+
+```text
+Internal IP:        10.0.0.5
+External IP:        51.38.10.20
+Mesh IP:            10.63.0.2
+Names answered on:  its silos and the mesh, its internal IP
+```
+
+### The names' last label
+
+`kevaso` is the default. A cluster can use another by starting the control plane with
+`--dns-suffix`:
+
+```bash
+kevasod control-plane --dns-suffix example.internal …
+```
+
+Every name above then ends in that word instead. Each system node publishes it, and the hosts and the
+scheduler read it from there, so set it the same way on every system node.
 
 ---
 
-## What's built
+---
 
-| Part of the model | In the code today |
+## What `kvo describe` shows
+
+`kvo describe silo` has a **Ports** table: for each declared port, where it is reachable on each
+network.
+
+```bash
+kvo describe silo api-blue -n payments
+```
+
+```text
+Silo IP:  10.64.2.7
+Service:  api (api.payments.kevaso)
+Ports:
+  PORT     NUMBER    SILO IP (MESH)  INTERNAL IP    EXTERNAL IP      LOAD BALANCER  ALLOW FROM                    SOURCES
+  http     8080/TCP  10.64.2.7:8080  -              -                -              nginx-public, billing/worker  -
+  https    8443/TCP  10.64.2.7:8443 (no silo allowed)  -  51.38.10.20:443  -        -                             -
+  metrics  9090/TCP  10.64.2.7:9090 (no silo allowed)  10.0.0.5:9090  -    -        -                             10.0.0.0/24
+```
+
+| Column | Meaning |
 |---|---|
-| Silo IP, mesh IP, cluster IP for a `Service` | Yes |
-| `NAME.NAMESPACE.kevaso` for a silo, and short names | Yes, for every silo, whether or not it has a service |
-| Silo-to-silo access by `allowFrom` | Yes, as a list on the silo |
-| Ports opened on the host | Yes, as `expose: hostPort` for the whole service, on every address the host has |
-| Internal and external IP on a host | No. A host has one address |
-| Ports declared on the silo, opened by the service | No. Ports are listed inside `service` |
-| `hostPort: [internal]` / `[external]` per port, `as`, `sources` | No |
-| A service name different from the silo's | No |
-| The `mesh`, `internal` and `external` names, host names, and the dynamic answer | No |
-| Limits on who can resolve what | No. A silo can resolve any silo's name |
+| `SILO IP (MESH)` | The silo IP and port. `(no silo allowed)`: no `allowFrom` names a silo |
+| `INTERNAL IP`, `EXTERNAL IP` | The host's address and the number on it, where `hostPort` opens the port. `-`: not opened there. `(when placed)`: the silo isn't on a host yet |
+| `LOAD BALANCER` | The load-balancer address, where the port says `loadBalancer: true` |
+| `ALLOW FROM`, `SOURCES` | The silos and the ranges allowed |
+
+A declared port that no service port opens says `not opened: reachable nowhere`. A silo with no
+service says so, and has no name. A silo with ports that open outside its silo IP also gets an
+**Outside ports** table that says whether each is always open or [leased]({{ '/networking/leases/' | relative_url }}).
+
+---
+
+## Limits today
+
+- The model is tested in-process, with the firewall rules generated and checked. The per-port firewall rules and
+  the DNS listeners on a host's internal and external IPs have not been run on real machines yet.
+- A cloud whose external IP is a 1:1 translation (the address is on no interface of the machine) is
+  not handled: a `hostPort: [external]` port matches nothing there. Use a load balancer or
+  `hostPort: [internal]` behind the translation.
+- A silo's own resolver still searches `NAMESPACE.kevaso` and `kevaso`. With another
+  [suffix](#the-names-last-label), short names work, after a few forwarded lookups first.

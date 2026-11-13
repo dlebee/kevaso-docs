@@ -9,39 +9,47 @@ A **lease** keeps a port closed until someone opens it for a while. When the tim
 port closes by itself. Use it for a port you want open only now and then: a debug port, an
 admin page, a management API while you check on it.
 
-A lease sits on top of [`hostPort` or `loadBalancer`]({{ '/networking/' | relative_url }}#open-to-the-internet).
-It is never for silo-to-silo access: that is `allowFrom`, and it is always on.
+A lease belongs to one service port, and only to a port that opens outside its silo IP: one with
+`hostPort` or `loadBalancer: true` (see [Addresses, ports and names]({{ '/networking/model/' | relative_url }})).
+Silo-to-silo access is never leased: that is `allowFrom`, and it is always on.
 
 ---
 
 ## Declare the leased ports
 
+`lease` goes on the service port. Each leased port has its own terms.
+
 ```yaml
 spec:
+  ports:
+    - { name: web,   port: 8080 }
+    - { name: debug, port: 6060 }
   service:
     ports:
-      - { name: web,   port: 8080 }
-      - { name: debug, port: 6060 }
-    expose: hostPort
-    lease:
-      ports: [debug]             # only this one is leased; web stays open
-      default: 15m
-      max: 2h
-      approval: { required: true }
-      allowFrom: ["203.0.113.0/24"]
+      - { port: web, hostPort: [external] }          # always open
+      - port: debug
+        hostPort: [internal]
+        sources: ["203.0.113.0/24"]
+        lease:
+          default: 15m
+          max: 2h
+          approval: { required: true }
 ```
 
 | Field | Meaning |
 |---|---|
-| `ports` | The leased ports, by name. Empty: every exposed port. A port that isn't exposed is refused. |
 | `default` | The length when the ask names none. Default: 30 minutes, or the max if that is shorter. |
-| `max` | The longest this silo may ever get. Empty: the cluster's default limit (below). |
-| `approval.required` | Each lease needs a person's yes first. |
-| `allowFrom` | While a lease is open, only these addresses or CIDRs. It only narrows the service's own `allowFrom`; it never makes it wider. If the two don't overlap, nobody can reach the port. |
+| `max` | The longest this port may ever get. Empty: the cluster's default limit (below). |
+| `approval.required` | Each lease of this port needs a person's yes first. |
 
-- `lease` needs `expose: hostPort` or `expose: loadBalancer`. On a private service it is refused.
-- Durations are Go durations (`90s`, `30m`, `2h`), at least one second.
-- A leased port **starts closed**. A port not listed in `lease.ports` is open as usual.
+- A port with a `lease`, even `lease: {}`, is **closed until leased**. A port without one is always
+  open.
+- Who may connect while a lease is open is the port's own `sources` (and, on the host, the host
+  address it opens on). A lease never makes it wider.
+- `lease` on a port that doesn't open outside its silo IP is refused: silo-to-silo access is never
+  leased.
+- Durations are Go durations (`90s`, `30m`, `2h`), at least one second. `default` can't be more than
+  `max`, and `max` can't be more than the cluster's limit.
 
 `kvo apply` tells you if a value breaks a rule, and why. The same field is allowed in a SiloSet's
 template.
@@ -66,15 +74,25 @@ kvo close silo node-1 --port debug
 
 | Flag | Meaning |
 |---|---|
-| `--port NAME` | The leased port, by the name in `service.ports` (required) |
-| `--for DURATION` | How long. Empty: the silo's `lease.default`. More than the max: you get the max, and `kvo` says so |
-| `--no-wait` | With `kvo open`: if the lease needs a yes, print what to approve and return |
+| `--port NAME` | The leased port, by its declared name (required; repeat it for several ports) |
+| `--for DURATION` | How long. Empty: the port's `lease.default`. More than the port's max: you get the max, and `kvo` says so |
+| `--no-wait` | With `kvo open`: if a lease needs a yes, print what to approve and return |
+
+With several `--port` flags, each port is its own ask on its own terms: its own lease, its own max
+and, if it needs one, its own approval. `kvo` sends all the asks, then waits for the ones that need a
+yes. A refused port is reported on standard error and doesn't stop the others. The command then
+exits non-zero, with a line such as `silo/node-1: 1 of 2 ports not opened: debug`.
+
+```bash
+kvo open silo node-1 --port debug --port preview --for 30m
+```
 
 Opening needs the verb `open` on `silos/exposure` ([below](#who-may-do-what)).
 
 ### From inside the silo
 
-The silo can ask for its own port, over its [local endpoint]({{ '/secrets/#the-broker-for-everything-else' | relative_url }}):
+The silo can ask for its own port, over its [local endpoint]({{ '/secrets/' | relative_url }}). A silo with a leased
+port has one:
 
 ```bash
 curl -fsS -H 'Kevaso-Local: 1' -X POST 'http://169.254.42.1/v1/ports/debug/open?for=1h'
@@ -91,7 +109,7 @@ curl -fsS -H 'Kevaso-Local: 1' -X POST http://169.254.42.1/v1/ports/debug/close
 
 A successful open answers `{"port":"debug","until":"…","clamped":false}`. If the lease needs a yes,
 the answer is HTTP `428` with the pending approval, and the silo asks again with `approval=NAME`
-until it is answered (see [approvals]({{ '/secrets/#ask-a-person-first-approvals' | relative_url }})). A
+until it is answered (see [approvals]({{ '/secrets/' | relative_url }})). A
 refusal is `403`. To open several ports, call once for each. A silo can only open and close **its
 own leased ports**: the silo that asks is known from where the request arrived.
 
@@ -100,7 +118,7 @@ own leased ports**: the silo that asks is known from where the request arrived.
 ## A person's yes
 
 With `approval.required: true`, an ask doesn't open the port. It becomes an
-[approval]({{ '/secrets/#ask-a-person-first-approvals' | relative_url }}) with the use `expose`, and the port stays closed:
+[approval]({{ '/secrets/' | relative_url }}) with the use `expose`, and the port stays closed:
 
 ```bash
 kvo open silo node-1 --port debug --for 1h
@@ -127,6 +145,7 @@ kvo deny node-1-debug-3f9a1c -n infra --reason "not today"
 - **Only people answer**, with the verb `approve` on `silos/exposure`. A silo's own yes is never
   taken.
 - **Someone who holds `approve` there, and asks, needs nobody's yes.** Their own ask opens at once.
+- **The yes names the port.** The approval says which port, from which sources, and the port's max.
 - **A waiting ask always expires.** Nobody answered in time: the port stays closed.
 - **Asking again replaces** the waiting ask.
 - **Extending is a new ask.** A port that is open stays open while an extension waits for its yes.
@@ -187,7 +206,17 @@ node-1   admin   Closed   time up                alice (yes: carol)
 | `Denied` | The last ask was denied |
 | `Expired` | The last ask's approval wasn't answered in time |
 
-`kvo describe silo node-1` has a "Leased ports" table with each port's state. There is one
+`kvo describe silo node-1` has an **Outside ports** table: each port that opens outside the silo IP,
+with its lease terms (or `-`) and its state, `always open`, `closed`, `pending` or `open until` a time:
+
+```text
+Outside ports:
+  PORT     LEASE                                            STATE
+  web      -                                                always open
+  debug    default 15m, max 2h, a person's yes first, from 203.0.113.0/24   open until 4:12PM
+```
+
+ There is one
 `Lease` per leased port, named `SILO-PORT-xxxxxx`. Only the control plane writes them; you can't
 create or edit one, and an admin can delete one.
 
@@ -209,31 +238,33 @@ resource `silos/exposure`: `lease-asked`, `lease-replaced`, `lease-opened`, `lea
 `open` and `approve` can be given for one silo, by its name or by label, like any other rule:
 see [People and access]({{ '/access/' | relative_url }}#roles).
 
-Making a port public in the first place is still its own permission, `services/expose-public`:
+Opening a port to the outside in the first place is still its own permission, `services/expose-public`:
 a lease only decides *when*.
 
 ---
 
-## Load balancers from a plugin, and `allowFrom`
+## Load balancers from a plugin, and `sources`
 
-A lease can narrow who gets in (`lease.allowFrom`), and so can the service's own `allowFrom`.
-Some load balancers can't filter by client address. The rule:
+A port's `sources` say which network ranges may connect, leased or not. Some load balancers can't
+filter by client address. The rule:
 
-| Class | What happens to a port that has sources |
+| Class | What happens to a port that has `sources` |
 |---|---|
 | Announces its address (a plugin class with `announce`: the address is routed to the silo's host, which sees the client's own address) | The host's firewall enforces it |
-| A plugin's node-port class with `filtersSources: true` | The plugin is given each port's sources (`allowFrom`) and must enforce them |
+| A plugin's node-port class with `filtersSources: true` | The plugin is given each port's sources and must enforce them |
 | A plugin's node-port class without it | **The port is left out.** The silo's `LoadBalancer` condition says `SourcesNotEnforced` and names the ports |
 
 The last row closes a hole rather than leaving one: a port someone narrowed is never served to
-everyone. If you hit it, drop the `allowFrom`, use a host port or an announced class, or use a
-plugin that filters. Plugin authors: see [Plugins]({{ '/extending/plugins/' | relative_url }}#load-balancer-classes-and-sources).
+everyone. If you hit it, drop the `sources`, use a host port or an announced class, or use a
+plugin that filters. Plugin authors: see [Plugins]({{ '/extending/plugins/' | relative_url }}).
 
 ---
 
 ## Not done
 
-- A lease on an **Ingress** host. Only `hostPort` and `loadBalancer` services lease.
+- A lease on an **Ingress** host. Only service ports with `hostPort` or `loadBalancer: true` lease.
 - Leases on a **NodeBalancer** class haven't run on a real machine: the test token had no NodeBalancer access.
+- Leases on host ports ran on real Linodes, but before ports were declared and opened one by one. The
+  layout on this page is tested in-process and hasn't run on real machines yet.
 
 See [What's proven where]({{ '/operations/#whats-proven-where' | relative_url }}).

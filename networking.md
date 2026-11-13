@@ -14,8 +14,7 @@ traffic is opened, one rule at a time.
 
 Internal IP, external IP, mesh IP, silo IP and cluster IP each mean one thing in Kevaso, and so do
 "port", "service" and a `.kevaso` name. They're defined, with pictures, in
-[Addresses, ports and names]({{ '/networking/model/' | relative_url }}). That page also says which parts of
-the model are in the code today.
+[Addresses, ports and names]({{ '/networking/model/' | relative_url }}). This page doesn't repeat them.
 
 ---
 
@@ -23,10 +22,10 @@ the model are in the code today.
 
 | From → to | Default | Opened by |
 |---|---|---|
-| A silo → another silo | Denied | The receiving silo's `allowFrom` |
-| The internet → a silo | Denied | The silo's `service` with `expose: hostPort` or `loadBalancer` |
-| A silo → the internet | Denied | A `Grant` naming the destination ([below](#what-a-silo-may-reach-outside)) |
-| A silo → its host | DNS and ping only | Never more |
+| A silo → another silo | Denied | The receiving port's `allowFrom` |
+| Outside → a silo | Denied | A service port with `hostPort` or `loadBalancer: true` |
+| A silo → outside | Denied | A `Grant` naming the destination ([below](#what-a-silo-may-reach-outside)) |
+| A silo → its host | DNS and ping only | Never more, except the [local endpoint]({{ '/secrets/' | relative_url }}) for a silo that has something to ask it |
 | A silo → the mesh's host addresses | Denied | Never |
 | A silo → names (DNS) | Allowed | Its host answers on the silo network's gateway |
 
@@ -35,98 +34,85 @@ Each silo also can't send packets with an address other than its own (anti-spoof
 
 ---
 
-## Private names
+## Declare a port, then open it
 
-Every silo with a service gets a name inside the cluster:
-
-```
-NAME.NAMESPACE.kevaso      api.payments.kevaso
-NAME                       api            (from a silo in the same namespace)
-```
-
-Each worker's DNS answers them for its silos, and forwards everything else.
-
----
-
-## A service of its own
+A silo declares its ports. Its service opens them, one at a time, in one of three ways. Everything
+about one port is in one entry.
 
 ```yaml
 spec:
+  ports:
+    - { name: http,  port: 8080 }
+    - { name: stats, port: 9125, protocol: UDP }
+    - { name: admin, port: 9090 }
   service:
     ports:
-      - { name: http, port: 8080 }
-      - { name: stats, port: 9125, protocol: UDP }
+      - { port: http,  hostPort: [external], as: 80 }
+      - { port: stats, allowFrom: [metrics-collector] }
+      - { port: admin, hostPort: [internal], sources: ["10.0.0.0/24"] }
 ```
 
-That alone is **private**: reachable by name, but only by silos you allow.
+A port the service doesn't list is open to nobody. A silo with no `service` has no name and nothing
+reachable: it can still call out.
 
----
+### Letting another silo in: `allowFrom`
 
-## Letting another silo in: `allowFrom`
+`allowFrom` on a service port names the silos that may connect to it on its silo IP: `NAME` for the
+same namespace, `NAMESPACE/NAME` for another. It works across hosts too, over the mesh. A silo named
+here that isn't running opens nothing. `allowFrom` takes silos only: a network range there is
+refused, and ranges go in `sources`.
 
-On the silo being reached:
+### On the host's address: `hostPort`
 
-```yaml
-spec:
-  allowFrom:
-    - { silo: worker, ports: [http] }     # same namespace, only the http port
-    - { silo: research/crawler }          # another namespace, every port
-```
+`hostPort` opens the port on the host's `internal` address, its `external` address, or both. `as` is
+the number there when it differs from the silo's. `sources` limits who may connect to network ranges.
 
-It works across hosts too (over the mesh). A silo named here that isn't running opens nothing.
+It is plain layer-4 forwarding: no proxy, and **the silo sees the client's real address**. The host
+never answers a host port on Kevaso's own networks (the mesh, the silos, the Services' virtual IPs).
 
----
+A port with `hostPort: [external]` needs a host with an external IP. See
+[where a silo can run]({{ '/networking/model/' | relative_url }}#ports-declare-then-open).
 
-## Open to the internet
+### On an address Kevaso manages: `loadBalancer`
 
-### On the host's own address: `hostPort`
-
-```yaml
-spec:
-  service:
-    ports:
-      - { name: web,   port: 8080, protocol: TCP }
-      - { name: stats, port: 9125, protocol: UDP }
-      - { name: admin, port: 9090 }
-    expose: hostPort
-    hostPort:
-      ports: [web, stats]             # only these; admin stays private
-      allowFrom: ["203.0.113.0/24"]   # optional: only these sources
-```
-
-Plain layer-4 forwarding: no proxy, and **the silo sees the client's real address**.
-
-### Its own address: `loadBalancer`
+A port with `loadBalancer: true` is reachable on the service's load-balancer address, at its `as`
+number. The `service.loadBalancer` block says where the address comes from.
 
 | Class | Address | Needs |
 |---|---|---|
-| `worker-ip` | The host's own address (like `hostPort`, chosen for you) | Nothing |
-| `ip-pool` | An address of its own, from an `IPPool` routed to the host | Extra addresses on that host |
-| `linode-nodebalancer`, `linode-shared-ip` | A NodeBalancer's, or an IPv4 that follows the silo | The [Linode provider]({{ '/providers/linode/' | relative_url }}) |
+| `ip-pool` | An extra address routed to the silo's host | Extra addresses declared on that host |
+| A provider's class, such as `linode-nodebalancer` or `linode-shared-ip` | A balancer's address, or an IPv4 that follows the silo | The [Linode provider]({{ '/providers/linode/' | relative_url }}) |
 
 ```yaml
-apiVersion: kevaso/v1
-kind: IPPool
-metadata: { name: hv2-extra }
-spec: { host: hv2, addresses: ["198.51.100.17/32", "198.51.100.18/32"] }
----
-# in the silo
 spec:
+  ports:
+    - { name: web, port: 8080 }
   service:
-    ports: [{ name: web, port: 8080 }]
-    expose: loadBalancer
-    loadBalancer: { class: ip-pool, pool: hv2-extra, stableIP: true }
+    ports:
+      - { port: web, loadBalancer: true, as: 80, sources: ["203.0.113.0/24"] }
+    loadBalancer: { class: ip-pool }
 ```
+
+Which address, whether it is shared, and keeping it when the silo goes are on
+[Addresses you keep]({{ '/networking/ips/' | relative_url }}). A class that can't limit clients by address
+can't serve a port that has `sources`: see [leases and sources]({{ '/networking/leases/' | relative_url }}#load-balancers-from-a-plugin-and-sources).
 
 ### Only for a while: a lease
 
 Some ports you want closed until you need them: a debug port, an admin page. Put a `lease` on the
-service and the port starts closed, opens for a time you choose, and closes by itself:
+port and it starts closed, opens for a time you choose, and closes by itself:
 [Port leases]({{ '/networking/leases/' | relative_url }}).
 
-> **Exposing publicly is its own permission:** `create` on `services/expose-public`. Namespace
-> `admin`s have it, `editor`s don't. The same goes for a SiloSet whose instances would be exposed,
-> and a standalone Service of type `LoadBalancer` ([Sets, images and updates](../silos/sets/)).
+### Plain HTTP and HTTPS sites
+
+For HTTP and HTTPS by host name and path, with certificates, use an [ingress]({{ '/ingress/' | relative_url }}).
+The silos behind it stay private.
+
+> **Opening a port to the outside is its own permission:** `create` on `services/expose-public` in
+> the namespace. It is needed for a silo with `hostPort` or `loadBalancer: true` ports, for a SiloSet
+> whose instances would have them, and for a standalone Service of type `LoadBalancer`
+> ([Sets, images and updates]({{ '/silos/sets/' | relative_url }})). Namespace `admin`s have it,
+> `editor`s don't.
 
 ---
 
@@ -141,35 +127,30 @@ spec:
 
 | `source` | Outgoing traffic leaves from |
 |---|---|
-| `host` (default) | The host's own address |
-| `sameAsService` | The address the silo is reached on (its `Public IP`) |
-| `pool` | An address from an `IPPool`; also set `egress: { source: pool, pool: NAME }` |
+| `host` (default) | The host's own address. A host behind NAT has none to name |
+| `sameAsService` | The address the silo is reached on |
+| `pool` | An extra address of class `ip-pool`, named by `egress.ip` (or the one the silo's `ip-pool` load balancer uses) |
 
-If a silo tells others the address it's reached on, as peers in a P2P network do, and they must
-see its outbound traffic come from that same address, set `sameAsService`. It needs a service exposed with `hostPort` or
-`loadBalancer`. Whether it can work depends on how the silo is exposed:
-[next section](#can-a-silo-use-the-same-ip-out-as-in). A fourth source, `gateway` (leave from a
-chosen host), is not built.
+If a silo tells others the address it's reached on and they must see its outbound traffic come from
+that same address, set `sameAsService`. It needs a service with a port on the host or a load balancer,
+and Kevaso refuses it otherwise. Whether the address can be sent from depends on how the port is
+opened. A fourth source, `gateway` (leave from a chosen host), is not built.
 
 ---
 
 ## Can a silo use the same IP out as in?
 
-Only some ways of exposing a silo let it. This is what the code does today:
-
-| Exposed with | The address people reach it on | Same address for outgoing traffic? |
+| The port is open on | The address people reach it on | Same address for outgoing traffic? |
 |---|---|---|
-| Private (no `expose`) | None | Nothing to match. Outgoing uses `host` (default) or `pool`. `sameAsService` is refused. |
-| `hostPort` | The host's address | **Yes.** `host` and `sameAsService` are the same address here, so the default is already that. |
-| `loadBalancer`, class `worker-ip` | The host's address | **Yes**, same as `hostPort`. |
-| `loadBalancer`, class `ip-pool` | An address of its own from the pool | **Yes**, with `sameAsService` (or `pool` with the same pool). That address is on the host, so the host sends from it. |
-| `loadBalancer`, a provider's announced address (`linode-shared-ip`) | The shared IP | **Yes**, with `sameAsService`. The silo's host holds the address while the silo is there, and the address moves with it. |
-| `loadBalancer`, a provider's balancer in front (`linode-nodebalancer`) | The balancer's IP | **No.** That address is on no host, so nothing can send from it. Use `host` or `pool`. |
-| Behind an [Ingress]({{ '/ingress/' | relative_url }}) | The ingress controller's address | **No.** That address belongs to the controller, not to your silo. The silo is private, so use `host` or `pool`. |
+| Nothing (no service) | None | Nothing to match. `sameAsService` is refused |
+| `hostPort` | The host's address | **Yes.** `host` and `sameAsService` are the same address, so the default is already that |
+| A load balancer of class `ip-pool` | An address of its own | **Yes**, with `sameAsService` (or `pool`). That address is on the host, so the host sends from it |
+| A provider's class whose address is announced to the silo's host (`linode-shared-ip`) | The shared IP | **Yes**, with `sameAsService`. The host holds the address while the silo is there |
+| A provider's balancer in front (`linode-nodebalancer`) | The balancer's address | **No.** That address is on no host, so nothing can send from it |
+| An [Ingress]({{ '/ingress/' | relative_url }}) controller | The controller's address | **No.** The address belongs to the controller, not to your silo |
 
-**Not refused yet:** `sameAsService` on a silo behind a balancer (`linode-nodebalancer`) is accepted
-when you apply it, but it can't work: outgoing connections would be sent from an address the host
-doesn't hold. Don't set it. Kevaso will refuse it in a later change.
+When `sameAsService` can't be honoured, Kevaso doesn't refuse it: the silo sends from the host's
+address and `kvo describe silo` says why. The same happens while an address is still being made.
 
 To see both addresses for a running silo:
 
@@ -178,15 +159,13 @@ kvo describe silo web -n shop
 ```
 
 ```text
-Exposure:    loadBalancer (linode-shared-ip)
-Public IP:   172.105.3.63
 Egress IP:   172.105.3.63 (sameAsService)
+In and out:  same address in and out: 172.105.3.63
 ```
 
-`Public IP` is where people reach it. `Egress IP` is where its outgoing traffic leaves from, with the
-`source` you chose in brackets. With the default (`host`) the bracket is absent and the address is
-the host's. A `-` means there is none (for example, a host that is behind NAT). If the silo is
-announced, `describe` also prints an `Announced` line.
+`Egress IP` is where its outgoing traffic leaves from, with the `source` you chose in brackets. `In
+and out` says in one line whether the address out is the address in, and why not when it isn't. A `-`
+means there is none, for example on a host behind NAT.
 
 ---
 
@@ -201,21 +180,21 @@ metadata: { name: build-tools, namespace: dev }
 spec:
   egress:
     - { to: api.example.com }                                  # a name: TLS on 443
-    - { to: "*.npmjs.org" }                                   # a wildcard name
-    - { to: "0.0.0.0/0", ports: ["30303"], protocols: [tcp, udp] }   # raw, any address, one port
+    - { to: "*.example.org" }                                  # a wildcard name
+    - { to: "203.0.113.0/24", ports: ["5432"] }                # raw, an address range, one port
 ---
 apiVersion: kevaso/v1
 kind: Silo
 metadata: { name: builder, namespace: dev }
 spec:
   runtime: cloud-hypervisor
-  image: ubuntu-24.04
+  vm: { image: ubuntu-24.04 }
   grants: [build-tools]
 ```
 
 | `to:` | How it's enforced |
 |---|---|
 | An address or CIDR | The host firewall, by address, port and protocol |
-| A host name | The host's **egress gate**: the silo's TLS is checked against the name it asks for (SNI) and passed through, untouched, only for that name, to the address the gate looks up itself. No name or another name: refused. (The gate doesn't look inside a passed-through connection; for hosts it injects a secret for, it does, and refuses a request for another host: see [Secrets]({{ '/secrets/' | relative_url }}).) |
+| A host name | The host's **egress gate**: the silo's TLS is checked against the name it asks for (SNI) and passed through, untouched, only for that name, to the address the gate looks up itself. No name or another name: refused. A name opens TCP only, port 443 unless you list ports. (The gate doesn't look inside a passed-through connection; for hosts it injects a secret for, it does, and refuses a request for another host: see [Secrets]({{ '/secrets/' | relative_url }}).) |
 
 DNS always works, so a silo can resolve anything; it just can't connect where no grant says.
