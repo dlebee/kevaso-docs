@@ -9,7 +9,7 @@ A plugin adds to Kevaso from outside. There are two sorts, and `kvoadm plugin` i
 
 | Sort | Adds | Example |
 |---|---|---|
-| **Provider plugin** | A cloud or a storage system: load balancers, block volumes, a shared file system, DNS | [Linode]({{ '/providers/linode/' | relative_url }}), [JuiceFS]({{ '/providers/juicefs/' | relative_url }}) |
+| **Provider plugin** | A cloud or a storage system: load balancers, addresses, block volumes, a shared file system, DNS | [Linode]({{ '/providers/linode/' | relative_url }}), [JuiceFS]({{ '/providers/juicefs/' | relative_url }}) |
 | **Plugin operator** | New [kinds]({{ '/extending/kinds/' | relative_url }}), their [policies]({{ '/extending/policies/' | relative_url }}), and a controller that acts on them | [The example below](#the-example-sessions) |
 
 Either way, a plugin never gets more than it shows you first.
@@ -92,18 +92,26 @@ give a program, and this one handles your storage.
 > **Not proven on a real machine:** a privileged node side installed this way hasn't run on a real
 > host yet.
 
-### Load balancer classes and sources
+### Load balancer classes
 
-A plugin that provides load balancers lists **classes**. Two settings matter for who may connect:
+A plugin that provides load balancers lists **classes**. A silo or a `Service` names one in
+`loadBalancer.class` (see [Addresses you keep]({{ '/networking/ips/' | relative_url }})). What a
+class says about itself decides what Kevaso does with it:
 
 | Class setting | Means |
 |---|---|
-| `announce` | Its address is routed to whichever host has the silo. Clients reach that host with their own address, so **the host's firewall** applies `allowFrom` |
-| `filtersSources` | The load balancer itself accepts clients only from the sources it's given: the plugin gets each port's `allowFrom` (the service's, narrowed by an open [lease]({{ '/networking/leases/' | relative_url }})) and **must apply it**, say with a firewall on the load balancer |
+| `announce` | Its address is routed to whichever host has the silo, and the plugin's node side announces it. Clients reach that host with their own address, so **the host's firewall** applies each port's `sources` |
+| `nodePorts` | The load balancer sends to each backend host on a port of its own, which the host forwards to the silo |
+| `filtersSources` | The load balancer itself accepts clients only from the sources it's given. The plugin gets each port's `sources` (narrowed by an open [lease]({{ '/networking/leases/' | relative_url }})) and **must apply them**, say with a firewall on the load balancer |
+| `reserve` | The class can hold an address on its own, so an [IP]({{ '/networking/ips/' | relative_url }}) of the class exists before its service and outlives it. Without it the address is the load balancer's and lives as long as the IP does |
+| `follows` | Where the address can go with its holder: `host`, `region` (the default) or `global` |
+| `sendsFrom` | The address is on the silo's host, so the silo can send from it (`egress.source: sameAsService`). A balancer in front can't |
+| `exclusive` | Only one host can have the address at a time, so one silo holds it and it is never shared. Without it, services of the class in a namespace share one address |
 
-A node-port class that does neither **gets no port that has sources**: the silo's `LoadBalancer`
-condition is `SourcesNotEnforced` and names the ports. A port that someone narrowed is never
-quietly opened to everyone. A plugin sets `filtersSources: true` once it applies the sources it's given.
+A class whose address isn't announced, and that doesn't set `filtersSources`, **gets no port that has
+`sources`**: the silo's `LoadBalancer` condition is `SourcesNotEnforced` and names the ports. A port
+that someone narrowed is never quietly opened to everyone. A plugin sets `filtersSources: true`
+once it applies the sources it's given.
 
 ---
 
@@ -231,8 +239,8 @@ installed, its kinds can't be deleted on their own.
 
 Core's repository has a complete one in `examples/operator-session`: two kinds, `SessionTemplate`
 and `Session`, and a controller that gives each session `spec.replicas` silos made from its
-template, named `SESSION-0`, `SESSION-1`…. Its README walks through it. The controller is Go, on
-`kevaso.com/core/api` and `kevaso.com/core/sdk` only.
+template, named `SESSION-0`, `SESSION-1`…. Its README walks through it. The controller uses only Kevaso's
+published API and SDK packages.
 
 ```bash
 kvoadm plugin install root@203.0.113.10 --package examples/operator-session
