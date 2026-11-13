@@ -113,10 +113,10 @@ kvoadm host list
 ```
 
 ```bash
-kvo describe host sys2
+kvo get host sys2 -o yaml
 ```
 
-`describe` shows `status.controlPlane`: whether it's a `learner` or `voter`, and which one leads.
+`status.controlPlane` says whether the node is a `learner` or a `voter` (`member`), and whether it leads (`leader: true`). `kvoadm host list` and `kvo describe host` don't show it.
 
 ---
 
@@ -238,7 +238,7 @@ version itself) is not built.
 
 ## What isn't proven
 
-On real machines this has run on Linodes in one setup: three system nodes, and two with a light
+On real machines this has run on cloud machines in one setup: three system nodes, and two with a light
 node, losing one, removing one, upgrading, and SQLite to etcd. **Not tried:** removing the
 leader's own node, five system nodes, an upgrade with a light node in the cluster, Podman workers.
 See [What's proven where]({{ '/operations/#whats-proven-where' | relative_url }}).

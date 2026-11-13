@@ -9,7 +9,7 @@ A plugin adds to Kevaso from outside. There are two sorts, and `kvoadm plugin` i
 
 | Sort | Adds | Example |
 |---|---|---|
-| **Provider plugin** | A cloud or a storage system: load balancers, addresses, block volumes, a shared file system, DNS | [Linode]({{ '/providers/linode/' | relative_url }}), [JuiceFS]({{ '/providers/juicefs/' | relative_url }}) |
+| **Provider plugin** | A cloud or a storage system: load balancers, addresses, block volumes, a shared file system, DNS | The cloud and storage pages under Providers, such as [JuiceFS]({{ '/providers/juicefs/' | relative_url }}) |
 | **Plugin operator** | New [kinds]({{ '/extending/kinds/' | relative_url }}), their [policies]({{ '/extending/policies/' | relative_url }}), and a controller that acts on them | [The example below](#the-example-sessions) |
 
 Either way, a plugin never gets more than it shows you first.
@@ -19,7 +19,7 @@ Either way, a plugin never gets more than it shows you first.
 ## Install a provider plugin
 
 ```bash
-kvoadm plugin install root@203.0.113.10 --name linode --binary ./kevaso-provider-linode-linux-amd64 --credential token=$HOME/linode-token.txt
+kvoadm plugin install root@203.0.113.10 --name cloud --binary ./kevaso-provider-cloud-linux-amd64 --credential token=$HOME/cloud-token.txt
 ```
 
 | Flag | Meaning |
@@ -35,7 +35,7 @@ kvoadm plugin install root@203.0.113.10 --name linode --binary ./kevaso-provider
 To remove one:
 
 ```bash
-kvoadm plugin remove root@203.0.113.10 --name linode
+kvoadm plugin remove root@203.0.113.10 --name cloud
 ```
 
 ### The default is small
@@ -164,8 +164,9 @@ spec:
 - **Roles are small.** Never `*` as a verb or resource. Never RBAC (`roles`, `rolebindings`,
   `clusterroles`, `clusterrolebindings`), never `serviceaccounts/token`, `kinddefinitions`,
   `validationpolicies`, `mutationpolicies` or `plugins`, and never `read-value` or `approve` on
-  secrets. The controller can't make itself more than its package says, and is never
-  `cluster-admin`.
+  secrets, or `approve` on `silos/exposure`. Install refuses with, for example,
+  `approve on silos/exposure is for people, never a plugin`. The controller can't make itself
+  more than its package says, and is never `cluster-admin`.
 - **Names say whose they are.** Policies and roles are named `PLUGIN-…`.
 
 ### Install
@@ -285,4 +286,4 @@ Two features of [defined kinds]({{ '/extending/kinds/' | relative_url }}) that o
 - Installing the controller on every control-plane host.
 
 **On real machines:** installing an operator over SSH and systemd, and uninstalling it, has run on
-Linodes.
+cloud machines.

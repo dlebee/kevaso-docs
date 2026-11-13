@@ -219,7 +219,7 @@ with a `ClusterRoleBinding` to the controller's service account). See [People an
 
 A controller is a program that **watches** your kind and **reconciles** each object: it looks at what
 was asked for and makes the world match, then writes the result to the object's status. Write one
-in Go with `sdk/controller`, which needs only the public `kevaso.com/core/api` and
+with `sdk/controller`, which needs only the public `kevaso.com/core/api` and
 `kevaso.com/core/sdk` modules. It:
 
 - watches one kind through an **informer**, a cache that stays up to date;

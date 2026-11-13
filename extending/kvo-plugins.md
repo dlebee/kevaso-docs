@@ -15,7 +15,8 @@ run on the hosts and are installed with `kvoadm`.
 
 > **No public index exists yet.** `kvo plugin install` reads a signed list of plugins, and Kevaso's
 > own list isn't published. Until it is, `kvo plugin install panes` answers "the Kevaso plugin index
-> isn't published yet" and installs nothing. You can still use an index you [add](#another-publishers-index)
+> isn't published yet (no key built into this kvo); add an index with kvo plugin index add" and
+> installs nothing. You can still use an index you [add](#another-publishers-index)
 > yourself, or one you build on your own machine.
 
 ---
