@@ -81,13 +81,14 @@ It prints `ok` when the control plane took it. Run it again with the same name t
 
 ## Report an HTML pane
 
-The silo must allow `html`. Put the page in a file (one `index.html`), then:
+The silo must allow `html`. Put the page in a file (`index.html`) or a folder with `index.html` at
+its top, then:
 
 ```bash
-kvo-guest pane html dashboard --bundle ./dashboard.html --title "Dashboard" --data '{"requests": 120}'
+kvo-guest pane html dashboard --bundle ./dashboard --title "Dashboard" --data '{"requests": 120}'
 ```
 
-The file is uploaded once (Kevaso names it by its SHA-256), and the pane then points at it. To push
+The bundle is uploaded once (Kevaso names it by its SHA-256), and the pane then points at it. To push
 new numbers to the page without uploading it again, run the same command with new `--data` (JSON,
 or `--data -` to read it from standard input). The page defines a function `window.kvoUpdate(data)`,
 which the panes app calls with each new value.
@@ -95,9 +96,37 @@ which the panes app calls with each new value.
 | Flag | Meaning |
 |---|---|
 | `NAME` | As above |
-| `--bundle FILE` | The pane's page, as one HTML file or an archive the client unpacks |
+| `--bundle DIR\|FILE` | The pane's page: a folder, a single HTML file, or a ustar archive ([the format](#the-bundle-format)) |
 | `--data JSON` or `--data -` | The data pushed to the page, as JSON |
 | `--title T`, `--ttl D` | As above |
+
+### The bundle format
+
+A bundle is one of two things:
+
+| Form | What it is |
+|---|---|
+| **A single HTML page** | Any file that isn't a tar archive. It is the pane's `index.html`, byte for byte |
+| **An archive** | A POSIX **ustar** archive with `index.html` at its top, and any files it needs beside it |
+
+`--bundle DIR` makes the archive for you. It packs the folder **the same way every time**: names in
+sorted order, no times, no owners, fixed modes. So the same files always give the same digest, and
+a pane whose files haven't changed is never uploaded again.
+
+The rules, checked in the silo before anything is sent (and again by the app that opens it):
+
+| Rule | |
+|---|---|
+| Size as uploaded | At most **512 KiB**. There is no compression: a pane that needs more should load less |
+| Files | At most **256**, unpacking to at most **8 MiB** |
+| Entries | Regular files and folders only. No links, devices or pipes |
+| Names | Relative. No leading `/`, no `..`, no backslash, no control characters, under 256 bytes |
+| Duplicates | A file twice is refused |
+| Archive extensions | No pax or GNU extension headers: plain ustar |
+
+A folder with a link or a special file in it is refused, not followed. Anything that breaks a rule
+is refused with the reason. A bundle uploaded some other way (a raw broker call) isn't checked
+until a person opens the pane, and the app then refuses it.
 
 ---
 
@@ -187,12 +216,10 @@ The silo is the less trusted side, so the rules all point away from it:
 
 ## The macOS panes app
 
-`apps/panes` in the core repository is a small macOS app that shows a person's panes in one
-window: status panes drawn natively, HTML panes in a sealed web view with no network, no storage,
-no clipboard, no keyboard and no way to open anything else. It needs macOS 14 or later and Swift 6
-(Xcode or the command line tools), and no admin rights.
-
-Build and run it:
+`apps/panes` in the core repository is a small macOS app that shows a person's panes. Status panes
+are drawn natively. HTML panes run in a sealed web view with no network, no storage, no clipboard,
+no keyboard and no way to open anything else. It needs macOS 14 or later and Swift 6 (Xcode or the
+command line tools), and no admin rights.
 
 ```bash
 cd apps/panes
@@ -203,27 +230,84 @@ swift build
 ```
 
 ```bash
+swift run KevasoPanes
+```
+
+### Sign in
+
+Press **Add Cluster…** and give what you'd give `kvo login`: the server and the CA fingerprint
+(`sha256:…`), plus a name and a namespace.
+
+1. The app downloads the CA, and accepts it **only if it matches your fingerprint**.
+2. It checks that the server really holds a certificate from that CA.
+3. It opens your browser to sign in, with the [invite code]({{ '/access/' | relative_url }}).
+
+It's the same sign-in as `kvo login` (PKCE, a loopback redirect), and uses `kvo`'s public client. Add as
+many clusters as you like and switch between them in the sidebar; right-click one to sign in again,
+sign out or remove it. Only one cluster's panes float at a time.
+
+| | |
+|---|---|
+| **Your session** | A refresh token in the macOS login keychain, as `com.kevaso.panes`. It's separate from `kvo`'s (`com.kevaso.kvo`): signing out of one leaves the other. Access tokens stay in memory |
+| **Cluster list** | `contexts.json` in Application Support: server, CA and namespace. Never a token |
+| **The CA is pinned** | Every request (API, watch, bundle, token, the sign-in pages) trusts **only that cluster's CA**, checks the host name or address, follows no redirect, and fetches no extra certificate data. Without a pinned CA the app refuses to connect: it never uses the system's roots |
+| **Sign out** | Tells the control plane to end the session (`POST /oidc/revoke`), then deletes the keychain item. If the cluster can't be reached, you're signed out locally and the session ends when idle |
+| **A copy of your token got out** | If the control plane sees an old refresh token used again, it ends the session for everyone. The app deletes its keychain item, closes that cluster's panes and shows that it's signed out |
+
+After a rebuild of an unsigned app, macOS may ask once whether the new program may read the
+keychain item.
+
+For CI and scripts the environment still works, and wins over the clusters:
+
+```bash
 KVO_SERVER=https://203.0.113.10:6443 KVO_CA_FILE=ca.pem KVO_TOKEN=… KVO_NAMESPACE=team swift run KevasoPanes
 ```
 
 `KVO_TOKEN` is a [service-account token]({{ '/access/' | relative_url }}#tokens-for-ci) that may
-read panes and silos in that namespace, and `KVO_CA_FILE` is the cluster's CA certificate. Without
-these variables, open the app's Settings (⌘,), fill in the server, CA file, token and namespace
-and press Connect. Then turn on the panes you want in the list: only those are shown and opened.
+read panes and silos in that namespace, and `KVO_CA_FILE` is the cluster's CA certificate.
 
-**Not done yet:**
+### Floating panes
 
-- **Sign-in.** The app doesn't use your `kvo login`. The token comes from the environment or the
-  settings, and the settings keep it in the app's preferences as plain text.
+Turn on a pane in the main window, and it becomes a small window that floats above the others, on
+every desktop. It never takes the keyboard (a click in a pane leaves your typing where it was), so
+it can sit over your work.
+
+- The header drags it; its edges resize it (from 220×140 to 1400×1000); the × turns the pane off.
+- Where each window was is remembered per cluster and pane, and it comes back fitted to the screens
+  you have (a window on an unplugged display comes back stacked at the bottom right).
+- **A pane can't move, resize, focus or close its window.** What it asks for in its own page is
+  ignored. A pane that tries to close itself only silences itself.
+- **The rim and header are drawn by the app, outside the pane**: the silo's name, namespace and host,
+  and marks for *stale*, *needs you* and *untrusted*. A pane can't pose as another silo.
+- **Needs you:** when a pane you turned on changes to `needs-you`, its rim glows, and if you ticked
+  "Notify me when a pane needs me" (and allowed it in macOS) a notification says "SILO needs you ·
+  PANE · NAMESPACE". The text is the app's, never the silo's. It rings at most once a minute for a pane,
+  and a pane can't raise one itself. Notifications need the app to run as a bundle; with `swift run` it
+  bounces the Dock icon instead.
+- **Untrusted silos get a striped rim.** The app reads the label `kevaso.com/trust: untrusted` on
+  the Silo, never anything the pane says. If it can't read the silo, the rim is striped too, and
+  says "trust unknown": only a silo it read and found unmarked gets a solid rim. The label is not
+  reserved yet: today anyone who may update the silo can set it, and nothing in the control plane
+  enforces or copies it.
+
+### The test suite
+
+Panes are the one place a silo's content runs on your computer, so the app has a hostile-pane
+suite, with a pane that tries to reach the network, the clipboard, your files, other panes and its
+own window. Run it after every macOS or Safari update:
+
+```bash
+swift test
+```
+
+It takes about 3 minutes and needs a logged-in desktop: small panes appear on screen and are
+clicked on. The sign-in tests use a keychain service of their own and delete it afterwards.
+
+### Not done yet
+
 - **No packaging.** It runs with `swift run`: no signed or notarised build.
-- **The untrusted-silo stripe.** The control plane doesn't say whether a silo is untrusted, so
-  every pane's rim is one solid colour.
-- **A private WebKit API.** The sealed view depends on some WebKit settings Apple doesn't document,
-  so a macOS update can change them. The app has a test suite for exactly this (`swift test`, about
-  2½ minutes, on a logged-in desktop). Run it after each macOS update.
-- **One leak is unmeasured.** A page asking for a name's DNS address is switched off, but nobody
-  has measured that it never goes out.
-- **The bundle format.** The app takes a plain `index.html`, or a tar archive (ustar) with an
-  `index.html` in it. The control plane doesn't define a format yet; it stores whatever the
-  silo sends.
-- **Linux, Windows, a web client:** none yet.
+- **A private WebKit API.** The sealed view depends on WebKit settings Apple doesn't document, so
+  a macOS update can change them. That is what the suite is for.
+- **The untrusted label isn't reserved or copied into the pane,** so a person who may read panes but
+  not silos sees every rim as "trust unknown".
+- **The streamed browser, Linux, Windows, a web client:** none yet.

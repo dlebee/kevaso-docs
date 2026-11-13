@@ -26,7 +26,11 @@ entering it.
 | Decide how to set up a real cluster | [Choosing a setup]({{ '/setup/' | relative_url }}) |
 | Set up a machine, step by step | [Prepare a machine]({{ '/setup/prepare/' | relative_url }}) |
 | Run things inside a silo, or get a shell and files | [Daemons and upkeep]({{ '/silos/daemons/' | relative_url }}), [Terminals and files]({{ '/silos/terminals/' | relative_url }}), [Panes]({{ '/panes/' | relative_url }}) |
-| Add your own kinds and rules | [Defining your own kind]({{ '/extending/kinds/' | relative_url }}), [Policies]({{ '/extending/policies/' | relative_url }}) |
+| Keep a port closed until you need it | [Port leases]({{ '/networking/leases/' | relative_url }}) |
+| Give silos volumes, or make a microVM movable | [Volumes]({{ '/silos/volumes/' | relative_url }}), [Host loss and moves]({{ '/silos/moves/' | relative_url }}) |
+| Survive losing a system node, or upgrade without stopping | [High availability]({{ '/operations/ha/' | relative_url }}) |
+| Add your own kinds and rules, or install a plugin | [Defining your own kind]({{ '/extending/kinds/' | relative_url }}), [Policies]({{ '/extending/policies/' | relative_url }}), [Plugins]({{ '/extending/plugins/' | relative_url }}) |
+| See what has been proven on real machines | [What's proven where]({{ '/operations/#whats-proven-where' | relative_url }}) |
 | Look up a command | [Command reference]({{ '/reference/' | relative_url }}) |
 
 ---

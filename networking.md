@@ -109,6 +109,12 @@ spec:
     loadBalancer: { class: ip-pool, pool: hv2-extra, stableIP: true }
 ```
 
+### Only for a while: a lease
+
+Some ports you want closed until you need them: a debug port, an admin page. Put a `lease` on the
+service and the port starts closed, opens for a time you choose, and closes by itself:
+[Port leases]({{ '/networking/leases/' | relative_url }}).
+
 > **Exposing publicly is its own permission:** `create` on `services/expose-public`. Namespace
 > `admin`s have it, `editor`s don't. The same goes for a SiloSet whose instances would be exposed,
 > and a standalone Service of type `LoadBalancer` ([Sets, images and updates](../silos/sets/)).

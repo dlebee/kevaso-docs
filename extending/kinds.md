@@ -124,7 +124,7 @@ It's a part of OpenAPI v3:
 | Numbers | `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum` |
 | Any | `default`, `description` |
 | `x-kevaso-preserve-unknown: true` | Keep fields the schema doesn't list |
-| `x-kevaso-validations` | Rules in [CEL](https://cel.dev) on that node, each `rule` with a `message`. `self` is the node. |
+| `x-kevaso-validations` | Rules in [CEL](https://cel.dev) on that node, each `rule` with a `message`. `self` is the node, and `oldSelf` its old value ([below](#rules-that-compare-with-the-old-value)) |
 
 Anything else in a schema is refused when you write the definition, and so is a CEL rule that
 doesn't compile.
@@ -132,7 +132,8 @@ doesn't compile.
 **What happens on each write**, in order: the object is decoded (its metadata strictly), Kevaso adds
 its own metadata (uid, times, generation), schema defaults fill in, [mutation policies]({{ '/extending/policies/' | relative_url }})
 run, the schema and CEL rules are checked, then validation policies, and then it's stored.
-`generation` goes up when anything other than `metadata` and `status` changes.
+`generation` goes up when anything other than `metadata` and `status` changes. (For Kevaso's own
+kinds the built-in checks come between: [the order of a whole write]({{ '/extending/policies/#the-order-of-a-write' | relative_url }}).)
 
 **Changing a definition never makes stored objects unreadable.** Reads return what's stored and
 aren't checked against the schema. A new schema applies from the next write of each object.
@@ -147,6 +148,38 @@ With `subresources: { status: {} }`:
 - Controllers write `…/status`, which changes **only** `status`.
 
 Without it, `status` is an ordinary field and there's no `/status` to write.
+
+### Rules that compare with the old value
+
+A rule can use `oldSelf`, the node's value in the stored object. It is checked on **updates only**,
+and skipped on a create, and when the old object didn't have the node (so a field can be set for
+the first time).
+
+```yaml
+template:
+  type: string
+  x-kevaso-validations:
+    - { rule: "self == oldSelf", message: "a session's template can't change: start a new session" }
+```
+
+`self >= oldSelf` makes a number that only grows. A list's items have no old value to compare with,
+so a rule with `oldSelf` inside `items` is refused when you write the definition: put it on the list.
+
+---
+
+## Scale
+
+With `subresources: { scale: { specReplicasPath: .spec.replicas, statusReplicasPath: .status.replicas } }`,
+the kind scales like a set:
+
+```bash
+kvo scale session fix-login-bug --replicas 3 -n dev
+```
+
+`--replicas` is the same flag as `--instances`. Both paths are dotted paths to integers in your
+schema (the second is optional), checked when the definition is written. A scale is an ordinary
+update of the object: defaults, policies, the schema's bounds and rules all apply. RBAC calls it
+`PLURAL.GROUP/scale` (`get`, `update`).
 
 ---
 
@@ -229,8 +262,8 @@ Delete the objects first, then the definition.
 
 **Not done yet:**
 
-- Installing a definition with a plugin (`kvoadm plugin install` doesn't carry definitions, so
-  there's no owner to remove them with).
-- A scale subresource.
-- Rules that compare the new value with the old one (`oldSelf`) in a schema.
 - More than one version of a kind at once.
+- A scale subresource with a label selector, and `oldSelf` rules on a list's items.
+
+A plugin can ship definitions with its controller, and owns them:
+[Plugins]({{ '/extending/plugins/#plugin-operators' | relative_url }}).

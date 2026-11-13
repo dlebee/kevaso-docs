@@ -51,8 +51,19 @@ What was checked, and what wasn't:
 | `cloud-hypervisor` | In tests with a simulated guest only. Not yet on a real VM. |
 | `openshell`, `openshell-container` | In tests only. Not yet against a real OpenShell gateway: it isn't known whether its CLI passes window resizes or takes a terminal. |
 
-Stopping the command on leave has one known gap: a program that clears its own environment
-(`env -i …`) isn't found, and keeps running.
+### When your client drops
+
+If `kvo exec` or `kvo ssh` is stopped (Ctrl-C, a closed laptop, a lost connection), Kevaso stops
+what it started in the silo: the command, everything it started, and every process in the session
+it led. That holds even if the command clears its own environment (`env -i …`) or forks while
+Kevaso is stopping it.
+
+What can still **escape**: a program that leaves the tree and the session on purpose (a daemon:
+fork, `setsid`, exit the parent) and carries none of Kevaso's marker (`KEVASO_EXEC`) in its
+environment. For something meant to outlive you, use a [daemon]({{ '/silos/daemons/' | relative_url }}).
+
+On a microVM, `kvo exec` runs the command through `sudo` in the guest, so the whole command line
+lands in the guest's journal. **Don't put a secret on a command line.**
 
 ---
 

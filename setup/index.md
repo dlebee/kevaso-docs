@@ -19,6 +19,7 @@ one up.
 | [Running locally](#running-locally) | A VM on your computer | Trying Kevaso, developing it |
 | [Dedicated system node + workers](#dedicated-system-node--workers) | 1 + N | **Most clusters.** The default choice. |
 | [Combined node](#combined-node-control-plane-and-silos-on-one-machine) | 1 (both roles) | One machine, run by someone who knows the trade-offs |
+| [Several system nodes](#several-system-nodes) | 3, or 2 and a small one | A control plane that survives losing a machine |
 
 ---
 
@@ -75,7 +76,7 @@ flowchart LR
 
 | | |
 |---|---|
-| **Fault tolerance** | Losing a **worker**: its `Wait` silos wait, its `Recreate` silos start elsewhere after 30 s. Losing the **system node**: running `Wait` silos keep running, but nothing changes until it's back (see the tables above). |
+| **Fault tolerance** | Losing a **worker**: its `Wait` silos wait, its `Recreate` silos start elsewhere after 30 s. Losing the **system node**: running `Wait` silos keep running, but nothing changes until it's back (see the tables above); [several system nodes](#several-system-nodes) remove that. |
 | **Recovery** | Bring the machine back, and everything resumes. |
 | **Operational risk** | The system node is a single point of control: keep it small, patched, and running nothing else. |
 | **Security** | A silo broken out of its VM lands on a *worker*, which only ever gets the secrets of its own silos, and can't act as another host. |
@@ -99,3 +100,20 @@ them, it's a perfectly good way to run a small cluster.
 | **Grows into** | The recommended setup: add workers, then move silos off. |
 
 → [Single system node]({{ '/setup/single-node/' | relative_url }}#step-2--let-the-machine-run-silos-optional)
+
+---
+
+## Several system nodes
+
+Three system nodes (or two, and a small **light node** that only votes) keep the control plane up
+when one machine is lost: the API answers, silos are scheduled, `kvo exec` works. Start on the
+embedded etcd store (`kvoadm init … --store etcd`), or switch later with `kvoadm store migrate`,
+then add the others with `kvoadm host add … --install control-plane`.
+
+| | |
+|---|---|
+| **Fault tolerance** | Lose one system node: nothing stops. Lose two of three: the store stops taking changes until one is back; silos keep running |
+| **Operational risk** | More machines to patch, and port 2380 open between them. `kvoadm upgrade` rolls them one at a time |
+| **Proven** | On real Linodes: three system nodes, two with a light node, losing and removing one, an upgrade |
+
+→ [High availability]({{ '/operations/ha/' | relative_url }})

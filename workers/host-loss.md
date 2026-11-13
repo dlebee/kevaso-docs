@@ -15,7 +15,7 @@ A host that stops reporting for **40 seconds** is marked lost. What happens to i
 ```yaml
 spec:
   availability:
-    onHostLoss: Wait        # Wait (default) | Recreate
+    onHostLoss: Wait        # Wait (default) | Recreate | Move (with its data: Host loss and moves)
 ```
 
 | Policy | Meaning | Good for |
@@ -24,7 +24,8 @@ spec:
 | `Recreate` | Started fresh from its image on another host after 30 s. Its disk on the lost host is given up. | Stateless or rebuildable silos |
 
 To make sure two copies never run at once, a worker that loses the control plane for 30 seconds
-**stops its own `Recreate` silos** before the control plane would recreate them elsewhere.
+**stops its own `Recreate` and `Move` silos** before the control plane would recreate them elsewhere,
+even if `kevasod` itself has stopped: the small `kevaso-fence` service does it ([the fence]({{ '/silos/moves/#the-fence' | relative_url }})).
 
 ---
 

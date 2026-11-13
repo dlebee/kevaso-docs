@@ -18,7 +18,7 @@ how it's made. Pick one per silo with `spec.runtime`.
 | **Needs KVM** | Yes | Yes | No | No |
 | **Network** | Real network card: TCP and UDP, in and out | None: outbound TCP through OpenShell's policy only | None: same | Its own namespace on the silo bridge: TCP and UDP |
 | **Inbound services** | Yes, client IP kept | No | No | Yes, client IP kept |
-| **Persists** | Its own disk | `/sandbox` | `/sandbox` | Volumes |
+| **Persists** | Its own disk, and [volumes]({{ '/silos/volumes/' | relative_url }}) | `/sandbox` | `/sandbox` | Volumes |
 | **Injection** | Kevaso's egress gate | OpenShell (placeholder in an env var) | OpenShell | Kevaso's egress gate |
 | **Broker (`kvo-guest`)** | Yes, over vsock | No | No | Yes, over a socket |
 | **Root inside** | Yes | No (a sandbox user) | No | The image's user |

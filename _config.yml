@@ -32,6 +32,7 @@ sections:
       - { title: Your first silo, url: /silos/first-silo/ }
       - { title: Runtimes, url: /silos/runtimes/ }
       - { title: Sets, images and updates, url: /silos/sets/ }
+      - { title: Volumes, url: /silos/volumes/ }
       - { title: Host loss and moves, url: /silos/moves/ }
       - { title: Daemons and upkeep, url: /silos/daemons/ }
       - { title: Terminals, files and the small UI, url: /silos/terminals/ }
@@ -39,6 +40,7 @@ sections:
   - title: Networking and secrets
     pages:
       - { title: Networking, url: /networking/ }
+      - { title: Port leases, url: /networking/leases/ }
       - { title: HTTPS sites (ingress), url: /ingress/ }
       - { title: Secrets, url: /secrets/ }
   - title: Providers
@@ -49,10 +51,12 @@ sections:
     pages:
       - { title: Defining your own kind, url: /extending/kinds/ }
       - { title: Policies, url: /extending/policies/ }
+      - { title: Plugins, url: /extending/plugins/ }
   - title: Running it
     pages:
       - { title: People and access, url: /access/ }
       - { title: Operations, url: /operations/ }
+      - { title: High availability, url: /operations/ha/ }
       - { title: Backup and restore, url: /operations/backup/ }
       - { title: Command reference, url: /reference/ }
       - { title: Contributing, url: /contributing/ }

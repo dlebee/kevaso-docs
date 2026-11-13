@@ -98,9 +98,46 @@ Matching policies run in **name order**, each one's mutations in **list order**,
 object as the ones before left it. After the last one, the object must still be a valid one for its
 kind: a mutation that makes a silo undecodable fails the write.
 
-**Order of a whole write:** mutation policies, then the kind's own checks (a defined kind's schema
-and rules), then validation policies, then it's stored. So validation policies judge the object
-*after* mutation.
+### The order of a write
+
+**For a kind you define:** mutation policies, then the schema and its rules, then validation
+policies, then it's stored.
+
+**For Kevaso's own kinds** (`Silo`, `Ingress`, `Secret`…) the **built-in guards** come in between:
+
+1. Defaults, and the object's own metadata.
+2. **Mutation policies.**
+3. **The built-in guards**, on the object as the mutations left it:
+   - the ones that stand for a privilege: exposing silos with `hostPort` or `loadBalancer`,
+     a `LoadBalancer` service, publishing on a public ingress class, giving a silo a grant or
+     naming secrets in a grant, each needing its own permission;
+   - the ones that refuse what a runtime or its storage can't do (the runtime fits, `onHostLoss`
+     against storage, volumes on microVMs);
+   - a [port lease]({{ '/networking/leases/' | relative_url }}) that is well formed;
+   - what can't change (an `Image` version), and a `KindDefinition`'s names.
+4. The kind's own rules.
+5. **Validation policies.**
+6. Stored.
+
+So **a mutation policy can't get a write past a guard.** Whatever it changes is checked as if the
+person had sent it. A policy that sets `spec.service.expose: loadBalancer` on a silo is refused
+unless the writer may expose silos publicly.
+
+Two rules close what is left:
+
+- On a write by something the guards don't ask permission of (the admin socket, `kevasod`'s own
+  controllers, hosts), a mutation that changes what the object exposes, its ingress class, its
+  grants or a grant's secrets is refused: *policies can't grant privileges*.
+- A policy can never set a Secret's `spec.value`: it would be stored in the clear.
+
+Status writes skip the guards, as they skip policies.
+
+### Dry runs
+
+Add `?dryRun=All` to a create or update and it goes through every step above, including the
+`resourceVersion` check, and answers with the object it would store, storing nothing. `kvo apply`
+uses it: a manifest that leaves out what the server defaults, or what a policy sets, is reported as
+`unchanged`, not `configured`.
 
 ---
 

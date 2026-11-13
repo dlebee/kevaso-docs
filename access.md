@@ -80,9 +80,9 @@ role to people in a namespace. The built-in roles:
 
 | Role | Can |
 |---|---|
-| `viewer` | Read silos, service accounts, grants; see that secrets exist, which silos wait for an approval, and the [panes]({{ '/panes/' | relative_url }}) silos report |
-| `editor` | Everything `viewer` can, plus create and change silos, `exec`, terminals and files (`silos/ssh`, `silos/files`), moves, service-account tokens; create and *use* secrets (never read a value back) |
-| `admin` | Everything `editor` can, plus roles and bindings in the namespace, exposing silos publicly, reading secret values, answering approvals, deleting panes |
+| `viewer` | Read silos, service accounts, grants; see that secrets exist, which silos wait for an approval, the [panes]({{ '/panes/' | relative_url }}) silos report, and the [leases]({{ '/networking/leases/' | relative_url }}) on their ports |
+| `editor` | Everything `viewer` can, plus create and change silos, `exec`, terminals and files (`silos/ssh`, `silos/files`), moves, opening and closing leased ports, service-account tokens; create and *use* secrets (never read a value back) |
+| `admin` | Everything `editor` can, plus roles and bindings in the namespace, exposing silos publicly, reading secret values, answering approvals (a secret's, or a leased port's), deleting panes and leases |
 | `cluster-admin` | Everything, everywhere (what `kvoadm init` gives you) |
 
 The permissions beyond plain read and write are their own *subresources*:
@@ -96,12 +96,20 @@ The permissions beyond plain read and write are their own *subresources*:
 | `silos/move` | `create` | `kvo move` | | yes | yes |
 | `panes` | `get`, `list`, `watch` | `kvo get panes`, `kvo pane watch`, `kvo pane bundle` | yes | yes | yes |
 | `panes` | `delete` | Clear a pane | | | yes |
+| `silos/exposure` | `open` | `kvo open silo`, `kvo close silo`: open and close a silo's [leased ports]({{ '/networking/leases/' | relative_url }}) | | yes | yes |
+| `silos/exposure` | `approve` | Answer an `expose` approval (a leased port that needs a yes) | | | yes |
+| `leases` | `get`, `list`, `watch` | `kvo get leases` | yes | yes | yes |
+| `leases` | `delete` | Delete a lease | | | yes |
+
+`open` and `approve` on `silos/exposure` can be limited to one silo by name, or to silos by label,
+like `approve` on secrets. Making a port public at all is still `create` on `services/expose-public`:
+a lease only decides when.
 
 [Terminals, files and the small UI]({{ '/silos/terminals/' | relative_url }}) are as strong as `exec`: give them the same care.
 
 **Kinds you define** are named by their resource, `PLURAL.GROUP` (`databases.acme.dev`), with
-`PLURAL.GROUP/status` for the status. No built-in role has them, only `cluster-admin`; you
-write a role, as in [Defining your own kind]({{ '/extending/kinds/' | relative_url }}#roles).
+`PLURAL.GROUP/status` for the status, and `PLURAL.GROUP/scale` (`get`, `update`) for `kvo scale`. No
+built-in role has them, only `cluster-admin`; you write a role, as in [Defining your own kind]({{ '/extending/kinds/' | relative_url }}#roles).
 
 Ask the cluster what you may do:
 
@@ -110,6 +118,14 @@ kvo auth can-i create silos/exec -n payments
 ```
 
 It exits 0 for yes and 1 for no, so it fits in scripts.
+
+---
+
+**Plugins** are objects too: `plugins` (cluster-scoped) is read by `kvoadm plugin list`. Only
+`cluster-admin` has it, and a plugin's own controller can read and report on its own `Plugin`
+and nothing else of that kind. A plugin's controller runs as the service account
+`kevaso-system/plugin-NAME`, with exactly the roles in its package, never `cluster-admin`
+([Plugins]({{ '/extending/plugins/#plugin-operators' | relative_url }})).
 
 ---
 
@@ -126,7 +142,9 @@ kvo ctx home
 ```
 
 The file is `~/.kevaso/config.yaml` (or `$KVO_CONFIG`). It holds addresses, CA fingerprints and
-certificate paths, never tokens.
+certificate paths, never tokens. With [more than one system node]({{ '/operations/ha/' | relative_url }}),
+a context's `server` can list them, comma-separated: `kvo` sticks to the last one that answered
+and moves on only when it can't connect.
 
 ---
 

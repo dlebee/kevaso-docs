@@ -32,9 +32,8 @@ flowchart LR
 | | |
 |---|---|
 | **Container silos** (`docker`, `podman`) | Built and tested, with the JuiceFS command faked. |
-| **On real machines** | **Not confirmed yet.** The node side needs root and `/dev/fuse`, and its mounts must be visible to Kevaso and the container runtime. The service that `kvoadm plugin install` writes today is locked down (no root, no devices, a read-only system), so it can't do that yet, nor does it give the node side the socket Kevaso looks for. Whether `juicefs mount --subdir` and `juicefs status` on a new database behave as the provider expects hasn't been tried on a real host either. |
-| **MicroVM silos** (`cloud-hypervisor`) | Not supported: it needs a host folder shared into the VM (virtiofs), which isn't built. Use JuiceFS with container silos only. |
-| **Disk-image mode** | Not built. |
+| **On real machines** | **Not confirmed yet.** The node side needs root and `/dev/fuse`, and its mounts must be visible to Kevaso and the container runtime. A plugin can now ask for that in a manifest, and `kvoadm plugin install --manifest` grants it when you say `--yes` ([Plugins]({{ '/extending/plugins/' | relative_url }})); that path hasn't been run on a real host. Whether `juicefs mount --subdir` and `juicefs status` on a new database behave as the provider expects hasn't been tried either. |
+| **MicroVM silos** (`cloud-hypervisor`) | Built and tested with fakes: a volume is shared into the VM over virtiofs, and a root disk can be an image file on a volume, so the VM moves ([Volumes]({{ '/silos/volumes/' | relative_url }})). **Not run on a real machine.** |
 | **Volume sizes** | `size` isn't enforced. |
 | **The metadata database** | Bring your own. Kevaso doesn't run it for you yet. |
 
@@ -113,6 +112,7 @@ deletes volumes' folders:
 bin/kvoadm plugin install root@203.0.113.10 \
     --name juicefs \
     --binary kevaso-provider-juicefs/bin/kevaso-provider-juicefs-linux-amd64 \
+    --manifest kevaso-provider-juicefs/kevaso-plugin.json --yes \
     --config juicefs.json \
     --credential bucket-access-key=$HOME/bucket-access-key.txt \
     --credential bucket-secret-key=$HOME/bucket-secret-key.txt \
@@ -127,6 +127,7 @@ bin/kvoadm plugin install root@203.0.113.20 \
     --name juicefs \
     --side node \
     --binary kevaso-provider-juicefs/bin/kevaso-provider-juicefs-linux-amd64 \
+    --manifest kevaso-provider-juicefs/kevaso-plugin.json --yes \
     --config juicefs.json \
     --credential bucket-access-key=$HOME/bucket-access-key.txt \
     --credential bucket-secret-key=$HOME/bucket-secret-key.txt \
@@ -135,8 +136,9 @@ bin/kvoadm plugin install root@203.0.113.20 \
 
 The names after `--credential` are the ones in the config's `credentials`. See
 [the Linode page]({{ '/providers/linode/' | relative_url }}#install-it) for what `plugin install`
-does with them. **Remember the status table above: on a real host, the node side's service is the
-part that isn't ready.**
+does with them. `--manifest` shows you what each side asks of the host (root, `/dev/fuse`, and on
+the node side the host's own mount namespace) and `--yes` grants it: see [Plugins]({{ '/extending/plugins/' | relative_url }}#what-a-manifest-asks-for).
+**Remember the status table above: this hasn't run on a real host yet.**
 
 Kevaso only puts a silo with a JuiceFS volume on a host whose node side is running. A host reports
 the classes it can mount in its status:
