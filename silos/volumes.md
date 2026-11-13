@@ -19,7 +19,7 @@ runtime, and what makes a microVM movable.
 spec:
   volumes:
     - { name: data, class: local, size: 50Gi, mountPath: /data }
-    - { name: chain, class: juicefs, size: 500Gi, mountPath: /chain, important: true }
+    - { name: archive, class: juicefs, size: 500Gi, mountPath: /archive, important: true }
 ```
 
 | Field | Meaning |

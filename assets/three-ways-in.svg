@@ -151,5 +151,5 @@
 
   <rect x="30" y="866" width="1220" height="34" rx="9" fill="#141822" stroke="#5ef0c0"/>
   <text x="48" y="888" fill="#eef0f5" font-size="13" font-weight="600">One mesh across every host</text>
-  <text x="250" y="888" class="s">It's how each nginx reaches the api. In case 2 the balancer can be yours, or a provider's kept in step by a plugin (a Linode NodeBalancer in front of Linodes).</text>
+  <text x="250" y="888" class="s">It's how each nginx reaches the api. In case 2 the balancer can be yours, or a provider's kept in step by a plugin (a cloud provider's load balancer in front of cloud VMs).</text>
 </svg>

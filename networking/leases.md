@@ -7,7 +7,7 @@ permalink: /networking/leases/
 
 A **lease** keeps a port closed until someone opens it for a while. When the time is up, the
 port closes by itself. Use it for a port you want open only now and then: a debug port, an
-admin page, a node's RPC while you check on it.
+admin page, a management API while you check on it.
 
 A lease sits on top of [`hostPort` or `loadBalancer`]({{ '/networking/' | relative_url }}#open-to-the-internet).
 It is never for silo-to-silo access: that is `allowFrom`, and it is always on.
@@ -20,11 +20,11 @@ It is never for silo-to-silo access: that is `allowFrom`, and it is always on.
 spec:
   service:
     ports:
-      - { name: p2p,   port: 30303 }
+      - { name: web,   port: 8080 }
       - { name: debug, port: 6060 }
     expose: hostPort
     lease:
-      ports: [debug]             # only this one is leased; p2p stays open
+      ports: [debug]             # only this one is leased; web stays open
       default: 15m
       max: 2h
       approval: { required: true }
@@ -74,24 +74,26 @@ Opening needs the verb `open` on `silos/exposure` ([below](#who-may-do-what)).
 
 ### From inside the silo
 
-The silo can ask for its own port, over its [broker]({{ '/secrets/#the-broker-for-everything-else' | relative_url }}):
+The silo can ask for its own port, over its [local endpoint]({{ '/secrets/#the-broker-for-everything-else' | relative_url }}):
 
 ```bash
-kvo-guest port open debug --for 1h
+curl -fsS -H 'Kevaso-Local: 1' -X POST 'http://169.254.42.1/v1/ports/debug/open?for=1h'
 ```
 
 ```bash
-kvo-guest port close debug
+curl -fsS -H 'Kevaso-Local: 1' -X POST http://169.254.42.1/v1/ports/debug/close
 ```
 
-| Flag | Meaning |
+| Query parameter | Meaning |
 |---|---|
-| `--for DURATION` | How long, as above |
-| `--wait DURATION` | If it needs a yes: how long to wait for one. Default 10 minutes, at most 1 hour |
+| `for=DURATION` | How long, as above |
+| `wait=DURATION` | If it needs a yes: how long the request may wait for one |
 
-`kvo-guest port open` waits for the answer and prints `port debug open until …`. It fails if
-the answer is no, or if nobody answers in time. A silo can only open and close **its own leased
-ports**: the silo that asks is known from the channel it asks on.
+A successful open answers `{"port":"debug","until":"…","clamped":false}`. If the lease needs a yes,
+the answer is HTTP `428` with the pending approval, and the silo asks again with `approval=NAME`
+until it is answered (see [approvals]({{ '/secrets/#ask-a-person-first-approvals' | relative_url }})). A
+refusal is `403`. To open several ports, call once for each. A silo can only open and close **its
+own leased ports**: the silo that asks is known from where the request arrived.
 
 ---
 
@@ -174,7 +176,7 @@ kvo get leases
 ```text
 SILO     PORT    PHASE    WHEN                   BY
 node-1   debug   Open     until 4:12PM           bob
-node-1   rpc     Closed   time up                alice (yes: carol)
+node-1   admin   Closed   time up                alice (yes: carol)
 ```
 
 | Phase | Means |

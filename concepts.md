@@ -46,7 +46,7 @@ flowchart LR
 | Word | What it is |
 |---|---|
 | **Host** | A machine Kevaso manages. It runs `kevasod` with one or both **components**: the *control plane* and the *worker*. |
-| **kevasod** | The one program on every host. It is the API server, the controllers, the worker agent and, inside a VM, the guest helper `kvo-guest`. |
+| **kevasod** | The one program on every host. It is the API server, the controllers, the worker agent. Nothing of Kevaso's runs inside a silo. |
 | **Silo** | One isolated machine: a microVM or a container, with its own disk or volumes, address and name. Silos live in a namespace. |
 | **Runtime** | What a silo is made of: `cloud-hypervisor` (microVM), `openshell` / `openshell-container` (NVIDIA OpenShell sandboxes), `docker` / `podman` (containers). See [Runtimes]({{ '/silos/runtimes/' | relative_url }}). |
 | **Namespace** | A folder for silos and the things they use (secrets, grants, roles). Access is given per namespace. |

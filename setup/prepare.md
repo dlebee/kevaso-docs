@@ -42,7 +42,7 @@ GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/kevasod-linux-amd64 ./cmd/
 ```
 
 > **Why `CGO_ENABLED=0`?** It makes a static binary that runs on any Linux, with nothing to install
-> next to it. The same file also becomes `kvo-guest` inside your VMs later.
+> next to it.
 
 ---
 
@@ -120,7 +120,7 @@ So get the real fingerprint **from somewhere other than this network connection*
 
 | Where the machine is | Where to read the fingerprint |
 |---|---|
-| A cloud provider | Its web console (Linode *Lish*, a serial console…), running the command below |
+| A cloud provider | Its web console (a serial console…), running the command below |
 | A box you can sit at | Its own keyboard and screen |
 | Some providers | The boot log they show you, which prints the SSH host keys |
 

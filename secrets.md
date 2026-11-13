@@ -14,11 +14,11 @@ as possible inside. Often that's nothing at all.
 
 | | Tier | The silo gets | Use it for |
 |---|---|---|---|
-| 1 | **Injection** (`deliver: inject`) | Nothing. The key is added to its requests outside the silo. | HTTP APIs: Anthropic, GitHub, Stripe… |
-| 2 | **Operations** (`operations.sign`) | Signatures. The key stays in Kevaso. | Validator keys, code signing |
+| 1 | **Injection** (`deliver: inject`) | Nothing. The key is added to its requests outside the silo. | Calls to an HTTP API with a key |
+| 2 | **Operations** (`operations.sign`) | Signatures. The key stays in Kevaso. | Signing keys, code signing |
 | 3 | **On demand** (`deliver: broker`) | The value, when it asks, over a channel only it has | Passwords, anything that can't be injected |
 | 4 | **As a file** (`deliver: file`) | A file in memory (tmpfs), rewritten on rotation | Apps that read a key file |
-| — | `deliver: env` | An environment variable. Leaks into child processes, logs, an agent's context: legacy apps only. | Last resort |
+| — | `deliver: env` | An environment variable. Leaks into child processes and logs: legacy apps only. | Last resort |
 
 ---
 
@@ -29,14 +29,14 @@ machine and your shell history would see it). With `--from-file -`, `kvo` reads 
 your terminal:
 
 ```bash
-kvo create secret anthropic-key -n dev --from-file - --allow inject --write-only
+kvo create secret api-key -n dev --from-file - --allow inject --write-only
 ```
 
 Paste the key, press Enter, then Ctrl-D. Or keep it in a file only you can read and give its path:
 
 ```bash
-kvo create secret anthropic-key -n dev \
-    --from-file ~/keys/anthropic.txt \
+kvo create secret api-key -n dev \
+    --from-file ~/keys/api-key.txt \
     --allow inject \
     --write-only
 ```
@@ -64,30 +64,30 @@ kvo get secret db-password -n dev --reveal
 ```yaml
 apiVersion: kevaso/v1
 kind: Grant
-metadata: { name: claude, namespace: dev }
+metadata: { name: api-access, namespace: dev }
 spec:
   secrets:
-    - name: anthropic-key
+    - name: api-key
       deliver: inject
-      to: { host: api.anthropic.com, header: x-api-key, format: "{{value}}" }
+      to: { host: api.example.com, header: x-api-key, format: "{{value}}" }
     - name: db-password                  # deliver: broker is the default
     - name: tls-key
       deliver: file
       path: /run/secrets/tls.pem          # under /run: memory only
   operations:
-    sign: { keyRef: validator-key, slashingProtection: true }
+    sign: { keyRef: signing-key, slashingProtection: true }
 ---
 apiVersion: kevaso/v1
 kind: Silo
-metadata: { name: agent, namespace: dev }
+metadata: { name: worker, namespace: dev }
 spec:
   runtime: cloud-hypervisor
   image: ubuntu-24.04
-  grants: [claude]
+  grants: [api-access]
 ```
 
 ```bash
-kvo describe grant claude -n dev
+kvo describe grant api-access -n dev
 ```
 
 `describe` says which tier each secret uses.
@@ -97,16 +97,16 @@ kvo describe grant claude -n dev
 ## Injection, in detail
 
 For `cloud-hypervisor` and container silos, the host's **egress gate** sits in front of the silo's
-HTTPS to `api.anthropic.com`:
+HTTPS to `api.example.com`:
 
 1. The silo's TLS is ended with the host's own egress CA, which Kevaso put in the silo's trust
    store. Only names a grant injects for get this; anything else is refused.
 2. Each request must be for that same host (no domain fronting).
 3. Whatever the silo sent in that header is **removed**, and the secret is set.
-4. The gate connects to the real `api.anthropic.com` itself and checks its certificate.
+4. The gate connects to the real `api.example.com` itself and checks its certificate.
 
 The program in the silo just calls the API without a key; it works. On **OpenShell** silos the
-same grant gives the program an environment variable holding a *placeholder* (`$ANTHROPIC_API_KEY =
+same grant gives the program an environment variable holding a *placeholder* (`$API_KEY =
 openshell:resolve:env:…`), which it sends like a key, and OpenShell swaps the real one in. See
 [Runtimes]({{ '/silos/runtimes/' | relative_url }}#openshell).
 
@@ -114,45 +114,55 @@ openshell:resolve:env:…`), which it sends like a key, and OpenShell swaps the 
 
 ## The broker, for everything else
 
-Each VM has a private channel to its host (vsock); each container, a socket of its own. The host
-knows which silo is asking **from the channel itself**, never from what the silo says. Inside, the
-helper `kvo-guest` is already installed:
+Every silo on a bridge runtime (`cloud-hypervisor`, `docker`, `podman`) can reach a small HTTP
+endpoint at `http://169.254.42.1`, answered by its own host. The host knows which silo is asking
+from where the request arrived, never from what the silo says. Nothing of Kevaso's is installed in
+the silo: any HTTP client works. Every request needs the header `Kevaso-Local: 1`. A silo only has
+the endpoint if its grants include an on-demand secret, a `sign` operation or a leased port.
+
+To read a secret:
 
 ```bash
-kvo-guest secret get db-password
+curl -fsS -H 'Kevaso-Local: 1' http://169.254.42.1/v1/secrets/db-password
 ```
 
-```bash
-echo -n "block 42" | kvo-guest sign validator-key --slot 42
-```
+To sign a payload (the signature comes back as hex):
 
 ```bash
-kvo-guest public-key validator-key
+printf 'message 42' | curl -fsS -H 'Kevaso-Local: 1' --data-binary @- 'http://169.254.42.1/v1/sign/signing-key?slot=42'
+```
+
+To read the public key:
+
+```bash
+curl -fsS -H 'Kevaso-Local: 1' http://169.254.42.1/v1/keys/signing-key
 ```
 
 - Asking for a secret the silo has no grant for answers exactly like a name that doesn't exist.
 - A host gets secrets only for silos placed on it.
-- `sign` with `slashingProtection` refuses a second, different payload for a slot already signed,
-  and any slot before the last.
+- If a key must never sign two different payloads for the same slot, set `slashingProtection: true`
+  on `sign`. A second, different payload for a slot already signed is refused (HTTP 409), and so is
+  any slot before the last.
+- Errors come back as JSON, `{"error": "…"}`. `curl -f` makes a refusal a failure.
 - Every call, allowed or refused, is in the audit log.
 
 ---
 
 ## Ask a person first: approvals
 
-Some keys are too dangerous to use without a person saying yes: an admin token, a deploy key, a
-signing key. It's optional, per secret in a grant. Add `approval: { required: true }`, and every
+If a key is too powerful to use without a person saying yes (an admin token, a deploy key, a
+signing key), require approval. It's optional, per secret in a grant. Add `approval: { required: true }`, and every
 use waits for a yes:
 
 ```yaml
 apiVersion: kevaso/v1
 kind: Grant
-metadata: { name: claude-dangerous, namespace: agents }
+metadata: { name: deploy-access, namespace: ops }
 spec:
   secrets:
-    - name: github-admin-token
+    - name: admin-token
       deliver: inject
-      to: { host: api.github.com }
+      to: { host: api.example.com }
       approval: { required: true }
   operations:
     sign: { keyRef: deploy-key, approval: { required: true } }
@@ -163,32 +173,39 @@ are refused: once the value sits in the silo, nothing can ask again. OpenShell s
 themselves, so an injection that needs approval works only on `cloud-hypervisor`, `docker` and
 `podman` silos.
 
-**In the silo**, the command waits and says what it waits for:
+**In the silo**, a call that needs a yes answers HTTP `428` with the pending approval, and the
+silo asks again with `approval=NAME` every couple of seconds until it is answered (`200`, or `403`
+if denied or expired):
 
 ```bash
-kvo-guest secret get github-admin-token --for 30m
+curl -fsS -H 'Kevaso-Local: 1' 'http://169.254.42.1/v1/secrets/admin-token?for=30m&wait=10m'
 ```
 
 ```text
-kvo-guest: waiting for a person's yes: kvo approve agent-3f9a1c2e -n agents (expires 3:42PM)
+curl: (22) The requested URL returned error: 428
 ```
 
-`--for` is how long access lasts once approved: until then, the silo uses the secret without
-asking again. `--wait` is how long it waits for an answer. For an injection, the request itself
-waits at the egress gate.
+```bash
+curl -fsS -H 'Kevaso-Local: 1' 'http://169.254.42.1/v1/secrets/admin-token?for=30m&approval=NAME'
+```
+
+The `428` body has the pending name and says `kvo approve NAME -n ops`; it is also in the
+`Kevaso-Approval` header. `for` is how long access lasts once approved: until then, the silo uses
+the secret without asking again. `wait` is how long a request may wait for an answer. For an
+injection, the request itself waits at the egress gate.
 
 **You** see the queue and answer:
 
 ```bash
-kvo get approvals -n agents
+kvo get approvals -n ops
 ```
 
 ```bash
-kvo approve agent-3f9a1c2e -n agents
+kvo approve db-3f9a1c2e -n ops
 ```
 
 ```bash
-kvo deny agent-3f9a1c2e -n agents --reason "not during the freeze"
+kvo deny db-3f9a1c2e -n ops --reason "not during the freeze"
 ```
 
 - **Every request expires.** Nobody answers: the call fails, saying it expired.
@@ -204,7 +221,7 @@ kvo deny agent-3f9a1c2e -n agents --reason "not during the freeze"
 ## Rotation
 
 ```bash
-kvo secret set anthropic-key -n dev --from-file -
+kvo secret set api-key -n dev --from-file -
 ```
 
 Paste the new key, Enter, Ctrl-D.
@@ -213,7 +230,7 @@ Paste the new key, Enter, Ctrl-D.
 |---|---|
 | `inject` | The next request carries the new value. Nothing changes in any silo. |
 | `file` | The file is rewritten in every silo that has it, within seconds. |
-| `broker` | The next `kvo-guest secret get` returns it. |
+| `broker` | The next request to the endpoint returns it. |
 
 One secret granted to many silos is renewed once, for all of them.
 
@@ -235,10 +252,10 @@ Rules can target secrets **by label**, so new secrets are covered automatically:
 
 ```yaml
 kind: Role
-metadata: { name: web3-dev, namespace: web3 }
+metadata: { name: payments-dev, namespace: payments }
 rules:
   - { resources: [secrets], verbs: [list, use], selector: { sensitivity: normal } }
-  - { resources: [secrets], verbs: [use], resourceNames: [validator-1-key] }
+  - { resources: [secrets], verbs: [use], resourceNames: [signing-key] }
   - { resources: [secrets], verbs: [approve], selector: { sensitivity: critical } }
 ```
 

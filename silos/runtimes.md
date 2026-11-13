@@ -20,9 +20,9 @@ how it's made. Pick one per silo with `spec.runtime`.
 | **Inbound services** | Yes, client IP kept | No | No | Yes, client IP kept |
 | **Persists** | Its own disk, and [volumes]({{ '/silos/volumes/' | relative_url }}) | `/sandbox` | `/sandbox` | Volumes |
 | **Injection** | Kevaso's egress gate | OpenShell (placeholder in an env var) | OpenShell | Kevaso's egress gate |
-| **Broker (`kvo-guest`)** | Yes, over vsock | No | No | Yes, over a socket |
+| **Local endpoint** (`169.254.42.1`) | Yes | Not yet | Not yet | Yes |
 | **Root inside** | Yes | No (a sandbox user) | No | The image's user |
-| **Good for** | Dev boxes, servers, P2P nodes, Docker inside | AI agents, untrusted code | The same, on hosts without KVM | Apps packaged as images |
+| **Good for** | Dev boxes, servers, Docker inside | Untrusted code | The same, on hosts without KVM | Apps packaged as images |
 
 Admission tells you when a silo asks for something its runtime can't do (a public port on
 `openshell`, an address range in a grant…), instead of accepting it and never opening it.
@@ -37,7 +37,8 @@ The default choice: a real Linux machine, booted from `ubuntu-24.04`, with its o
   filter and only its own disk and network device.
 - Init steps run as root inside, through SSH from the host only (a key the host holds; nothing else
   can log in).
-- `kvo-guest` is installed on first boot, and the host's egress CA added to its trust store.
+- Nothing of Kevaso's is installed in it. The host adds its egress CA to the silo's trust store and
+  writes `file` and `env` secrets into it, through the runtime.
 
 ---
 
@@ -50,26 +51,26 @@ swapped in by OpenShell's proxy.
 ```yaml
 apiVersion: kevaso/v1
 kind: Grant
-metadata: { name: anthropic, namespace: agents }
+metadata: { name: api-access, namespace: ops }
 spec:
-  egress: [{ to: api.github.com }]
+  egress: [{ to: api.example.com }]
   secrets:
-    - name: anthropic-key
+    - name: api-key
       deliver: inject
-      env: ANTHROPIC_API_KEY             # the variable holding the placeholder
-      to: { host: api.anthropic.com, header: x-api-key, format: "{{value}}" }
+      env: API_KEY             # the variable holding the placeholder
+      to: { host: api.example.com, header: x-api-key, format: "{{value}}" }
 ---
 apiVersion: kevaso/v1
 kind: Silo
-metadata: { name: claude-1, namespace: agents }
+metadata: { name: worker-1, namespace: ops }
 spec:
   runtime: openshell
   image: ubuntu-24.04                     # OpenShell's base image
   resources: { cpu: 2, memory: 4Gi }
-  grants: [anthropic]
+  grants: [api-access]
 ```
 
-Inside, `$ANTHROPIC_API_KEY` is a placeholder; a program that sends it as its key reaches the API
+Inside, `$API_KEY` is a placeholder; a program that sends it as its key reaches the API
 with the real one.
 
 | Good to know | |
@@ -117,5 +118,5 @@ spec:
 | `command` | The main process. Without it, the image's own (for `ubuntu-24.04`, one that sleeps, so it's a machine to `exec` into) |
 | Init steps | **Init containers**: each step runs in a container of its own from the silo's image, on its network and volumes, **before** the main container starts |
 | Persistence | Volumes survive restarts; the container's own files stay on its host |
-| Secrets | `inject` and `broker`: the socket is at `/run/kevaso/broker.sock` (one JSON line each way). Nothing of Kevaso's is put in your image: bring a client, or copy `kvo-guest` in with your image's build |
+| Secrets | `inject`, `broker`, `file` and `env`. `broker` secrets come from the [local endpoint]({{ '/secrets/#the-broker-for-everything-else' | relative_url }}), so the image needs `curl` or any HTTP client. Files and variables are written by the host into `/run`, which is always memory. Nothing of Kevaso's is put in your image |
 | Volume `size` | Not enforced on containers |

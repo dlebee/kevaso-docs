@@ -25,7 +25,7 @@ raw TCP or UDP to **one** silo; an ingress reads HTTP and routes to **many**.
 
 | Object | What it is |
 |---|---|
-| **Ingress controller** | An ordinary silo from Kevaso's `kevaso-ingress` image (`kvo-guest ingress`), exposed on 80 and 443 |
+| **Ingress controller** | An ordinary silo running a stock proxy (nginx, Caddy or Kong), exposed on 80 and 443 |
 | **IngressClass** | Which silo serves a class of Ingresses, and whether the class is public |
 | **Ingress** | Host names and paths → a silo's port, and where its certificate comes from |
 | **Issuer** | Where certificates come from: an ACME server (Let's Encrypt) or the cluster's own CA |
@@ -37,42 +37,10 @@ Two issuers exist from the start: `letsencrypt` and `internal-ca`.
 
 ## 1 · The controller
 
-A silo like any other, in a namespace of its own:
-
-```yaml
-apiVersion: kevaso/v1
-kind: Namespace
-metadata: { name: kevaso-system }
----
-apiVersion: kevaso/v1
-kind: Silo
-metadata: { name: ingress-public, namespace: kevaso-system }
-spec:
-  runtime: docker
-  image: kevaso-ingress          # Kevaso's own image: built on each host from kevasod, never pulled
-  service:
-    ports:
-      - { name: http,  port: 80 }
-      - { name: https, port: 443 }
-    expose: hostPort
-```
-
-On a `cloud-hypervisor` silo, run it as a service with an init step instead:
-
-```yaml
-  init:
-    steps:
-      - name: ingress
-        run: kvo-guest ingress --install
-```
-
-The controller gets its routes and certificates from its host, over its own private channel: a silo
-that isn't a class's controller gets nothing. It runs with the same isolation as any silo: nothing
-is mounted into it beyond that channel and the CA bundle.
-
-> One controller silo with `expose: hostPort` is the simple shape. A SiloSet of controllers behind a
-> standalone Service ([Sets, images and updates]({{ '/silos/sets/' | relative_url }})) is where this
-> is heading, so a class survives losing one.
+The controller is an ordinary silo running a stock proxy (nginx, Caddy or Kong) exactly as its
+vendor ships it. Kevaso puts nothing in it. The host of the controller's silo writes the routes and
+certificates into the proxy's own configuration, checks it with the proxy's own test, and reloads it.
+How to set one up is not documented here yet.
 
 ## 2 · The class
 
@@ -81,7 +49,7 @@ apiVersion: kevaso/v1
 kind: IngressClass
 metadata: { name: public }
 spec:
-  controller: { silo: ingress-public, namespace: kevaso-system }
+  controller: { driver: nginx, silo: ingress-public, namespace: kevaso-system }
   public: true
 ```
 

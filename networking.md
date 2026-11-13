@@ -55,7 +55,7 @@ spec:
   service:
     ports:
       - { name: http, port: 8080 }
-      - { name: p2p,  port: 30303, protocol: UDP }
+      - { name: stats, port: 9125, protocol: UDP }
 ```
 
 That alone is **private**: reachable by name, but only by silos you allow.
@@ -85,12 +85,12 @@ It works across hosts too (over the mesh). A silo named here that isn't running 
 spec:
   service:
     ports:
-      - { name: p2p,  port: 30303, protocol: TCP }
-      - { name: disc, port: 30303, protocol: UDP }
-      - { name: rpc,  port: 8545 }
+      - { name: web,   port: 8080, protocol: TCP }
+      - { name: stats, port: 9125, protocol: UDP }
+      - { name: admin, port: 9090 }
     expose: hostPort
     hostPort:
-      ports: [p2p, disc]              # only these; rpc stays private
+      ports: [web, stats]             # only these; admin stays private
       allowFrom: ["203.0.113.0/24"]   # optional: only these sources
 ```
 
@@ -113,7 +113,7 @@ spec: { host: hv2, addresses: ["198.51.100.17/32", "198.51.100.18/32"] }
 # in the silo
 spec:
   service:
-    ports: [{ name: p2p, port: 30303 }]
+    ports: [{ name: web, port: 8080 }]
     expose: loadBalancer
     loadBalancer: { class: ip-pool, pool: hv2-extra, stableIP: true }
 ```
@@ -145,8 +145,8 @@ spec:
 | `sameAsService` | The address the silo is reached on (its `Public IP`) |
 | `pool` | An address from an `IPPool`; also set `egress: { source: pool, pool: NAME }` |
 
-`sameAsService` is what P2P nodes need: they advertise the address they're reached on, so their
-outbound traffic must come from it too. It needs a service exposed with `hostPort` or
+If a silo tells others the address it's reached on, and they must see its outbound traffic come
+from that same address, set `sameAsService`. It needs a service exposed with `hostPort` or
 `loadBalancer`. Whether it can work depends on how the silo is exposed:
 [next section](#can-a-silo-use-the-same-ip-out-as-in). A fourth source, `gateway` (leave from a
 chosen host), is not built.
@@ -200,7 +200,7 @@ kind: Grant
 metadata: { name: build-tools, namespace: dev }
 spec:
   egress:
-    - { to: api.github.com }                                  # a name: TLS on 443
+    - { to: api.example.com }                                  # a name: TLS on 443
     - { to: "*.npmjs.org" }                                   # a wildcard name
     - { to: "0.0.0.0/0", ports: ["30303"], protocols: [tcp, udp] }   # raw, any address, one port
 ---

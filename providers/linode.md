@@ -168,7 +168,7 @@ Linode gives each Linode one IPv4. An **extra** one for this comes through a sup
 spec:
   availability: { onHostLoss: Recreate }
   service:
-    ports: [{ name: p2p, port: 30303, protocol: UDP }]
+    ports: [{ name: web, port: 8080 }]
     expose: loadBalancer
     loadBalancer: { class: linode-shared-ip, address: 172.105.3.63 }
 ```

@@ -109,22 +109,6 @@ See [Panes]({{ '/panes/' | relative_url }}).
 
 ---
 
-## kvo-guest: inside a silo
-
-The silo's helper for talking to its host. In microVM silos it's installed on first boot; in a
-container silo only if the image has it. [Secrets]({{ '/secrets/' | relative_url }}) lists its other commands.
-
-| Command | Does |
-|---|---|
-| `kvo-guest pane report NAME [--state S] [--progress P] [--title T] [--message M] [--field LABEL=VALUE]… [--ttl D]` | Report a status pane. `S`: `idle`, `running`, `needs-you`, `done`, `failed`. `P`: 0 to 1. `D`: up to `1h`. Prints `ok` |
-| `kvo-guest pane html NAME --bundle DIR\|FILE [--data JSON \| --data -] [--title T] [--ttl D]` | Report an HTML pane: uploads the page, then reports it. A folder is packed the same way every time. The silo needs `spec.panes.allow: [status, html]`. [The format]({{ '/panes/#the-bundle-format' | relative_url }}) |
-| `kvo-guest port open NAME [--for D] [--wait D]` | Ask to open one of the silo's [leased ports]({{ '/networking/leases/' | relative_url }}); waits for a yes if it needs one |
-| `kvo-guest port close NAME` | Close it early |
-
-Both need `spec.panes.enabled: true` on the silo. [Panes]({{ '/panes/' | relative_url }}) has the limits.
-
----
-
 ## kvoadm: running the platform
 
 ### Machines

@@ -32,11 +32,11 @@ kvo get silos -o wide
 ```
 
 ```text
-NAME      RUNTIME            PHASE     HOST   MOVABLE
-api       cloud-hypervisor   Running   hv1    Pinned (hv1)
-rpc-1     docker             Running   lin1   Region (ca-central)
-runner    cloud-hypervisor   Running   hv1    Recreate
-dev       cloud-hypervisor   Running   hv1    Anywhere
+NAME      RUNTIME            PHASE     HOST     MOVABLE
+api       cloud-hypervisor   Running   hv1      Pinned (hv1)
+db-1      docker             Running   cloud-1  Region (ca-central)
+runner    cloud-hypervisor   Running   hv1      Recreate
+dev       cloud-hypervisor   Running   hv1      Anywhere
 ```
 
 ---
@@ -53,7 +53,7 @@ dev       cloud-hypervisor   Running   hv1    Anywhere
 spec:
   runtime: docker
   volumes:
-    - { name: chain, class: linode-block, size: 200Gi, mountPath: /data }
+    - { name: data, class: linode-block, size: 200Gi, mountPath: /data }
   availability: { onHostLoss: Move }
 ```
 
@@ -70,11 +70,11 @@ spec:
 ## Moving one yourself
 
 ```bash
-kvo move silo rpc-1 --to lin2
+kvo move silo db-1 --to cloud-2
 ```
 
 The old host stops the silo and lets go of its volumes first, then the new host starts it.
-`kvo describe silo rpc-1` shows which step it's on.
+`kvo describe silo db-1` shows which step it's on.
 
 | Flag | Meaning |
 |---|---|
@@ -83,7 +83,8 @@ The old host stops the silo and lets go of its volumes first, then the new host 
 | `--confirm-fenced` | Its host is lost, and you've made sure the old copy is stopped (powered off, or force-stopped at the provider) |
 
 A move from a **lost** host needs `--confirm-fenced`: nobody is there to stop the old copy, so
-you say it's stopped. For a validator, that's what keeps two copies from signing the same slot.
+you say it's stopped. Only say it when the old copy really is stopped: if two copies of a silo
+must never run at the same time, that is the check that keeps it so.
 
 Moving needs `create` on `silos/move` (the built-in `editor` and `admin` roles have it).
 

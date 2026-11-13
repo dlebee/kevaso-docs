@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 800" role="img" aria-labelledby="t d" font-family="Inter, system-ui, -apple-system, 'Segoe UI', sans-serif">
-  <title id="t">One cluster: a Linode system node, two bare-metal hosts, three hosts on a LAN</title>
-  <desc id="d">Six hosts in one cluster. The Linode has an external and an internal IP. The two bare-metal hosts have an external IP only. The three LAN hosts have an internal IP only and share one public address that belongs to their router. All six are on one mesh network.</desc>
+  <title id="t">One cluster: a cloud VM system node, two bare-metal hosts, three hosts on a LAN</title>
+  <desc id="d">Six hosts in one cluster. The cloud VM has an external and an internal IP. The two bare-metal hosts have an external IP only. The three LAN hosts have an internal IP only and share one public address that belongs to their router. All six are on one mesh network.</desc>
   <defs>
     <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#aab0bd"/></marker>
   </defs>
@@ -15,9 +15,9 @@
   <text x="30" y="40" fill="#eef0f5" font-size="18" font-weight="600">One cluster, three kinds of machine</text>
   <text x="30" y="62" class="s">You set each host's internal and external IP when you add it. Kevaso gives each one a mesh IP.</text>
 
-  <!-- ===== Linode ===== -->
+  <!-- ===== cloud-1 ===== -->
   <rect x="30" y="90" width="330" height="250" rx="12" fill="#11151e" stroke="#2a3040" stroke-dasharray="6 5"/>
-  <text x="46" y="114" class="s" font-weight="600">LINODE (a cloud VM)</text>
+  <text x="46" y="114" class="s" font-weight="600">CLOUD-1 (a cloud VM)</text>
   <rect x="50" y="130" width="290" height="190" rx="10" fill="#141822" stroke="#2a3040"/>
   <text x="66" y="156" class="h">host cp-1</text>
   <text x="324" y="156" class="s" text-anchor="end">system node · no silos</text>
@@ -90,7 +90,7 @@
     <text x="786" y="622" class="s">silos: <tspan class="mono" fill="#5ef0c0">10.64.6.0/24</tspan></text>
   </g>
 
-  <!-- notes under linode -->
+  <!-- notes under cloud-1 -->
   <text x="30" y="372" fill="#eef0f5" font-size="13" font-weight="600">What a host port means on each</text>
   <g class="s">
     <text x="30" y="396"><tspan class="mono" fill="#f2b45a">hostPort: [external]</tspan> on baremetal-1</text>

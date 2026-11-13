@@ -33,7 +33,7 @@ To understand what fails when it does, here is what lives on a system node:
 | The store (every object) and the cluster CA | Safe on its disk; back once it's up |
 | The scheduler and controllers | Nothing new is placed; lost hosts aren't handled |
 | The sign-in provider | Nobody can sign in or refresh a token |
-| The secrets' master key, and the broker's decisions | Silos can't fetch secrets (`kvo-guest secret get` fails) |
+| The secrets' master key, and the broker's decisions | Silos can't fetch secrets (a silo's request for a secret to its local endpoint fails) |
 
 And what keeps working on the workers without it:
 
@@ -114,6 +114,6 @@ then add the others with `kvoadm host add … --install control-plane`.
 |---|---|
 | **Fault tolerance** | Lose one system node: nothing stops. Lose two of three: the store stops taking changes until one is back; silos keep running |
 | **Operational risk** | More machines to patch, and port 2380 open between them. `kvoadm upgrade` rolls them one at a time |
-| **Proven** | On real Linodes: three system nodes, two with a light node, losing and removing one, an upgrade |
+| **Proven** | On real cloud VMs: three system nodes, two with a light node, losing and removing one, an upgrade |
 
 → [High availability]({{ '/operations/ha/' | relative_url }})

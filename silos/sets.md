@@ -22,7 +22,7 @@ would anywhere else: a registry reference. There is nothing to create first.
 kind: Silo
 spec:
   runtime: docker
-  image: docker.io/ethereum/client-go:v1.15.0
+  image: docker.io/library/python:3.12-slim
 ```
 
 Pin it by digest (`…@sha256:…`) if it must never change under you: a tag can move.
@@ -35,16 +35,16 @@ For a private registry, see [private registries]({{ '/secrets/' | relative_url }
 ```yaml
 apiVersion: kevaso/v1
 kind: Image
-metadata: { name: geth-node, namespace: web3 }
+metadata: { name: web-app, namespace: ops }
 spec:
   versions:                                    # oldest first
     - name: v1
       disk:
-        url: https://images.example.com/geth-v1.img
+        url: https://images.example.com/web-app-v1.img
         sha256: 9a31…                          # every host checks what it downloads
     - name: v2
       disk:
-        url: https://images.example.com/geth-v2.img
+        url: https://images.example.com/web-app-v2.img
         sha256: 4f0c…
 ```
 
@@ -52,7 +52,7 @@ spec:
 kind: Silo
 spec:
   runtime: cloud-hypervisor
-  image: geth-node:v2          # or geth-node, for the newest version
+  image: web-app:v2          # or web-app, for the newest version
 ```
 
 An Image's versions never change once added, so a silo on `v1` always boots the same disk; a new
@@ -79,7 +79,7 @@ Anything you want to keep across resets belongs on a volume.
 
 ### `exclusive`: one copy, ever
 
-For validators and anything with a single-writer identity:
+If two copies of a silo must never run at the same time, set `exclusive: true`:
 
 ```yaml
 spec:
@@ -87,7 +87,7 @@ spec:
   availability: { onHostLoss: Wait }
 ```
 
-Kevaso then refuses what could run two copies:
+Kevaso refuses:
 
 - automatic failover (`onHostLoss` other than `Wait`);
 - start-first updates (`update.strategy: StartFirst`);
@@ -98,14 +98,14 @@ Kevaso then refuses what could run two copies:
 
 ### Readiness
 
-"Running" isn't always "ready": a node still syncing shouldn't get traffic. A readiness check is a
+"Running" isn't always "ready": a silo that is still starting up shouldn't get traffic. A readiness check is a
 command run inside the silo now and then. Until it passes, the silo isn't Ready: no Service sends to
 it, and a set's rollout waits for it.
 
 ```yaml
 spec:
   readiness:
-    command: [sh, -c, "curl -fs localhost:8545/health"]
+    command: [sh, -c, "curl -fs localhost:8080/health"]
     period: 15s                  # default 10s; each run times out after 5s
 ```
 
@@ -116,33 +116,33 @@ spec:
 ```yaml
 apiVersion: kevaso/v1
 kind: SiloSet
-metadata: { name: rpc-pool, namespace: web3 }
+metadata: { name: api-pool, namespace: payments }
 spec:
-  image: docker.io/ethereum/client-go:v1.15.0
+  image: docker.io/library/python:3.12-slim
   instances: 3
   spread: host                  # different hosts where possible (or zone, region)
   standby: 1                    # an extra one, booted and idle, ready to take over
   upgradePolicy: Rolling        # or Manual (the default)
   template:                     # each instance's silo spec
-    labels: { app: rpc }
+    labels: { app: api }
     runtime: docker
-    volumes: [{ name: chain, mountPath: /root/.ethereum }]
+    volumes: [{ name: data, mountPath: /data }]
     service:
-      ports: [{ name: rpc, port: 8545 }]
+      ports: [{ name: http, port: 8080 }]
 ```
 
-The instances are `rpc-pool-0`, `rpc-pool-1` and `rpc-pool-2`, each its own silo, with its own disk
+The instances are `api-pool-0`, `api-pool-1` and `api-pool-2`, each its own silo, with its own disk
 and volumes. Nothing is replaced to "heal" one: if it breaks, its host restarts it in place.
 
 ```bash
-kvo get silosets -n web3
-kvo describe siloset rpc-pool -n web3
+kvo get silosets -n payments
+kvo describe siloset api-pool -n payments
 ```
 
 ### Growing and shrinking
 
 ```bash
-kvo scale siloset rpc-pool --instances 5 -n web3
+kvo scale siloset api-pool --instances 5 -n payments
 ```
 
 When it grows, a standby instance is used first, since it's booted already; then new ones are
@@ -153,7 +153,7 @@ Shrinking deletes instances and their disks, so `kvo scale` lists which ones fir
 `OldestFirst`). A protected instance is never removed:
 
 ```bash
-kvo protect silo rpc-pool-0 -n web3
+kvo protect silo api-pool-0 -n payments
 ```
 
 ### Rolling out a new image
@@ -162,7 +162,7 @@ Change the set's `image` (or its template) and apply it. What happens depends on
 
 | Policy | What happens |
 |---|---|
-| **Manual** (default) | New instances get the new image. An existing one gets it when you reset it: `kvo reset silo rpc-pool-1`. |
+| **Manual** (default) | New instances get the new image. An existing one gets it when you reset it: `kvo reset silo api-pool-1`. |
 | **Rolling** | Instances are reset onto it, a few at a time. |
 
 How many at a time is `update`:
@@ -182,7 +182,7 @@ Instances that are `exclusive` always go one at a time, stop-first.
 To reset every instance onto the current image, whatever the policy:
 
 ```bash
-kvo reset siloset rpc-pool --rolling -n web3
+kvo reset siloset api-pool --rolling -n payments
 ```
 
 ---
@@ -194,21 +194,21 @@ A standalone Service is one name and one address in front of many silos:
 ```yaml
 apiVersion: kevaso/v1
 kind: Service
-metadata: { name: rpc, namespace: web3 }
+metadata: { name: api, namespace: payments }
 spec:
-  selector: { app: rpc }
+  selector: { app: api }
   ports:
-    - { name: rpc, port: 8545, targetPort: rpc }   # a port name of the silos' own service, or a number
+    - { name: http, port: 8080, targetPort: http }   # a port name of the silos' own service, or a number
 ```
 
-- It gets a virtual IP and the name `rpc.web3.kevaso`.
+- It gets a virtual IP and the name `api.payments.kevaso`.
 - Every worker sends that address to one of its endpoints: the Ready silos its selector picks.
   Standby instances are never endpoints.
 - The connection keeps the caller's address, so **each endpoint's `allowFrom` still decides**.
   A silo the instances don't allow is refused through the Service too.
 
 ```bash
-kvo describe service rpc -n web3      # its address and endpoints
+kvo describe service api -n payments      # its address and endpoints
 ```
 
 ### An outside address

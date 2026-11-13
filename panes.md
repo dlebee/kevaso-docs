@@ -20,85 +20,19 @@ silo.
 
 ---
 
-## Turn them on
+## How a silo reports
 
-```yaml
-apiVersion: kevaso/v1
-kind: Silo
-metadata: { name: builder, namespace: team }
-spec:
-  runtime: cloud-hypervisor
-  image: ubuntu-24.04
-  panes:
-    enabled: true
-    allow: [status, html]
-    maxPanes: 4
-```
+Panes are off until the silo's spec says where it answers: `spec.panes.http`, a port and a path. The
+silo's host then asks that address, on the silo's own private address, every few seconds
+(`spec.panes.every`, 5 seconds by default) for a JSON list of reports, `{"panes": [...]}`. For an
+`html` pane it also fetches the page by its digest, once. Nothing of Kevaso's is installed in the
+silo: any small web server will do, and nothing in the request comes from clients.
 
-| Field | Meaning | Default |
-|---|---|---|
-| `enabled` | Panes on for this silo | off |
-| `allow` | Which kinds it may report: `status`, `html` | `status` only |
-| `maxPanes` | How many panes it may have, 0 to 16 | 4 |
-
-A silo that isn't enabled has every report refused, saying so. A silo past `maxPanes` can still
-update the panes it has; it can't make a new one.
+`spec.panes.allow` says which kinds the silo may report (`status`, `html`; default `status` only),
+and `spec.panes.maxPanes` how many panes it may have (default 4, at most 16). A silo with no
+`http` is never asked. How a report is written is not documented here yet.
 
 ---
-
-## What the image needs
-
-Reporting uses `kvo-guest`, the silo's helper for talking to its host.
-
-| Runtime | `kvo-guest` |
-|---|---|
-| `cloud-hypervisor` | Installed on first boot |
-| `docker`, `podman` | Only if the image contains it. Kevaso installs nothing in a container. |
-| `openshell`, `openshell-container` | No broker: no panes |
-
----
-
-## Report a status pane
-
-From inside the silo:
-
-```bash
-kvo-guest pane report build --state running --progress 0.4 --title "Release build" --message "compiling" --field branch=main --field commit=9f3a1c2 --ttl 10m
-```
-
-It prints `ok` when the control plane took it. Run it again with the same name to update the pane.
-
-| Flag | Meaning |
-|---|---|
-| `NAME` | The pane's name: 1 to 32 lower-case letters, digits and `-` |
-| `--state S` | `idle`, `running`, `needs-you`, `done` or `failed` |
-| `--progress P` | A number from 0 to 1 |
-| `--title T`, `--message M` | Plain text |
-| `--field LABEL=VALUE` | A label and a value; repeat for more |
-| `--ttl D` | A duration up to `1h`. With no update for that long, the pane shows as stale. |
-
----
-
-## Report an HTML pane
-
-The silo must allow `html`. Put the page in a file (`index.html`) or a folder with `index.html` at
-its top, then:
-
-```bash
-kvo-guest pane html dashboard --bundle ./dashboard --title "Dashboard" --data '{"requests": 120}'
-```
-
-The bundle is uploaded once (Kevaso names it by its SHA-256), and the pane then points at it. To push
-new numbers to the page without uploading it again, run the same command with new `--data` (JSON,
-or `--data -` to read it from standard input). The page defines a function `window.kvoUpdate(data)`,
-which the panes app calls with each new value.
-
-| Flag | Meaning |
-|---|---|
-| `NAME` | As above |
-| `--bundle DIR\|FILE` | The pane's page: a folder, a single HTML file, or a ustar archive ([the format](#the-bundle-format)) |
-| `--data JSON` or `--data -` | The data pushed to the page, as JSON |
-| `--title T`, `--ttl D` | As above |
 
 ### The bundle format
 
@@ -109,11 +43,11 @@ A bundle is one of two things:
 | **A single HTML page** | Any file that isn't a tar archive. It is the pane's `index.html`, byte for byte |
 | **An archive** | A POSIX **ustar** archive with `index.html` at its top, and any files it needs beside it |
 
-`--bundle DIR` makes the archive for you. It packs the folder **the same way every time**: names in
-sorted order, no times, no owners, fixed modes. So the same files always give the same digest, and
-a pane whose files haven't changed is never uploaded again.
+The silo builds the bundle. To keep a pane whose files haven't changed at the same digest, pack the
+folder **the same way every time**: names in sorted order, no times, no owners, fixed modes. Kevaso
+no longer ships a packer.
 
-The rules, checked in the silo before anything is sent (and again by the app that opens it):
+The rules, checked by the host when it fetches the bundle (and again by the app that opens it):
 
 | Rule | |
 |---|---|
@@ -125,8 +59,8 @@ The rules, checked in the silo before anything is sent (and again by the app tha
 | Archive extensions | No pax or GNU extension headers: plain ustar |
 
 A folder with a link or a special file in it is refused, not followed. Anything that breaks a rule
-is refused with the reason. A bundle uploaded some other way (a raw broker call) isn't checked
-until a person opens the pane, and the app then refuses it.
+is refused with the reason. The host and the control plane only check a bundle's size and its digest; the app that opens it
+refuses one outside the format.
 
 ---
 
@@ -176,7 +110,8 @@ the silo's own report does.
 
 ## Limits
 
-The control plane enforces these. A report that breaks one is refused, and `kvo-guest` prints why.
+The control plane enforces these. A report that breaks one is refused. If a silo keeps breaking them, its host stops asking for a
+minute, then longer, and the silo's `Panes` condition says why.
 
 | Limit | Value |
 |---|---|
@@ -184,7 +119,7 @@ The control plane enforces these. A report that breaks one is refused, and `kvo-
 | An HTML pane's data | 64 KiB, valid JSON |
 | An HTML bundle | 512 KiB |
 | Reports per silo | 4 a second sustained, bursts of 8 |
-| `--ttl` | Up to 1 hour |
+| A report's `ttl` | Up to 1 hour |
 | Panes per silo | `spec.panes.maxPanes` (default 4, at most 16) |
 | A silo's stored bundles | The ones its panes use, plus a few newer ones; older ones are dropped |
 

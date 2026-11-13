@@ -9,7 +9,7 @@ bring: a dedicated server, a VPS, a box under your desk. You describe what you w
 Kevaso makes it so and keeps it that way, the way Kubernetes does for pods.
 
 Unlike a pod, a silo is a *machine*: it has a disk that stays, a name, an address, and it can be the
-place an AI agent or a developer works for months. Its secrets can work inside it without ever
+place a developer works, or a service lives, for months. Its secrets can work inside it without ever
 entering it.
 
 > **Built from source.** Kevaso has no packaged releases: you build `kvo`, `kvoadm` and `kevasod`

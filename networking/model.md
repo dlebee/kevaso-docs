@@ -46,7 +46,7 @@ spec:
 All three are ordinary hosts. Kevaso has no word for "public", "internet" or "LAN": it can't know
 which is which, so you say.
 
-![A Linode, two bare-metal hosts and three hosts on a LAN, all on one mesh]({{ '/assets/addresses-mixed-cluster.svg' | relative_url }})
+![A cloud VM, two bare-metal hosts and three hosts on a LAN, all on one mesh]({{ '/assets/addresses-mixed-cluster.svg' | relative_url }})
 
 ---
 

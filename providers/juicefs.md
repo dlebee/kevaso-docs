@@ -156,25 +156,25 @@ Look for `mountClasses: [juicefs]` under `status`. (`kvo describe host` doesn't 
 ```yaml
 apiVersion: kevaso/v1
 kind: Silo
-metadata: { name: rpc-1, namespace: chain }
+metadata: { name: db-1, namespace: payments }
 spec:
   runtime: docker
-  image: ghcr.io/acme/node:5.2
+  image: ghcr.io/example/db:5.2
   volumes:
-    - { name: chain, class: juicefs, size: 200Gi, mountPath: /data }
+    - { name: data, class: juicefs, size: 200Gi, mountPath: /data }
   availability: { onHostLoss: Move }
 ```
 
 ```bash
-kvo get silos -n chain -o wide
+kvo get silos -n payments -o wide
 ```
 
 ```text
 NAME    RUNTIME  PHASE    HOST  MOVABLE   AGE
-rpc-1   docker   Running  hv2   Anywhere  3m
+db-1   docker   Running  hv2   Anywhere  3m
 ```
 
-`kvo move silo rpc-1 --to hv3` now works with the data: the old host stops the silo and unmounts the
+`kvo move silo db-1 --to hv3` now works with the data: the old host stops the silo and unmounts the
 volume, then the new host mounts it and starts it. Two hosts never have it mounted at once.
 
 ---
