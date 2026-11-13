@@ -138,6 +138,69 @@ kvo-guest public-key validator-key
 
 ---
 
+## Ask a person first: approvals
+
+Some keys are too dangerous to use without a person saying yes: an admin token, a deploy key, a
+signing key. It's optional, per secret in a grant. Add `approval: { required: true }`, and every
+use waits for a yes:
+
+```yaml
+apiVersion: kevaso/v1
+kind: Grant
+metadata: { name: claude-dangerous, namespace: agents }
+spec:
+  secrets:
+    - name: github-admin-token
+      deliver: inject
+      to: { host: api.github.com }
+      approval: { required: true }
+  operations:
+    sign: { keyRef: deploy-key, approval: { required: true } }
+```
+
+A grant without `approval` works as before, and works for broker, inject and sign. File and env
+are refused: once the value sits in the silo, nothing can ask again. OpenShell silos inject by
+themselves, so an injection that needs approval works only on `cloud-hypervisor`, `docker` and
+`podman` silos.
+
+**In the silo**, the command waits and says what it waits for:
+
+```bash
+kvo-guest secret get github-admin-token --for 30m
+```
+
+```text
+kvo-guest: waiting for a person's yes: kvo approve agent-3f9a1c2e -n agents (expires 3:42PM)
+```
+
+`--for` is how long access lasts once approved: until then, the silo uses the secret without
+asking again. `--wait` is how long it waits for an answer. For an injection, the request itself
+waits at the egress gate.
+
+**You** see the queue and answer:
+
+```bash
+kvo get approvals -n agents
+```
+
+```bash
+kvo approve agent-3f9a1c2e -n agents
+```
+
+```bash
+kvo deny agent-3f9a1c2e -n agents --reason "not during the freeze"
+```
+
+- **Every request expires.** Nobody answers: the call fails, saying it expired.
+- **Asking again replaces the pending request**, so the queue never fills with copies.
+- **Only people answer**, with the verb `approve` on that secret (the built-in `admin` role has
+  it). The silo can't, and neither can a service account's token, whatever its roles.
+- Every request, replacement and answer is in the audit log, with who answered.
+- The control plane sets the limits: `kevasod control-plane --approval-wait 10m
+  --approval-max-wait 1h --approval-access 15m --approval-max-access 12h` (these are the defaults).
+
+---
+
 ## Rotation
 
 ```bash
@@ -166,6 +229,7 @@ Secrets have their own verbs, separate powers:
 | `use` | Name it in a Grant, i.e. let a silo receive it |
 | `read-value` | Read the value as a person |
 | `write` | Create, change, rotate, delete |
+| `approve` | Answer a silo's request to use it ([approvals](#ask-a-person-first-approvals)) |
 
 Rules can target secrets **by label**, so new secrets are covered automatically:
 
@@ -175,6 +239,7 @@ metadata: { name: web3-dev, namespace: web3 }
 rules:
   - { resources: [secrets], verbs: [list, use], selector: { sensitivity: normal } }
   - { resources: [secrets], verbs: [use], resourceNames: [validator-1-key] }
+  - { resources: [secrets], verbs: [approve], selector: { sensitivity: critical } }
 ```
 
 **No back door through silos:** writing a Grant needs `use` on every secret it names, and giving a

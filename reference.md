@@ -51,6 +51,9 @@ Kinds: `namespaces` (`ns`), `hosts`, `silos`, `silosets` (`ss`), `services` (`sv
 | …`--allow MODES`, `--write-only`, `-l KEY=VALUE` | Restrict delivery, make write-only, label |
 | `kvo secret set NAME --from-file F\|-` | A new value (rotation) |
 | `kvo get secret NAME --reveal` | Print the value (needs `read-value`; never for write-only) |
+| `kvo get approvals` / `kvo watch approvals` | Silos waiting for a person's yes to use a secret |
+| `kvo approve NAME` | Say yes (needs `approve` on that secret; people only) |
+| `kvo deny NAME [--reason R]` | Say no |
 
 ### Access
 

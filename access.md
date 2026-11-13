@@ -80,9 +80,9 @@ role to people in a namespace. The built-in roles:
 
 | Role | Can |
 |---|---|
-| `viewer` | Read silos, service accounts, grants; see that secrets exist |
+| `viewer` | Read silos, service accounts, grants; see that secrets exist and which silos wait for an approval |
 | `editor` | Everything `viewer` can, plus create and change silos, `exec`, service-account tokens; create and *use* secrets (never read a value back) |
-| `admin` | Everything `editor` can, plus roles and bindings in the namespace, exposing silos publicly, reading secret values |
+| `admin` | Everything `editor` can, plus roles and bindings in the namespace, exposing silos publicly, reading secret values, answering approvals |
 | `cluster-admin` | Everything, everywhere (what `kvoadm init` gives you) |
 
 Ask the cluster what you may do:
