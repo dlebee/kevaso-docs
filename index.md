@@ -15,6 +15,11 @@ entering it.
 > **Built from source.** Kevaso has no packaged releases yet: the [quick start]({{ '/quickstart/' | relative_url }})
 > shows how to build `kvo`, `kvoadm` and `kevasod`.
 
+> **Not proven everywhere.** On bare metal, 13 tests have passed on one machine. Nothing has been
+> run across two bare-metal machines, with failures injected, or for a long time, and OpenShell has
+> not run on bare metal. [What's proven where]({{ '/operations/#whats-proven-where' | relative_url }})
+> lists what has run on which machines.
+
 ---
 
 ## Where to start
@@ -50,8 +55,9 @@ entering it.
 
 ## What you need
 
-- **A Linux machine** for the system node: Ubuntu 24.04, x86_64 or arm64. 2 CPUs and 2 GiB of
-  memory is plenty for the control plane alone.
+- **A Linux machine** for the system node: x86_64 or arm64, running a system `kevasod` lists as
+  supported (Ubuntu 24.04 or Debian 12; [details]({{ '/setup/prepare/#supported-operating-systems' | relative_url }})).
+  2 CPUs and 2 GiB of memory is plenty for the control plane alone.
 - **KVM** (`/dev/kvm`) on the machines that run microVM silos: bare metal, or a VPS with nested
   virtualization. Without it, container silos still work.
 - **Your computer** (macOS or Linux) with OpenSSH, and what the [quick start]({{ '/quickstart/' | relative_url }}) lists for building the programs.

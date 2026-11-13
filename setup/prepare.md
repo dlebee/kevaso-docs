@@ -5,7 +5,7 @@ permalink: /setup/prepare/
 
 # Prepare a machine
 
-Before Kevaso changes anything on a machine, you set up the way in, yourself, in four small steps:
+Before Kevaso changes anything on a machine, check the machine runs a [supported operating system](#supported-operating-systems). Then you set up the way in, yourself, in four small steps:
 build the tools, make an SSH key for Kevaso, put it on the machine, and write down the machine's
 identity. You do this once for every machine: the system
 node and each worker.
@@ -19,6 +19,36 @@ node and each worker.
 
 Then: [install the control plane]({{ '/setup/single-node/' | relative_url }}) on it, or
 [add it as a worker]({{ '/workers/' | relative_url }}).
+
+---
+
+## Supported operating systems
+
+`kevasod` states which operating systems it supports. Today it lists:
+
+| System | `ID` and `VERSION_ID` in `/etc/os-release` |
+|---|---|
+| Ubuntu 24.04 | `ubuntu` `24.04` |
+| Debian 12 | `debian` `12` |
+
+On the machine, `kevasod platforms` prints the list (`ubuntu 24.04, debian 12`). A system is added
+to it once the whole end-to-end suite has passed on it.
+
+`kvoadm` reads the list out of the `kevasod` binary you give it with `--kevasod`, so the list it
+judges by is the list of the binary it is about to install. If that binary has no list, `kvoadm`
+uses the one built into itself.
+
+Before it changes anything, `kvoadm init` and `kvoadm host add` read `/etc/os-release` on the
+machine and compare the `ID` and `VERSION_ID` with the list, exactly:
+
+- **On the list:** the line is `✓ operating system`.
+- **Not on the list** (Ubuntu 22.04, Ubuntu 24.10, Debian 13, any other Linux): the line is a `!`
+  warning, `this kevasod supports: ubuntu 24.04, debian 12; others may work`. It is a warning, not a
+  stop: `kvoadm` goes on. Kevaso has not been tested on that system, so nothing says it works.
+
+The check stops (`✗`) for other reasons: a CPU that is not x86_64 or aarch64, no systemd, no
+`openssl`, or something else already listening on port 6443. A machine without `apt-get` only gets a
+warning, and then you install the runtimes' packages yourself.
 
 ---
 
@@ -142,8 +172,9 @@ Compare it with what `ssh` showed you in step 3. Same? Keep it: you'll give it t
 
 | Message | What to do |
 |---|---|
-| `host key mismatch` | The machine isn't the one you wrote down, or it was reinstalled. Check the fingerprint again (step 4). |
+| `host key not trusted: got SHA256:…, expected SHA256:…` | The machine isn't the one you wrote down, or it was reinstalled. Check the fingerprint again (step 4). |
 | `how should kvoadm log in?` | Give `--ssh-key PATH`, or `--password` to type it once. |
 | `… has a passphrase: load it with ssh-add first` | Run `ssh-add ~/.ssh/kevaso_ed25519`, or run `kvoadm` in a terminal so it can ask. |
 | `the host is aarch64 but --kevasod is built for x86_64` | Rebuild `kevasod` with the other `GOARCH` (step 1). |
-| `host hv1 not Ready` | On the machine: `journalctl -u kevasod -n 50`. |
+| `host hv1 not Ready in …` | On the machine: `journalctl -u kevasod -n 50`. |
+| `fix the ✗ lines first: nothing was changed` | The check of the machine found something that stops the install. Fix what its `✗` lines say (see above). |

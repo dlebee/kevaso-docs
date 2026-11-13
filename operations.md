@@ -68,10 +68,11 @@ sudo tail -f /var/lib/kevaso/audit.log | jq -c 'select(.allowed == false)'
 | Task | Command |
 |---|---|
 | See them, with runtimes and leases | `kvo get hosts`, `kvo describe host hv2` |
-| Take one out for maintenance | `kvoadm host drain hv2` |
+| Take one out for maintenance | `kvoadm host drain hv2`: [Host loss and draining]({{ '/workers/host-loss/' | relative_url }}) |
 | Roll a new `kevasod` over all of them | `kvoadm upgrade --kevasod ./kevasod`: [High availability]({{ '/operations/ha/' | relative_url }}#upgrade) |
 | Put it back | `kvoadm host uncordon hv2` |
 | The control-plane host runs silos too | `kvoadm host enable-worker root@HOST --ssh-key … --runtime …` |
+| Take Kevaso off a machine | `kvoadm reset root@HOST --ssh-key …`: [Reset a machine]({{ '/workers/#reset-a-machine' | relative_url }}) |
 
 ---
 
@@ -141,45 +142,52 @@ etcd's own clean-up (defragmenting) isn't scheduled.
 
 ## What's proven where
 
-Kevaso's tests come in three kinds, and this page says which each feature has had. The source is
-`MILESTONES.md` in the core repository.
+This table says which test level each feature has reached. The sources are `MILESTONES.md` and
+`test/e2e/METAL.md` in the core repository.
 
 | Level | Means |
 |---|---|
 | **In-process** | Unit and integration tests in one program, with fakes for the machines, the cloud and (where noted) the storage |
-| **Lima** | The test loop on real Linux VMs on a Mac, through `kvoadm`, with real nftables and (with nested KVM) real microVMs |
-| **Linodes** | The same loop on real Linode machines |
+| **Local VMs** | The test loop on real Linux VMs on a Mac, through `kvoadm`, with real nftables and (with nested KVM) real microVMs |
+| **Cloud machines** | The same loop on rented cloud machines. **These runs were made before the sealed addressing model and the removal of the guest helper**, so they show what worked then, not what works now |
+| **Bare metal, one machine** | 13 end-to-end tests on one dedicated machine with a real external address, KVM and Ubuntu 26.04: addresses and ports, names, images, secrets on microVMs and containers, ingress with a certificate, probes, leases, panes, the fence on one machine, volumes, a private registry, Podman, a reboot. Every test passed, and the machine was clean again after each run |
 
-| Feature | In-process | Lima | Linodes | Not yet |
-|---|---|---|---|---|
-| [Addresses, ports and names](../networking/model/): internal and external IPs, `hostPort` per port, `sources`, names, the DNS answers | Yes | | | **A real machine.** The firewall rules for each host address, and the DNS listeners on a host's addresses. A host whose external IP is on no interface (a cloud's 1:1 NAT) isn't handled: `hostPort: [external]` matches nothing there |
-| [Port leases](../networking/leases/), per port: several ports opened together, each its own lease and approval | Yes | | | The per-port form on a real machine. The mechanism (cut within a second at the end, `kvo close`, the max, approve and deny, `sources`, from a container) ran on Linodes with one lease for a whole service. Leases on `loadBalancer` ports with a NodeBalancer (the test token had no NodeBalancer access); leases on an Ingress host (not built) |
-| Plugin load balancers and `allowFrom` | Yes, against a fake plugin | | | A real NodeBalancer |
-| [`IP` kind](../networking/ips/): shared balancers, `dedicated`, `kvo ip keep`, `ip-pool`, the same address for outgoing traffic | Yes, against a fake plugin | | | **A real machine**, and a real provider with this form (a shared IP did answer from the other worker 1 m 13 s after its host went down on Linodes, before the `IP` kind) |
-| [Probes and `routeWhen`](../silos/probes/) | Yes | | | **A real machine** |
-| [Secrets without anything installed in the silo](../secrets/): injection, files and environment variables written by the host, the local endpoint | Yes | | | **A real machine.** The `curl` lines, the file and env deliveries after a reboot and a reset, the egress certificate in an injecting microVM, a silo without a grant having no endpoint, spoofed source addresses being dropped |
-| [Approvals](../secrets/#ask-a-person-first-approvals) | Yes | | | On the local endpoint, on a real machine. The approval flow itself ran on Lima (a microVM and a container, the key never in the silo) with an earlier way for the silo to ask |
-| [Private registries](../secrets/): pull secrets | Yes | | | **A real machine**, and a real private registry |
-| [Daemons and upkeep](../silos/daemons/) | Yes | Yes: microVM and container | | |
-| [Panes](../panes/): the silo serves them, the host fetches them | Yes | | | **A real machine.** (Panes ran on Lima with an earlier way for the silo to report them.) A silo that is cut off and recovers |
-| The macOS panes app | Yes: its own 60 tests, against a fake issuer and control plane | | | A run against a real cluster; packaging; the streamed browser |
-| [Plugins for `kvo`](../extending/kvo-plugins/) | Yes, with a test plugin, a locally built signed index and a test of the unpacking | | | A published index (none exists yet); launching the panes app through `kvo panes` |
-| [HTTPS sites (ingress)](../ingress/): stock proxies driven from outside | Yes | | | **A real machine.** A real nginx started from its own image, HTTPS through it with certificates from a test ACME server over HTTP-01 and DNS-01, a refused setting holding the last good config, a reload on renewal. Caddy and Kong the same |
-| [Certificates](../ingress/): ACME and the internal CA | Yes | | | A real machine with the current ingress |
-| [Terminals](../silos/terminals/), `kvo cp`, a dropped client | Yes | | Yes (a container silo) | A microVM is not recorded |
-| [Moves](../silos/moves/): `kvo move`, `onHostLoss: Move` | Yes | Yes: a container move; a microVM refused as pinned | Yes: a `linode-block` volume moves; `Move` after a power-off; `--confirm-fenced` | |
-| [The fence](../silos/moves/#the-fence) | Yes | Yes: `kevasod` stopped or killed; a quick restart stops nothing | | A thicker margin; control-plane hosts that are workers |
-| `container:` and `vm:`, [`VMImage`](../silos/sets/) | Yes | | | The blocks as written today on a real machine. Container silos have run on Lima and Linodes (`docker`), microVMs on Lima |
-| [Volumes on microVMs](../silos/volumes/): local disks, virtiofs, a root disk on a mount class | Yes, with fakes | | | **A real machine.** Everything about it |
-| [JuiceFS](../providers/juicefs/) for container silos | Yes, with the `juicefs` program faked | | Yes: mount, size, move, host power-off, metadata outage | microVMs over virtiofs; a non-root silo; `podman` |
-| [The etcd store](#the-store), SQLite to etcd | Yes | | Yes | |
-| [Three system nodes, a light node](../operations/ha/): join, lose one, remove one | Yes | | Yes | Removing the leader's own node; five system nodes; Podman workers |
-| [`kvoadm upgrade`](../operations/ha/#upgrade) | Yes | | Yes: API up throughout, containers kept running | An upgrade with a light node in the cluster |
-| [Backup and restore](../operations/backup/) | Yes | | | A real-machine run is not recorded here |
-| [Plugin operators](../extending/plugins/#plugin-operators) | Yes | | Yes: install over SSH and systemd, scale, uninstall | |
-| Plugin manifests with privileges | Yes | | Yes: the JuiceFS plugin's | |
-| [Scale and `oldSelf`](../extending/kinds/#scale), guards after mutation policies, dry runs | Yes | | (the operator run uses them) | |
-| [Linode](../providers/linode/): Block Storage | Yes, against a fake API | | Yes: a volume | NodeBalancer and DNS on real Linode (needs a token with those scopes) |
+**Not yet, for anything:** a cluster of two machines (the mesh between hosts, moves, hand-offs, host loss and the fence acting on bare metal), failure cases (written, not yet run), and a long soak. OpenShell has not run on bare metal.
+
+| Feature | In-process | Local VMs | Cloud machines (before the sealed model) | Bare metal, one machine | Not yet |
+|---|---|---|---|---|---|
+| [Addresses, ports and names]({{ '/networking/model/' | relative_url }}): internal and external IPs, `hostPort` per port, `sources`, names, the DNS answers | Yes |  |  | Yes: ports on the external IP, `sources`, names and the DNS answers. An `[internal]` port is refused, with the reason, on a machine with no internal address | A machine with an internal address. A host whose external IP is on no interface (a cloud's 1:1 NAT): it doesn't work there. IPv6 isn't used |
+| [Port leases]({{ '/networking/leases/' | relative_url }}), per port | Yes | Yes: per port, on a microVM silo | Yes, with one lease for a whole service (before per-port leases) | Yes: closed until leased, answers while open, a held connection is cut when the lease ends, approval, `kvo close` | Leases on `loadBalancer` ports with a provider's balancer. Leases on an Ingress host: not built |
+| Plugin load balancers and `allowFrom` | Yes, against a fake plugin |  |  |  | A real balancer |
+| [`IP` kind]({{ '/networking/ips/' | relative_url }}): shared balancers, `dedicated`, `kvo ip keep`, `ip-pool`, the same address for outgoing traffic | Yes, against a fake plugin |  | A shared address answered from the other worker 1 m 13 s after its host went down (before the `IP` kind) |  | A real machine with the `IP` kind, and a real provider with this form |
+| [Probes and `routeWhen`]({{ '/silos/probes/' | relative_url }}) | Yes |  |  | Yes: an external port and the service's name are held until the probe passes, and again when it fails |  |
+| [Secrets with nothing installed in the silo]({{ '/secrets/' | relative_url }}): injection, files and variables written by the host, the local endpoint | Yes |  |  | Yes: on a microVM and on Docker (including Kevaso's runtime keeping a variable out of `docker inspect` and Docker's disk), injection, the endpoint | Files and variables on Podman. The fallback for variables on a real host. OpenShell |
+| [Approvals]({{ '/secrets/#ask-a-person-first-approvals' | relative_url }}) | Yes | Yes, with an earlier way for the silo to ask |  | Yes: through the silo's local endpoint, and for a leased port |  |
+| [Private registries]({{ '/secrets/#private-registry-credentials' | relative_url }}): pull secrets | Yes |  |  | Yes: against a registry on the machine itself, over plain HTTP | A registry with TLS, or on another host |
+| [Daemons and upkeep]({{ '/silos/daemons/' | relative_url }}) | Yes | Yes: microVM and container |  |  |  |
+| [Panes]({{ '/panes/' | relative_url }}): the silo serves them, the host fetches them | Yes | Yes, with an earlier way for the silo to report them |  | Yes: microVM and container, and a silo that answers too much is cut off | A silo that is cut off and recovers |
+| The macOS panes app | Yes: its own 60 tests, against a fake issuer and control plane |  |  |  | A run against a real cluster; packaging; the streamed browser |
+| [Plugins for `kvo`]({{ '/extending/kvo-plugins/' | relative_url }}) | Yes, with a test plugin, a locally built signed index and a test of the unpacking |  |  |  | A published index (none exists yet); launching the panes app through `kvo panes` |
+| [HTTPS sites (ingress)]({{ '/ingress/' | relative_url }}): stock proxies driven from outside | Yes, for nginx, Caddy and Kong |  | Yes, for nginx, before the sealed model | Yes: nginx on its own image, a certificate from Let's Encrypt's staging directory over HTTP-01, the redirect to HTTPS, unknown hosts answered 404 | Caddy and Kong on a real machine. A reload on renewal. Let's Encrypt production. A site whose silo is on another machine |
+| [Certificates]({{ '/ingress/' | relative_url }}): ACME and the internal CA | Yes |  |  | Yes: ACME over HTTP-01 against the staging directory | DNS-01 on a real machine. The internal CA on a real machine |
+| [Terminals]({{ '/silos/terminals/' | relative_url }}), `kvo cp`, a dropped client | Yes |  | Yes (a container silo) |  | A microVM is not recorded |
+| [Moves]({{ '/silos/moves/' | relative_url }}): `kvo move`, `onHostLoss: Move` | Yes | Yes: a container move; a microVM refused as pinned | Yes: a block volume moves; `Move` after a power-off; `--confirm-fenced` |  | Two machines |
+| [`kvoadm host drain`]({{ '/workers/host-loss/' | relative_url }}): the hand-off | Yes |  |  |  | Two machines |
+| [The fence]({{ '/silos/moves/#the-fence' | relative_url }}) | Yes | Yes: `kevasod` stopped or killed; a quick restart stops nothing |  | Only the one-machine part: a quick restart stops nothing, and with the control plane on the same machine the fence record says there is nothing to fence | The fence acting across two machines; a thicker margin; control-plane hosts that are workers |
+| `container:` and `vm:`, [`VMImage`]({{ '/silos/sets/' | relative_url }}) | Yes |  | Container silos with `docker`, in the earlier form | Yes: a container image by tag and by digest, the built-in microVM image, an inline disk with its hash, a wrong hash refused with the reason |  |
+| [Volumes on microVMs]({{ '/silos/volumes/' | relative_url }}): local disks | Yes, with fakes |  |  | Yes: data survives a guest reboot, a stop and start, and `kvo reset` of the root disk; deleting the silo removes the volume | virtiofs and a root disk on a mount class: nothing but in-process |
+| [JuiceFS]({{ '/providers/juicefs/' | relative_url }}) for container silos | Yes, with the `juicefs` program faked |  | Yes: mount, size, move, host power-off, metadata outage |  | microVMs over virtiofs; a non-root silo; `podman`; the sealed model |
+| `podman` as the container engine | Yes |  |  | Yes: a silo runs, opens an external port, and gets a secret from the local endpoint; then it is taken off again | Files and variables on Podman |
+| A reboot of the machine | Yes |  |  | Yes: Kevaso, the fence, the runtimes, the silos and a microVM's volume come back |  |
+| [`kvoadm reset`]({{ '/workers/#reset-a-machine' | relative_url }}) | Yes: its plan and its checklist |  |  | Yes: after each run, the machine is clean again | A machine whose install has no record |
+| [The etcd store]({{ '#the-store' | relative_url }}), SQLite to etcd | Yes |  | Yes |  |  |
+| [Three system nodes, a light node]({{ '/operations/ha/' | relative_url }}): join, lose one, remove one | Yes |  | Yes |  | Removing the leader's own node; five system nodes; Podman workers |
+| [`kvoadm upgrade`]({{ '/operations/ha/#upgrade' | relative_url }}) | Yes |  | Yes: API up throughout, containers kept running |  | An upgrade with a light node in the cluster |
+| [Backup and restore]({{ '/operations/backup/' | relative_url }}) | Yes |  |  |  | A real-machine run is not recorded |
+| [Plugin operators]({{ '/extending/plugins/#plugin-operators' | relative_url }}) | Yes |  | Yes: install over SSH and systemd, scale, uninstall |  |  |
+| Plugin manifests with privileges | Yes |  | Yes: the JuiceFS plugin's |  |  |
+| [Scale and `oldSelf`]({{ '/extending/kinds/#scale' | relative_url }}), guards after mutation policies, dry runs | Yes |  | (the operator run uses them) |  |  |
+| [Provider plugins]({{ '/providers/linode/' | relative_url }}): block storage | Yes, against a fake API |  | Yes: a volume |  | Load balancer and DNS against a real provider (needs a token with those scopes) |
 
 "Not yet" is a statement about what has been **recorded**, not about whether it works: if it isn't
 in the table as proven, assume it isn't.

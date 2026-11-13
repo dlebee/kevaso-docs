@@ -16,7 +16,7 @@ Every command on one page. `kvo` uses your current context (`kvo ctx`); `-n NS` 
 
 | Command | Does |
 |---|---|
-| `kvo apply -f FILE` (or `-f -`) | Create or update every object in a YAML/JSON file |
+| `kvo apply -f FILE` (or `-f -`) | Create or update every object in a YAML/JSON file. A field the kind doesn't have is an error, never dropped: fix the name and apply again |
 | `kvo get KIND [NAME] [-n NS \| -A] [-o yaml\|json]` | List or show objects |
 | `kvo describe KIND NAME` | Everything about one object, for people |
 | `kvo delete KIND NAME` | Delete it |
@@ -38,6 +38,9 @@ or `PLURAL.GROUP` when two share one).
 and policies included. The server does this with a dry run, `?dryRun=All` on a create or update: the full
 write, answered with what would be stored, and nothing stored
 ([Policies]({{ '/extending/policies/#dry-runs' | relative_url }})).
+
+`kvo get`, `describe` and `watch` remove terminal control characters (escape sequences and text-direction
+overrides) from status text that silos and hosts write, so a silo can't change what your terminal shows.
 
 ### Silos
 
@@ -162,7 +165,9 @@ A plugin never takes the name of a `kvo` command. See [Plugins for kvo]({{ '/ext
 | `kvoadm host list` | Hosts, both of their IPs, and their state |
 | `kvoadm host addresses HOST add\|remove CIDR…` | The extra addresses routed to a host, which the built-in `ip-pool` class hands out ([Addresses you keep]({{ '/networking/ips/' | relative_url }})). `remove` is refused for an address an IP holds |
 | `kvoadm host addresses HOST list` | Each range, and which IP holds each address |
-| `kvoadm host drain NAME` / `uncordon NAME` | Maintenance |
+| `kvoadm host drain NAME` | Stop new silos landing on the host, and hand off the silos that can move, the way `kvo move` does. Silos that must stay with their local disk are listed. [Host loss and draining]({{ '/workers/host-loss/' | relative_url }}) |
+| `kvoadm host uncordon NAME` | The host takes new silos again |
+| `kvoadm reset [USER@]ADDR --ssh-key KEY [--host-key SHA256:…] [--ssh-port N] [--dry-run] [--yes] [--force] [--wipe-storage]` | Take Kevaso off a machine again. Shows what it will remove and keep, and asks first (`--yes`: don't ask). Refused while silos are on it (`--force`: go ahead, their data is lost). `--wipe-storage`: also remove the silo storage on a real disk. [Reset a machine]({{ '/workers/#reset-a-machine' | relative_url }}) |
 
 Every command that logs in takes `--ssh-key PATH` (a key with a passphrase is taken from `ssh-agent`
 or asked for) or `--password` (typed once, read from stdin when there's no terminal; kvoadm then adds
@@ -226,6 +231,7 @@ You rarely run it yourself; `kvoadm` installs it as a service.
 | `kevasod worker --name N --server URL[,URL…]` | A worker-only host. Several URLs: every system node; it fails over between them |
 | `kevasod fence-watch [--fence-after D] [--dir DIR] [--runtime R]…` | A worker's [fence]({{ '/silos/moves/#the-fence' | relative_url }}): stops `Recreate` and `Move` silos when the agent's last contact is older than `D` (default `30s`). Its own unit, `kevaso-fence.service` |
 | `kevasod version` | Its version |
+| `kevasod platforms` | The operating systems this build supports (`kvoadm` reads the same list). [Supported operating systems]({{ '/setup/prepare/#supported-operating-systems' | relative_url }}) |
 | `kevasod admin recovery-key` / `kms-rotate [--new-recovery-key]` / `backup` | Through the admin socket, as root |
 | `kevasod admin restore [--data DIR]` | Put a backup into a fresh data directory (`kvoadm init --restore` runs it) |
 | `kevasod control-plane --dns-suffix SUFFIX` | The last label of the cluster's names (default `kevaso`): `SERVICE.NAMESPACE.SUFFIX`. [Addresses, ports and names]({{ '/networking/model/' | relative_url }}) |

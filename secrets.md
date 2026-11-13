@@ -17,8 +17,8 @@ as possible inside. Often that's nothing at all.
 | 1 | **Injection** (`deliver: inject`) | Nothing. The key is added to its requests outside the silo. | Calls to an HTTP API with a key |
 | 2 | **Operations** (`operations.sign`) | Signatures. The key stays in Kevaso. | Signing keys, code signing |
 | 3 | **On demand** (`deliver: broker`) | The value, when it asks, from [a local address only it can reach](#the-local-endpoint) | Passwords, anything that can't be injected |
-| 4 | **As a file** (`deliver: file`) | A file in memory (tmpfs), written by the host and rewritten on rotation | Apps that read a key file |
-| — | `deliver: env` | An environment variable, written by the host. Leaks into child processes and logs: legacy apps only. | Last resort |
+| 4 | **As a file** (`deliver: file`) | A file in memory, written by the host and replaced on rotation | Apps that read a key file |
+| — | `deliver: env` | An environment variable. Leaks into child processes and logs: legacy apps only. | Last resort |
 
 **Nothing of Kevaso's is installed in a silo.** Its image needs no helper. Injection happens outside
 the silo, files and variables are written by the host, and everything else is plain HTTP to a local
@@ -119,27 +119,68 @@ openshell:resolve:env:…`), which it sends like a key, and OpenShell swaps the 
 
 ---
 
-## Files and variables: written by the host
+## Files and variables
 
-A `file` or `env` secret is written into the silo by its host, through the runtime, when the silo is
-running. The value goes over a pipe: never on a command line, never in a file on the host.
+Kevaso puts a `file` or `env` secret into a silo from the host, and installs nothing inside it. How
+depends on the runtime:
 
-| Delivered as | Where it lands | Mode |
+| | `file` | `env` |
 |---|---|---|
-| `file` | `path` in the grant (default `/run/secrets/NAME`). It must be under `/run/` | `0400` |
-| `env` | `/run/kevaso/secrets.env`, read by login shells through `/etc/profile.d/kevaso-secrets.sh`. The variable is `env` in the grant, or the secret's name in capitals with `-` as `_` | `0400` |
+| **MicroVM** (`cloud-hypervisor`) | Written by the host through the runtime, over a pipe, to `path` in the grant (default `/run/secrets/NAME`). Mode `0400`. Rewritten while the silo runs | Written to `/run/kevaso/secrets.env` (`0400`), read by login shells through `/etc/profile.d/kevaso-secrets.sh`. A running process sees no change |
+| **Container on Docker** | A folder of the host's memory-only filesystem, mounted read-only into the container. `0400`, owned by root. Replaced in place on rotation, no restart | The container's own environment, set by Kevaso's runtime as the container starts. Not in `docker inspect`, not on Docker's disk. Shown in `SecretsDelivered` |
+| **Container on Docker, where Kevaso's runtime can't be used**, and **Podman** | As above | The container's own environment, kept by the engine in the container's config: `inspect` shows it and it is on the host's disk. Admission warns |
+| **OpenShell** | Refused, with the reason | Refused, with the reason |
 
-- **Memory only.** The host refuses to write into a folder that isn't a tmpfs. Container silos get a
-  tmpfs on `/run` for this. A microVM's `/run` is one on any systemd image.
-- Files are written before the silo's init steps (microVMs), written again whenever the secret or
-  the grant changes, and removed when no longer delivered. They are written again after a reboot or
-  a `kvo reset`.
-- The image needs a POSIX `sh` and `cat`, `mkdir`, `chmod`, `mv` and `rm`. An image without them
-  (a minimal one with no shell) gets the silo condition `SecretsDelivered=False` with the reason.
-- Container init steps run in init containers before the main container starts, so they don't see
-  `file` or `env` secrets.
+The variable is `env` in the grant, or the secret's name in capitals with `-` as `_`. The value
+goes over a pipe or a file in memory: never on a command line.
+
+- **Memory only.** On a microVM the host refuses to write into a folder that isn't a tmpfs (`/run`
+  is one on any systemd image). On a container the files come from a folder the host keeps in memory.
+- **Where a file can go.** The path must be under `/run/`. On a container it must be in a folder
+  under `/run`, like `/run/secrets/NAME`, not in `/run` itself: the host mounts the folder read-only
+  and `/run` stays the container's own writable memory. Admission refuses anything else.
+- A file in a folder the running container doesn't have mounted yet (a grant added while it runs)
+  appears at the container's next start. A microVM gets it at once.
+- Values are written before the silo's init steps and again whenever the secret or the grant changes.
+  They are removed when no longer delivered, and written again after a reboot or a `kvo reset`.
+  Stopping a container silo empties its folder; the host fills it again before the next start.
+- A microVM's image needs a POSIX `sh` and `cat`, `mkdir`, `chmod`, `mv` and `rm`. One without them
+  gets the silo condition `SecretsDelivered=False` with the reason. A container's image needs
+  nothing, so a minimal image with no shell works.
+- Init steps of a container run before the main container starts and don't see `file` or `env`
+  secrets. A microVM's init steps do.
 - A program that keeps a `file` secret open must re-read it on its own schedule: nothing tells it
   the secret changed.
+- Values of `env` must be text without a newline. On Podman a value that starts with a quote is
+  refused. Deliver those as a file.
+
+### Environment variables on a container
+
+Kevaso's runtime is installed on a Docker host by `kvoadm`. It sits between Docker and its usual
+runtime, adds the variables to the container just as it starts, and passes everything else through.
+It is used on a rootful Docker, version 24 or later, whose default runtime is `runc`. A container
+without an `env` secret never goes through it.
+
+| Who | Can see a variable's value |
+|---|---|
+| Someone with access to the host's Docker, through Kevaso's runtime | No: not in `docker inspect`, not in the engine's files on disk |
+| Someone with access to the host's Docker, on the fallback | Yes: `docker inspect` and `podman inspect` show it, and the engine stores it on the host's disk |
+| A process inside the same silo | Yes: it can read its own environment and its parent's |
+| `root` on the host | Yes, always: it can read any process's environment and the memory the files live in |
+
+- A container silo's `docker exec` and `kvo exec` shells don't get the variables on Kevaso's
+  runtime: Docker makes an exec's environment from its own config. A program the silo starts does
+  get them. Read one from the main process with `tr '\0' '\n' < /proc/1/environ`, or deliver the
+  secret as a file.
+- **The fallback and its warning.** On Podman, a rootless Docker, a default runtime that isn't
+  `runc`, a Docker older than 24, or a host where Kevaso's runtime didn't register, the variables go
+  in through the engine's own environment option. Applying the silo prints `Warning:` on stderr
+  saying that anyone with access to the host's engine sees the value, and that it is on the host's
+  disk. The warning is left out when every ready host of that runtime uses Kevaso's runtime.
+  `kvo describe silo` shows the way a silo got in `SecretsDelivered`.
+- A rotated variable reaches a container at its next start. Each start reads the new value.
+- If the host's Docker remaps users (`userns-remap`), a `0400` file owned by root can't be read
+  inside the container. That isn't supported.
 
 A silo that gets an injected secret must trust its host's egress CA. Kevaso arranges that, with no
 tool of its own inside:
@@ -231,8 +272,11 @@ Errors come back as JSON, `{"error": "…"}`; `curl -f` turns a refusal into a f
 - **`openshell` and `openshell-container` silos have no endpoint.** `kvo describe` shows the silo
   condition `LocalEndpoint=False NotSupported` for one that has a grant needing it.
 
-> **Not proven on real machines:** the endpoint, the spoofing rules, and files and variables
-> written by the host have run in-process and in tests, not yet on real VMs or containers. See
+> **Proven on one bare-metal machine** (Ubuntu 26.04): the endpoint, files and variables on a
+> microVM, and files and variables on Docker through Kevaso's runtime (including that `docker inspect`
+> and Docker's folder on disk hold no value). **Not yet proven:** files and variables on Podman
+> (a Podman silo has run, opened a port and read a secret from the endpoint), the fallback on a real host, a second machine,
+> the failure cases, OpenShell. See
 > [What's proven where]({{ '/operations/#whats-proven-where' | relative_url }}).
 
 ---
@@ -368,7 +412,7 @@ Paste the new key, Enter, Ctrl-D.
 |---|---|
 | `inject` | The next request carries the new value. Nothing changes in any silo. |
 | `file` | The file is rewritten in every silo that has it, within seconds. |
-| `env` | The host rewrites the variables file. A program sees the new value in its next login shell |
+| `env` | A microVM: the host rewrites the variables file, and a program sees the new value in its next login shell. A container: the next start |
 | `broker` | The next request to the endpoint returns it. |
 
 One secret granted to many silos is renewed once, for all of them.

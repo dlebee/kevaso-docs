@@ -30,9 +30,9 @@ bin/kvoadm init root@203.0.113.10 \
 | `--external-ip IP` | The machine's address reachable from outside that network, if it has one |
 | `--user NAME` | Your name in Kevaso (default: your login name on this computer) |
 
-With neither `--internal-ip` nor `--external-ip`, the SSH address becomes the internal IP. Give at
-least one if you reach the machine some other way (a tunnel, a name). Both must be IPv4 addresses, and
-they must differ. What they mean is on [Addresses, ports and names]({{ '/networking/model/' | relative_url }}).
+With neither `--internal-ip` nor `--external-ip`, the SSH address becomes the internal IP, if it is an
+IPv4 address. If you reach the machine by a name or a tunnel, give at least one of them, or `init`
+stops. Both must be IPv4 addresses, and they must differ. What they mean is on [Addresses, ports and names]({{ '/networking/model/' | relative_url }}).
 
 **First, it looks.** Before changing anything, `init` reads the machine and shows what it found:
 
@@ -44,7 +44,7 @@ What's on this machine:
   ✓ systemd             yes
   ✓ openssl             yes
   ✓ KVM                 /dev/kvm          microVM silos (cloud-hypervisor, openshell) can run here
-  ✓ size                4 CPUs, 7953 MiB memory, 71 GiB free
+  ✓ size                4 CPUs, 7953 MiB memory, 71 GiB free   a control plane alone needs ~1 CPU and 1 GiB; silos need their own
   ! SSH password login  on                anyone can try passwords: set PasswordAuthentication no once your key works
 ```
 
@@ -54,7 +54,8 @@ What's on this machine:
 | `!` | Works, but read the note |
 | `✗` | Won't work: `init` stops there and changes nothing |
 
-To only look, add `--dry-run`: it stops after this table.
+The operating system line is judged by the list of [supported systems]({{ '/setup/prepare/#supported-operating-systems' | relative_url }}):
+an unlisted system gets a `!`, not a stop. To only look, add `--dry-run`: it stops after this table.
 
 > **Password logins on?** Now that your key works, you can turn them off: `kvoadm init` asks you
 > (or pass `--disable-password-login`). Or do it yourself: on the machine, put
@@ -76,17 +77,21 @@ What it does, in order (each line is printed as it happens):
 
 1. **Connects** with your key, checking the host key against `--host-key`.
 2. **Checks** the CPU matches the `kevasod` you built.
-3. **Installs `kevasod`**, signed: `kvoadm` signs the binary with a key of its own
+3. **Records the machine as it is**, before installing anything: its packages, nftables tables, IP
+   forwarding, whether a `kevaso` volume group exists, Docker's `daemon.json`. It is kept in
+   `/var/lib/kevaso-install/record` (root only), and [`kvoadm reset`]({{ '/workers/#reset-a-machine' | relative_url }})
+   reads it. A second install keeps the first record.
+4. **Installs `kevasod`**, signed: `kvoadm` signs the binary with a key of its own
    (`~/.kevaso/signing.key`, made on first use), pins the public half on the machine
    (`/etc/kevaso/release.pub`) and the machine verifies the signature before installing to
    `/usr/local/bin/kevasod`. A binary changed on the way doesn't get installed.
-4. **Starts the control plane** as `kevasod.service`. On first start it makes the cluster's
+5. **Starts the control plane** as `kevasod.service`. On first start it makes the cluster's
    private CA, its store, and the master key for secrets, all in `/var/lib/kevaso` (root only).
-5. **Gets you an admin certificate**: the private key is made *on your computer*; only a signing
+6. **Gets you an admin certificate**: the private key is made *on your computer*; only a signing
    request goes to the machine, which signs it through its root-only admin socket.
-6. **Writes your `kvo` context** to `~/.kevaso/config.yaml`: the API address, the cluster CA (so
+7. **Writes your `kvo` context** to `~/.kevaso/config.yaml`: the API address, the cluster CA (so
    `kvo` trusts only *this* cluster) and your certificate.
-7. **Waits for the host to be Ready**, then prints the **recovery key** (next step).
+8. **Waits for the host to be Ready**, then prints the **recovery key** (next step).
 
 Now try `kvo`:
 
