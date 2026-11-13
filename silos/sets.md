@@ -79,7 +79,8 @@ Anything you want to keep across resets belongs on a volume.
 
 ### `exclusive`: one copy, ever
 
-If two copies of a silo must never run at the same time, set `exclusive: true`:
+If two copies of a silo must never run at the same time (a single-writer database, or a system with
+equivocation penalties), set `exclusive: true`:
 
 ```yaml
 spec:

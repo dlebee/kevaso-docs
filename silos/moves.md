@@ -84,7 +84,8 @@ The old host stops the silo and lets go of its volumes first, then the new host 
 
 A move from a **lost** host needs `--confirm-fenced`: nobody is there to stop the old copy, so
 you say it's stopped. Only say it when the old copy really is stopped: if two copies of a silo
-must never run at the same time, that is the check that keeps it so.
+must never run at the same time (a single-writer database, or a system with equivocation penalties),
+that is the check that keeps it so.
 
 Moving needs `create` on `silos/move` (the built-in `editor` and `admin` roles have it).
 

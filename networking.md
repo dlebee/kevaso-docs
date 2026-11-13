@@ -145,8 +145,8 @@ spec:
 | `sameAsService` | The address the silo is reached on (its `Public IP`) |
 | `pool` | An address from an `IPPool`; also set `egress: { source: pool, pool: NAME }` |
 
-If a silo tells others the address it's reached on, and they must see its outbound traffic come
-from that same address, set `sameAsService`. It needs a service exposed with `hostPort` or
+If a silo tells others the address it's reached on, as peers in a P2P network do, and they must
+see its outbound traffic come from that same address, set `sameAsService`. It needs a service exposed with `hostPort` or
 `loadBalancer`. Whether it can work depends on how the silo is exposed:
 [next section](#can-a-silo-use-the-same-ip-out-as-in). A fourth source, `gateway` (leave from a
 chosen host), is not built.

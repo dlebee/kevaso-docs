@@ -140,7 +140,8 @@ curl -fsS -H 'Kevaso-Local: 1' http://169.254.42.1/v1/keys/signing-key
 
 - Asking for a secret the silo has no grant for answers exactly like a name that doesn't exist.
 - A host gets secrets only for silos placed on it.
-- If a key must never sign two different payloads for the same slot, set `slashingProtection: true`
+- If a key must never sign two different payloads for the same slot (a system with equivocation
+penalties, say), set `slashingProtection: true`
   on `sign`. A second, different payload for a slot already signed is refused (HTTP 409), and so is
   any slot before the last.
 - Errors come back as JSON, `{"error": "…"}`. `curl -f` makes a refusal a failure.
