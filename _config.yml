@@ -32,6 +32,7 @@ sections:
       - { title: Your first silo, url: /silos/first-silo/ }
       - { title: Runtimes, url: /silos/runtimes/ }
       - { title: Sets, images and updates, url: /silos/sets/ }
+      - { title: Probes and routing, url: /silos/probes/ }
       - { title: Volumes, url: /silos/volumes/ }
       - { title: Host loss and moves, url: /silos/moves/ }
       - { title: Daemons and upkeep, url: /silos/daemons/ }
@@ -42,6 +43,7 @@ sections:
       - { title: Addresses, ports and names, url: /networking/model/ }
       - { title: Networking, url: /networking/ }
       - { title: Port leases, url: /networking/leases/ }
+      - { title: Addresses you keep (IPs), url: /networking/ips/ }
       - { title: HTTPS sites (ingress), url: /ingress/ }
       - { title: Secrets, url: /secrets/ }
   - title: Providers
@@ -52,7 +54,8 @@ sections:
     pages:
       - { title: Defining your own kind, url: /extending/kinds/ }
       - { title: Policies, url: /extending/policies/ }
-      - { title: Plugins, url: /extending/plugins/ }
+      - { title: Provider and operator plugins, url: /extending/plugins/ }
+      - { title: kvo plugins, url: /extending/kvo-plugins/ }
   - title: Running it
     pages:
       - { title: People and access, url: /access/ }

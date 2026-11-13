@@ -80,9 +80,9 @@ role to people in a namespace. The built-in roles:
 
 | Role | Can |
 |---|---|
-| `viewer` | Read silos, service accounts, grants; see that secrets exist, which silos wait for an approval, the [panes]({{ '/panes/' | relative_url }}) silos report, and the [leases]({{ '/networking/leases/' | relative_url }}) on their ports |
-| `editor` | Everything `viewer` can, plus create and change silos, `exec`, terminals and files (`silos/ssh`, `silos/files`), moves, opening and closing leased ports, service-account tokens; create and *use* secrets (never read a value back) |
-| `admin` | Everything `editor` can, plus roles and bindings in the namespace, exposing silos publicly, reading secret values, answering approvals (a secret's, or a leased port's), deleting panes and leases |
+| `viewer` | Read silos, silo sets, services, VM images, ingresses, certificates, service accounts and grants; see that secrets exist, which silos wait for an approval, the [panes]({{ '/panes/' | relative_url }}) silos report, the [leases]({{ '/networking/leases/' | relative_url }}) on their ports, and the [IPs]({{ '/networking/ips/' | relative_url }}) |
+| `editor` | Everything `viewer` can, plus create and change those objects, `exec`, terminals and files (`silos/ssh`, `silos/files`), moves, opening and closing leased ports, service-account tokens; create and *use* secrets (never read a value back); *use* an IP an admin made |
+| `admin` | Everything `editor` can, plus roles and bindings in the namespace, opening ports on a host address or behind a load balancer (`services/expose-public`), publishing on a public ingress class (`ingresses/publish-public`), creating and releasing IPs, reading secret values, answering approvals (a secret's, or a leased port's), deleting panes, approvals and leases |
 | `cluster-admin` | Everything, everywhere (what `kvoadm init` gives you) |
 
 The permissions beyond plain read and write are their own *subresources*:
@@ -100,10 +100,21 @@ The permissions beyond plain read and write are their own *subresources*:
 | `silos/exposure` | `approve` | Answer an `expose` approval (a leased port that needs a yes) | | | yes |
 | `leases` | `get`, `list`, `watch` | `kvo get leases` | yes | yes | yes |
 | `leases` | `delete` | Delete a lease | | | yes |
+| `approvals` | `get`, `list`, `watch` | `kvo get approvals` | yes | yes | yes |
+| `approvals` | `delete` | Clear an approval | | | yes |
+| `secrets` | `use` | Name a secret in a grant, or as a silo's `container.pull.secretRef` | | yes | yes |
+| `secrets` | `read-value` | `kvo get secret --reveal` | | | yes |
+| `secrets` | `approve` | `kvo approve`, `kvo deny` | | | yes |
+| `ips` | `get`, `list`, `watch` | `kvo get ips`, `kvo describe ip` | yes | yes | yes |
+| `ips` | `use` | Name an IP: a silo's `service.loadBalancer.ip` or `network.egress.ip`, a service's `loadBalancerIP` | | yes | yes |
+| `ips` | `create`, `update`, `patch`, `delete` | `kvo create ip`, `kvo ip keep`, `kvo ip release` | | | yes |
+| `services/expose-public` | `create` | Open a port on a host address (`hostPort`) or behind a load balancer, on a silo, a silo set or a `LoadBalancer` service | | | yes |
+| `ingresses/publish-public` | `create` | Publish an `Ingress` on a public class | | | yes |
 
 `open` and `approve` on `silos/exposure` can be limited to one silo by name, or to silos by label,
-like `approve` on secrets. Making a port public at all is still `create` on `services/expose-public`:
-a lease only decides when.
+like `approve` on secrets. Opening a port on a host address or behind a load balancer at all is still
+`create` on `services/expose-public`: a lease only decides when. Naming an IP of your own
+needs `use` on that IP.
 
 [Terminals, files and the small UI]({{ '/silos/terminals/' | relative_url }}) are as strong as `exec`: give them the same care.
 

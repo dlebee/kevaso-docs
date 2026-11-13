@@ -31,11 +31,13 @@ flowchart LR
 
 | | |
 |---|---|
-| **Container silos** (`docker`, `podman`) | Built and tested, with the JuiceFS command faked. |
-| **On real machines** | **Not confirmed yet.** The node side needs root and `/dev/fuse`, and its mounts must be visible to Kevaso and the container runtime. A plugin can now ask for that in a manifest, and `kvoadm plugin install --manifest` grants it when you say `--yes` ([Plugins]({{ '/extending/plugins/' | relative_url }})); that path hasn't been run on a real host. Whether `juicefs mount --subdir` and `juicefs status` on a new database behave as the provider expects hasn't been tried either. |
-| **MicroVM silos** (`cloud-hypervisor`) | Built and tested with fakes: a volume is shared into the VM over virtiofs, and a root disk can be an image file on a volume, so the VM moves ([Volumes]({{ '/silos/volumes/' | relative_url }})). **Not run on a real machine.** |
-| **Volume sizes** | `size` isn't enforced. |
+| **Container silos** (`docker`, `podman`) | Run on real machines (Linodes, `docker`): the volume formatted once, mounted with `--subdir` so the silo sees only its folder, sized, moved with its data, moved again after its host was powered off (running elsewhere with its data after about 1 m 20 s), and deleted. Not run with `podman`. |
+| **MicroVM silos** (`cloud-hypervisor`) | In code and tested with fakes: a volume is shared into the VM over virtiofs, and a root disk can be an image file on a volume, so the VM moves ([Volumes]({{ '/silos/volumes/' | relative_url }})). **Not run on a real machine.** |
+| **Volume sizes** | `size` is a directory quota on the volume's folder (whole GiB, rounded up): writes past it fail, and growing `size` in the spec raises it with the silo running. A volume with no `size` has no quota. |
 | **The metadata database** | Bring your own. Kevaso doesn't run it for you yet. |
+| **Silos that don't run as root** | Not handled: a volume's folder is owned by root with mode `0700`, so a program running as another user can't write to it. |
+| **Volumes shared by several silos** | Not possible: the API has no such field. |
+| **Removing the plugin while volumes use it** | Not refused. The data stays in the bucket and database, the node side's mounts keep serving the running silos, and the silo says `VolumesPending` until the plugin is back. Nothing unmounts those mounts later. |
 
 ---
 
@@ -49,9 +51,11 @@ flowchart LR
 - Container workers (`--runtime docker` or `podman`).
 
 **The metadata database is the part to look after.** Every host using the class talks to it all the
-time. While it's down, reads and writes on the volumes **hang** (they don't fail with an error), and
-they carry on by themselves about two seconds after it's back. A silo whose program doesn't expect
-a stalled disk can look frozen. Run the database somewhere that stays up, and back it up.
+time. While it's down, reads and writes on the volumes **wait**, up to about 40 seconds, and carry
+on by themselves if it comes back in that time. After that they fail with an I/O error until it's
+back. The silo isn't marked failed: its `VolumesResponding` condition says `NotAnswering` while
+calls wait and `Failing` once they fail. A silo whose program doesn't expect a stalled disk can look
+frozen. Run the database somewhere that stays up, and back it up.
 
 ---
 
@@ -138,7 +142,6 @@ The names after `--credential` are the ones in the config's `credentials`. See
 [the Linode page]({{ '/providers/linode/' | relative_url }}#install-it) for what `plugin install`
 does with them. `--manifest` shows you what each side asks of the host (root, `/dev/fuse`, and on
 the node side the host's own mount namespace) and `--yes` grants it: see [Plugins]({{ '/extending/plugins/' | relative_url }}#what-a-manifest-asks-for).
-**Remember the status table above: this hasn't run on a real host yet.**
 
 Kevaso only puts a silo with a JuiceFS volume on a host whose node side is running. A host reports
 the classes it can mount in its status:
@@ -147,7 +150,7 @@ the classes it can mount in its status:
 kvo get host hv2 -o yaml
 ```
 
-Look for `mountClasses: [juicefs]` under `status`. (`kvo describe host` doesn't print it yet.)
+Look for `mountClasses: [juicefs]` under `status`. (`kvo describe host` doesn't print it.)
 
 ---
 
@@ -159,7 +162,8 @@ kind: Silo
 metadata: { name: db-1, namespace: payments }
 spec:
   runtime: docker
-  image: ghcr.io/example/db:5.2
+  container:
+    image: ghcr.io/example/db:5.2
   volumes:
     - { name: data, class: juicefs, size: 200Gi, mountPath: /data }
   availability: { onHostLoss: Move }
@@ -170,8 +174,8 @@ kvo get silos -n payments -o wide
 ```
 
 ```text
-NAME    RUNTIME  PHASE    HOST  MOVABLE   AGE
-db-1   docker   Running  hv2   Anywhere  3m
+NAME   RUNTIME  PHASE    READY  HOST  MOVABLE   AGE
+db-1   docker   Running  True   hv2   Anywhere  3m
 ```
 
 `kvo move silo db-1 --to hv3` now works with the data: the old host stops the silo and unmounts the

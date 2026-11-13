@@ -108,20 +108,21 @@ policies, then it's stored.
 1. Defaults, and the object's own metadata.
 2. **Mutation policies.**
 3. **The built-in guards**, on the object as the mutations left it:
-   - the ones that stand for a privilege: exposing silos with `hostPort` or `loadBalancer`,
-     a `LoadBalancer` service, publishing on a public ingress class, giving a silo a grant or
-     naming secrets in a grant, each needing its own permission;
+   - the ones that stand for a privilege: opening a service port on a host address (`hostPort`)
+     or behind a load balancer (`loadBalancer`), a `LoadBalancer` service, publishing on a public
+     ingress class, naming an `IP`, giving a silo a grant or naming secrets in a grant or as a
+     pull secret, each needing its own permission;
    - the ones that refuse what a runtime or its storage can't do (the runtime fits, `onHostLoss`
      against storage, volumes on microVMs);
    - a [port lease]({{ '/networking/leases/' | relative_url }}) that is well formed;
-   - what can't change (an `Image` version), and a `KindDefinition`'s names.
+   - what can't change (a `VMImage` version), and a `KindDefinition`'s names.
 4. The kind's own rules.
 5. **Validation policies.**
 6. Stored.
 
 So **a mutation policy can't get a write past a guard.** Whatever it changes is checked as if the
-person had sent it. A policy that sets `spec.service.expose: loadBalancer` on a silo is refused
-unless the writer may expose silos publicly.
+person had sent it. A policy that sets `hostPort: [external]` on a silo's service port is refused
+unless the writer may open ports to the outside.
 
 Two rules close what is left:
 

@@ -46,13 +46,25 @@ flowchart LR
 | Word | What it is |
 |---|---|
 | **Host** | A machine Kevaso manages. It runs `kevasod` with one or both **components**: the *control plane* and the *worker*. |
-| **kevasod** | The one program on every host. It is the API server, the controllers, the worker agent. Nothing of Kevaso's runs inside a silo. |
-| **Silo** | One isolated machine: a microVM or a container, with its own disk or volumes, address and name. Silos live in a namespace. |
-| **Runtime** | What a silo is made of: `cloud-hypervisor` (microVM), `openshell` / `openshell-container` (NVIDIA OpenShell sandboxes), `docker` / `podman` (containers). See [Runtimes]({{ '/silos/runtimes/' | relative_url }}). |
+| **kevasod** | The one program on every host. It is the API server, the controllers, the worker agent. Nothing of Kevaso's is installed inside a silo. |
+| **Silo** | One isolated machine: a microVM or a container, with its own disk or volumes and its own address (the **silo IP**). It starts from a `container:` or a `vm:` block. Silos live in a namespace. |
+| **Port** | A silo *declares* the ports it has in `spec.ports`. Nothing can reach one that isn't declared. |
+| **Service** | What a silo opens of its declared ports: to which silos (`allowFrom`), on which of the host's addresses (`hostPort`), and for how long (`lease`). A service has a name; a silo with no service has none. A standalone `Service` object puts one stable address and name in front of several silos. |
+| **Internal IP, external IP** | A host's address on its own network, and its address reachable from outside that network. You set them when you add the host; a host has at least one. |
+| **Mesh IP** | A host's address on the encrypted network between hosts. Kevaso sets it. |
+| **Silo IP** | A silo's own address inside the cluster. It changes when the silo changes host. |
+| **Cluster IP** | The one stable address of a standalone `Service`. Never one silo's address. |
+| **Name** | `SERVICE.NAMESPACE[.NETWORK].kevaso` for a service and `HOST.NETWORK.kevaso` for a host. See [Addresses, ports and names]({{ '/networking/model/' | relative_url }}). |
+| **IP** (the kind) | An address you keep: it can outlive the silo or service that holds it. [Addresses you keep]({{ '/networking/ips/' | relative_url }}). |
+| **Probe** | A check Kevaso runs against a silo to know it started, is ready and is still alive. [Probes]({{ '/silos/probes/' | relative_url }}). |
+| **VMImage** | A versioned disk image a microVM silo can start from. Container silos name a registry image instead. |
+| **Ingress** | A hostname and path routed to a service, through a stock proxy Kevaso drives. [HTTPS sites]({{ '/ingress/' | relative_url }}). |
+| **Plugin** | A program that adds to Kevaso: a provider on a host, an operator for a kind you define, or a command for `kvo` ([Plugins for kvo]({{ '/extending/kvo-plugins/' | relative_url }})). |
+| **Runtime** | What a silo is made of: `cloud-hypervisor` (microVM), `openshell` / `openshell-container` (OpenShell sandboxes), `docker` / `podman` (containers). See [Runtimes]({{ '/silos/runtimes/' | relative_url }}). |
 | **Namespace** | A folder for silos and the things they use (secrets, grants, roles). Access is given per namespace. |
 | **Init steps** | Optional. Scripts that run inside a new silo before it counts as Ready: install tools, clone a repo. A silo with none is fine. |
 | **Grant** | What a silo may reach outside the cluster and which secrets it gets, and how. Nothing outside is reachable without one. |
-| **Secret** | A value (an API key, a password, a signing key) kept encrypted. Silos get it only through Grants. |
+| **Secret** | A value (an API key, a password, a signing key) kept encrypted. Silos get it only through Grants: injected on the way out, written as a file or an environment variable by the host, or asked for from a local endpoint. [Secrets]({{ '/secrets/' | relative_url }}). |
 | **Context** | In `kvo`, a saved combination of cluster, identity and default namespace, like a kubeconfig context. |
 
 ---
@@ -91,4 +103,4 @@ Everything in Kevaso is an object with a **spec** (what you want) and a **status
 - **SSH is for setup only.** `kvoadm` logs in over SSH to install `kevasod`; after that, everything
   goes through the API, its permissions and its audit log.
 - **Default deny.** A silo reaches nothing outside the cluster, and no other silo reaches it, until a
-  rule says so.
+  rule says so: a grant for what it reaches, `allowFrom` on a service port for who reaches it.

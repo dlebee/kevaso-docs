@@ -52,7 +52,7 @@ The day-two tasks, and where to look when something isn't right.
 | Every decision about a person or service account | Allowed and refused |
 | Sign-ins, refresh-token reuse (a stolen token), disabled users | `"event"` says which |
 | Every secret value read | `"verb":"read-value"` |
-| Every broker call from a silo | `"event":"broker"`, as `system:silo:NS:NAME`, via its host |
+| Every request a silo's local endpoint passes on (a secret, a signature, a leased port) | `"event":"broker"`, as `system:silo:NS:NAME`, via its host |
 | Hosts and kevasod itself | Only when refused (they're busy) |
 
 Values are never written to it. It rotates at 100 MiB.
@@ -152,24 +152,34 @@ Kevaso's tests come in three kinds, and this page says which each feature has ha
 
 | Feature | In-process | Lima | Linodes | Not yet |
 |---|---|---|---|---|
-| [Port leases](../networking/leases/) on `hostPort` | Yes | | Yes: cut within a second at the end, `kvo close`, the max, approve and deny, `lease.allowFrom`, from a container | Leases on `loadBalancer` classes with a NodeBalancer (the test token had no NodeBalancer access); leases on an Ingress host (not built) |
+| [Addresses, ports and names](../networking/model/): internal and external IPs, `hostPort` per port, `sources`, names, the DNS answers | Yes | | | **A real machine.** The firewall rules for each host address, and the DNS listeners on a host's addresses. A host whose external IP is on no interface (a cloud's 1:1 NAT) isn't handled: `hostPort: [external]` matches nothing there |
+| [Port leases](../networking/leases/), per port: several ports opened together, each its own lease and approval | Yes | | | The per-port form on a real machine. The mechanism (cut within a second at the end, `kvo close`, the max, approve and deny, `sources`, from a container) ran on Linodes with one lease for a whole service. Leases on `loadBalancer` ports with a NodeBalancer (the test token had no NodeBalancer access); leases on an Ingress host (not built) |
 | Plugin load balancers and `allowFrom` | Yes, against a fake plugin | | | A real NodeBalancer |
-| [Approvals](../secrets/#ask-a-person-first-approvals) | Yes | Yes: a microVM and a container; the key never in the silo | | |
+| [`IP` kind](../networking/ips/): shared balancers, `dedicated`, `kvo ip keep`, `ip-pool`, the same address for outgoing traffic | Yes, against a fake plugin | | | **A real machine**, and a real provider with this form (a shared IP did answer from the other worker 1 m 13 s after its host went down on Linodes, before the `IP` kind) |
+| [Probes and `routeWhen`](../silos/probes/) | Yes | | | **A real machine** |
+| [Secrets without anything installed in the silo](../secrets/): injection, files and environment variables written by the host, the local endpoint | Yes | | | **A real machine.** The `curl` lines, the file and env deliveries after a reboot and a reset, the egress certificate in an injecting microVM, a silo without a grant having no endpoint, spoofed source addresses being dropped |
+| [Approvals](../secrets/#ask-a-person-first-approvals) | Yes | | | On the local endpoint, on a real machine. The approval flow itself ran on Lima (a microVM and a container, the key never in the silo) with an earlier way for the silo to ask |
+| [Private registries](../secrets/): pull secrets | Yes | | | **A real machine**, and a real private registry |
 | [Daemons and upkeep](../silos/daemons/) | Yes | Yes: microVM and container | | |
-| [Panes](../panes/) (status, HTML, bundle) | Yes | Yes: microVM and container | | |
+| [Panes](../panes/): the silo serves them, the host fetches them | Yes | | | **A real machine.** (Panes ran on Lima with an earlier way for the silo to report them.) A silo that is cut off and recovers |
 | The macOS panes app | Yes: its own 60 tests, against a fake issuer and control plane | | | A run against a real cluster; packaging; the streamed browser |
+| [Plugins for `kvo`](../extending/kvo-plugins/) | Yes, with a test plugin, a locally built signed index and a test of the unpacking | | | A published index (none exists yet); launching the panes app through `kvo panes` |
+| [HTTPS sites (ingress)](../ingress/): stock proxies driven from outside | Yes | | | **A real machine.** A real nginx started from its own image, HTTPS through it with certificates from a test ACME server over HTTP-01 and DNS-01, a refused setting holding the last good config, a reload on renewal. Caddy and Kong the same |
+| [Certificates](../ingress/): ACME and the internal CA | Yes | | | A real machine with the current ingress |
 | [Terminals](../silos/terminals/), `kvo cp`, a dropped client | Yes | | Yes (a container silo) | A microVM is not recorded |
 | [Moves](../silos/moves/): `kvo move`, `onHostLoss: Move` | Yes | Yes: a container move; a microVM refused as pinned | Yes: a `linode-block` volume moves; `Move` after a power-off; `--confirm-fenced` | |
 | [The fence](../silos/moves/#the-fence) | Yes | Yes: `kevasod` stopped or killed; a quick restart stops nothing | | A thicker margin; control-plane hosts that are workers |
+| `container:` and `vm:`, [`VMImage`](../silos/sets/) | Yes | | | The blocks as written today on a real machine. Container silos have run on Lima and Linodes (`docker`), microVMs on Lima |
 | [Volumes on microVMs](../silos/volumes/): local disks, virtiofs, a root disk on a mount class | Yes, with fakes | | | **A real machine.** Everything about it |
-| [JuiceFS](../providers/juicefs/) | Yes, with the `juicefs` program faked | | | **A real machine.** In progress |
+| [JuiceFS](../providers/juicefs/) for container silos | Yes, with the `juicefs` program faked | | Yes: mount, size, move, host power-off, metadata outage | microVMs over virtiofs; a non-root silo; `podman` |
 | [The etcd store](#the-store), SQLite to etcd | Yes | | Yes | |
 | [Three system nodes, a light node](../operations/ha/): join, lose one, remove one | Yes | | Yes | Removing the leader's own node; five system nodes; Podman workers |
 | [`kvoadm upgrade`](../operations/ha/#upgrade) | Yes | | Yes: API up throughout, containers kept running | An upgrade with a light node in the cluster |
+| [Backup and restore](../operations/backup/) | Yes | | | A real-machine run is not recorded here |
 | [Plugin operators](../extending/plugins/#plugin-operators) | Yes | | Yes: install over SSH and systemd, scale, uninstall | |
-| Plugin manifests with privileges | Yes | | | A privileged plugin on a real host |
+| Plugin manifests with privileges | Yes | | Yes: the JuiceFS plugin's | |
 | [Scale and `oldSelf`](../extending/kinds/#scale), guards after mutation policies, dry runs | Yes | | (the operator run uses them) | |
-| [Linode](../providers/linode/): Block Storage, shared IP | Yes, against a fake API | | Yes: a volume; a shared IP that answered from the other worker 1 m 13 s after its host went down | NodeBalancer and DNS on real Linode (needs a token with those scopes) |
+| [Linode](../providers/linode/): Block Storage | Yes, against a fake API | | Yes: a volume | NodeBalancer and DNS on real Linode (needs a token with those scopes) |
 
 "Not yet" is a statement about what has been **recorded**, not about whether it works: if it isn't
 in the table as proven, assume it isn't.
@@ -185,6 +195,7 @@ in the table as proven, assume it isn't.
 | `InitFailed` | `describe` shows the step and the end of its output; `kvo exec` in to look |
 | A host is `Unknown` | It hasn't reported for 40 s: is `kevasod` running on it, can it reach the control plane? |
 | A silo is `Degraded` | `kvo describe silo NAME`: an upkeep task's fix didn't help, and its message is there ([Daemons and upkeep]({{ '/silos/daemons/' | relative_url }})) |
+| A silo is `Running` but gets no traffic | `kvo describe silo NAME`: the probes table and `Route when`. A silo that isn't ready is held out of its service ([Probes]({{ '/silos/probes/' | relative_url }})). Then each port's state: a [leased port]({{ '/networking/leases/' | relative_url }}) is closed until it's opened |
 | A silo can't reach something | Is there a Grant for it, listed in the silo's `grants`? On OpenShell, `describe` shows a `PolicyApplied` condition with what couldn't be enforced |
 | `kvo` says `x509: certificate signed by unknown authority` | You're talking to another cluster than your context's (another machine on the same address or port?) |
 

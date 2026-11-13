@@ -22,8 +22,8 @@ Every command on one page. `kvo` uses your current context (`kvo ctx`); `-n NS` 
 | `kvo delete KIND NAME` | Delete it |
 | `kvo watch KIND [-n NS \| -A]` | Print the current state, then every change |
 
-Kinds: `namespaces` (`ns`), `hosts`, `silos`, `silosets` (`ss`), `services` (`svc`), `images`
-(`img`), `secrets`, `grants`, `ippools`, `ingresses` (`ing`), `ingressclasses`, `certificates`
+Kinds: `namespaces` (`ns`), `hosts`, `silos`, `silosets` (`ss`), `services` (`svc`), `vmimages`
+(`vmi`), `secrets`, `grants`, `ips`, `ingresses` (`ing`), `ingressclasses`, `certificates`
 (`cert`), `issuers`, `roles`, `rolebindings`, `clusterroles`, `clusterrolebindings`,
 `serviceaccounts` (`sa`), `approvals`, `panes`, `kinddefinitions` (`kd`), `validationpolicies`,
 `mutationpolicies`, `leases`, `plugins`, and any [kind you define]({{ '/extending/kinds/' | relative_url }}) (by its plural,
@@ -51,9 +51,10 @@ write, answered with what would be stored, and nothing stored
 | `kvo reset silo NAME` | Back onto its image: stopped, a fresh disk or container, volumes kept (a set's instance: onto the set's current image) |
 | `kvo protect silo NAME [--off]` | A set's scale-in never removes it |
 | `kvo move silo NAME --to HOST` | Move it with its data (`--recreate`: a fresh copy; `--confirm-fenced`: from a lost host) |
-| `kvo get silos -o wide` | Adds `MOVABLE`: where each silo could go |
-| `kvo open silo NAME --port PORT [--for D] [--no-wait]` | Open a [leased port]({{ '/networking/leases/' | relative_url }}) for a while; if the lease needs a yes, wait for it (`--no-wait`: don't) |
-| `kvo close silo NAME --port PORT` | Close it early |
+| `kvo get silos [-o wide]` | `NAME`, `RUNTIME`, `PHASE`, `READY`, `HOST`, `AGE`. `-o wide` adds `MOVABLE`: where each silo could go |
+| `kvo describe silo NAME` | Its state, [probes]({{ '/silos/probes/' | relative_url }}), what it starts from, and each port with its addresses and lease. [Addresses, ports and names]({{ '/networking/model/' | relative_url }}) |
+| `kvo open silo NAME --port PORT [--port PORT]… [--for D] [--no-wait]` | Open [leased ports]({{ '/networking/leases/' | relative_url }}) for a while. Each port is its own lease, on its own terms. If a lease needs a yes, wait for it (`--no-wait`: don't). A refused port doesn't stop the others, and the command exits non-zero |
+| `kvo close silo NAME --port PORT [--port PORT]…` | Close them early |
 | `kvo get leases [-n NS \| -A]` | The leased ports and their state: `SILO`, `PORT`, `PHASE`, `WHEN`, `BY` |
 
 ### Panes
@@ -80,12 +81,45 @@ See [Panes]({{ '/panes/' | relative_url }}).
 |---|---|
 | `kvo create secret NAME --from-file F\|-` | Store a value (never from the command line) |
 | `kvo create secret NAME --generate [--type ed25519\|ecdsa-p256]` | Let Kevaso make it |
-| …`--allow MODES`, `--write-only`, `-l KEY=VALUE` | Restrict delivery, make write-only, label |
+| …`--allow MODES`, `--write-only`, `-l KEY=VALUE` | Restrict delivery (`broker`, `inject`, `file`, `env`, comma-separated), make write-only, label |
+| `kvo create secret NAME --type registry --server HOST --username U --from-file - [--default-pull]` | A [private registry's]({{ '/secrets/' | relative_url }}) credential: write-only, the password on stdin. `--default-pull`: the one used for that registry when a silo names none |
 | `kvo secret set NAME --from-file F\|-` | A new value (rotation) |
 | `kvo get secret NAME --reveal` | Print the value (needs `read-value`; never for write-only) |
 | `kvo get approvals` / `kvo watch approvals` | Silos waiting for a person's yes to use a secret |
 | `kvo approve NAME` | Say yes (needs `approve` on that secret; people only) |
 | `kvo deny NAME [--reason R]` | Say no |
+
+### Addresses you keep
+
+| Command | Does |
+|---|---|
+| `kvo create ip NAME --class CLASS [--host HOST \| --region REGION] [--address A] [--reclaim Retain\|Delete]` | Reserve an address. `--reclaim` defaults to `Retain`. [Addresses you keep]({{ '/networking/ips/' | relative_url }}) |
+| `kvo get ips` | `ADDRESS`, `CLASS`, `HELD-BY`, `KEPT` |
+| `kvo describe ip NAME` | What holds it and on which ports |
+| `kvo ip keep NAME` | Its address stays when its holder goes (and it is no longer owned by it) |
+| `kvo ip release NAME` | It goes with its holder, or now if nothing holds it |
+
+### Silo images (microVMs)
+
+| Command | Does |
+|---|---|
+| `kvo get vmimages` | The disk images microVM silos can start from: `VERSIONS`, `DISK` |
+
+### Plugins for `kvo`
+
+| Command | Does |
+|---|---|
+| `kvo plugin search [TERM]` | The plugins every index offers, and whether there is a build for this machine |
+| `kvo plugin install NAME[@VERSION]` | Install the build for this machine into your own folder, after checking its signature and hash |
+| `kvo plugin list` | What is installed, and from which index |
+| `kvo plugin upgrade [NAME]` | To the newest release (every plugin without `NAME`) |
+| `kvo plugin remove NAME` | Remove it |
+| `kvo plugin index add URL --key ed25519:… [--name N]` | Trust another publisher's index; its plugins are `N/NAME` |
+| `kvo plugin index list` / `remove N` | See or drop indexes |
+| `kvo plugin token [--context NAME]` | For a plugin to call: a short-lived access token, as JSON |
+| `kvo NAME [ARGS…]` | Run an installed plugin in the current context |
+
+A plugin never takes the name of a `kvo` command. See [Plugins for kvo]({{ '/extending/kvo-plugins/' | relative_url }}).
 
 ### Access
 
@@ -118,20 +152,26 @@ See [Panes]({{ '/panes/' | relative_url }}).
 | `kvoadm init [USER@]ADDR --ssh-key KEY --host-key SHA256:… --kevasod BIN [--name N] [--cluster C] [--api-server URL] [--store sqlite\|etcd]` | Install the control plane; write your kvo context; print the recovery key. `--store etcd`: start on etcd, ready for [more system nodes]({{ '/operations/ha/' | relative_url }}) |
 | `kvoadm host enable-worker [USER@]ADDR --ssh-key KEY [--runtime R]… [--loop-storage SIZE]` | The control-plane host runs silos too |
 | `kvoadm host reconnect [USER@]ADDR --ssh-key KEY [--server URL]` | Point a worker at the control plane again (after a restore onto another address) |
-| `kvoadm host add [USER@]ADDR --ssh-key KEY --kevasod BIN --install worker [--name N] [--region R] [--label K=V] [--runtime R] [--behind-nat]` | Add a worker |
-| `kvoadm host add [USER@]ADDR … --install control-plane [--state-only] [--cluster-dns NAME] [--address ADDR]` | A second or third [system node]({{ '/operations/ha/#add-a-system-node' | relative_url }}); `--state-only`: a light node (a vote only) |
+| `kvoadm host add [USER@]ADDR --ssh-key KEY --kevasod BIN --install worker [--name N] [--region R] [--zone Z] [--label K=V] [--runtime R] [--behind-nat] [--internal-ip IP] [--external-ip IP]` | Add a worker |
+| `kvoadm host add [USER@]ADDR … --install control-plane [--state-only] [--cluster-dns NAME] [--internal-ip IP] [--external-ip IP]` | A second or third [system node]({{ '/operations/ha/#add-a-system-node' | relative_url }}); `--state-only`: a light node (a vote only) |
 | `kvoadm host install HOST control-plane [--state-only] [--ssh-key KEY]` | Make an existing worker a system node too |
 | `kvoadm host uninstall HOST control-plane` | Take the control plane off a host that is a worker too (refused if it would lose the store's majority) |
 | `kvoadm host remove HOST` | Remove a system node (or a worker's Host): out of the store first; refused if it would lose the majority |
 | `kvoadm store migrate [USER@]ADDR --ssh-key KEY` | Move a SQLite control plane onto etcd with a peer listener |
 | `kvoadm upgrade --kevasod BIN [--ssh-key KEY] [--batch N] [--version V] [--dry-run]` | Roll a new `kevasod` over the cluster: system nodes (light first, leader last), then workers. [Rules]({{ '/operations/ha/#upgrade' | relative_url }}) |
-| `kvoadm host list` | Hosts and their state |
+| `kvoadm host list` | Hosts, both of their IPs, and their state |
+| `kvoadm host addresses HOST add\|remove CIDR…` | The extra addresses routed to a host, which the built-in `ip-pool` class hands out ([Addresses you keep]({{ '/networking/ips/' | relative_url }})). `remove` is refused for an address an IP holds |
+| `kvoadm host addresses HOST list` | Each range, and which IP holds each address |
 | `kvoadm host drain NAME` / `uncordon NAME` | Maintenance |
 
 Every command that logs in takes `--ssh-key PATH` (a key with a passphrase is taken from `ssh-agent`
 or asked for) or `--password` (typed once, read from stdin when there's no terminal; kvoadm then adds
 a key of its own), `--ssh-port N`, and `--host-key SHA256:…` (without it, you're asked to confirm
 the fingerprint).
+
+`init` and `host add` also take `--user NAME` (the account to log in as, when not in `USER@`),
+`--worker` on `init` (the control-plane host runs silos too), `--egress-extra-ca FILE` (a PEM file
+the egress gate also trusts, for a company TLS proxy) and `--openshell-gateway-scope host|namespace|silo`.
 
 `init` and `host add` also take the extra hardening, each only when asked for:
 `--disable-password-login` (SSH keys only) and `--change-root-password` (a random one nobody
@@ -141,11 +181,17 @@ Everything that asks has a flag, so every command runs unattended too.
 Both look at the machine first and stop, changing nothing, if something won't work there;
 `--dry-run` stops after looking.
 
+### Ingress
+
+| Command | Does |
+|---|---|
+| `kvoadm ingress install [--class NAME] [--driver nginx\|caddy\|kong] [--public] [--host-port internal\|external \| --lb-class CLASS] [--image REF] [--runtime NAME] [--option K=V]…` | Start a stock proxy as a silo and the `IngressClass` that drives it. Defaults: class `public`, driver `nginx`, runtime `docker`, ports on the host's external IP. [HTTPS sites]({{ '/ingress/' | relative_url }}) |
+
 ### People
 
 | Command | Does |
 |---|---|
-| `kvoadm users invite NAME [--namespace NS [--role editor\|admin\|viewer]] [--group G]…` | A one-time sign-in code |
+| `kvoadm users invite NAME [--namespace NS [--role editor\|admin\|viewer]] [--group G]… [--ttl D]` | A one-time sign-in code |
 | `kvoadm users list` | Everyone who can sign in |
 | `kvoadm users disable NAME` | Cut someone off now |
 
@@ -176,12 +222,13 @@ You rarely run it yourself; `kvoadm` installs it as a service.
 
 | Command | Does |
 |---|---|
-| `kevasod control-plane --name N --address A [--worker --runtime R…]` | The control plane (and worker) |
+| `kevasod control-plane --name N [--internal-ip IP] [--external-ip IP] [--dns-suffix SUFFIX] [--worker --runtime R…]` | The control plane (and worker). Give at least one of the two IPs |
 | `kevasod worker --name N --server URL[,URL…]` | A worker-only host. Several URLs: every system node; it fails over between them |
 | `kevasod fence-watch [--fence-after D] [--dir DIR] [--runtime R]…` | A worker's [fence]({{ '/silos/moves/#the-fence' | relative_url }}): stops `Recreate` and `Move` silos when the agent's last contact is older than `D` (default `30s`). Its own unit, `kevaso-fence.service` |
 | `kevasod version` | Its version |
 | `kevasod admin recovery-key` / `kms-rotate [--new-recovery-key]` / `backup` | Through the admin socket, as root |
 | `kevasod admin restore [--data DIR]` | Put a backup into a fresh data directory (`kvoadm init --restore` runs it) |
+| `kevasod control-plane --dns-suffix SUFFIX` | The last label of the cluster's names (default `kevaso`): `SERVICE.NAMESPACE.SUFFIX`. [Addresses, ports and names]({{ '/networking/model/' | relative_url }}) |
 | `kevasod control-plane --store sqlite\|etcd` | Where objects live: SQLite (default) or an embedded etcd member. The first `etcd` start moves `store.db` into it. [Operations]({{ '/operations/#the-store' | relative_url }}) |
 | `kevasod control-plane --etcd-client-listen ADDR` | With `--store etcd`: the member's client address (default `127.0.0.1:2379`; keep it on loopback) |
 | `kevasod control-plane --etcd-peer-listen ADDR` / `--etcd-advertise-peer ADDR` | With `--store etcd`: where other members connect, and what they dial. Without the first, no peer port is opened |

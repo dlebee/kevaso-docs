@@ -10,12 +10,22 @@ Sign off every commit (`git commit -s`); CI checks the DCO. There is no CLA.
 
 ## Build and test
 
-You need Go 1.27.
+The core repository's `CONTRIBUTING.md` lists what to install first. Then:
 
 ```bash
-make race        # unit tests, every module
-make e2e         # the end-to-end loop on a real machine
+make vet
 ```
+
+```bash
+make race
+```
+
+```bash
+make e2e
+```
+
+`make vet` checks every module, `make race` runs the unit tests with the race detector (what CI
+runs), and `make e2e` is the end-to-end loop on a real machine.
 
 `make e2e` creates a machine (a Lima VM on macOS, the machine itself on Linux), checks it can run
 microVMs, runs the test and tears the machine down.

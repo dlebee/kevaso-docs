@@ -83,10 +83,11 @@ One at a time: a second join waits for the first. What happens:
 | `--install control-plane` | A system node, not a worker |
 | `--state-only` | A light node: a vote only |
 | `--cluster-dns NAME` | A DNS name with one record per system node. It goes in every node's certificate and is the one sign-in address, so tokens work at any node |
-| `--address ADDR` | The address other nodes reach it at, if not the SSH one |
+| `--internal-ip IP`, `--external-ip IP` | The node's [addresses]({{ '/networking/model/' | relative_url }}). Give neither and the SSH address is its internal IP |
 
-Open **TCP 2380 between the system nodes only**. The members talk over the host's address,
-not the mesh, with mutual TLS: only a member's certificate is let in.
+Open **TCP 2380 between the system nodes only**. The members talk over the node's external IP if it
+has one, otherwise its internal IP, not the mesh, with mutual TLS: only a member's certificate is
+let in.
 
 ### An existing worker becomes a system node too
 
@@ -149,7 +150,7 @@ and `kvo exec` reaches its silos through any node.
 - A **system node that is also a worker** (`kvoadm host install … control-plane` on a worker, or
   `kvoadm init --worker`) holds one connection, to its own node. A `kvo exec` into its silos
   that lands on another system node fails until that node is back.
-- Silo services run inside `kevasod`: the silo DNS, the egress gate, the secret broker and open
+- Silo services run inside `kevasod`: the silo DNS, the egress gate, the local endpoint silos ask for secrets and open
   `exec` streams. They blip for the seconds a restart takes.
 - **Secrets' master key rotation is refused** while there is more than one member: each node
   keeps its own copy of the key.
