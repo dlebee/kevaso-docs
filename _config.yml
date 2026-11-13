@@ -32,6 +32,7 @@ sections:
       - { title: Your first silo, url: /silos/first-silo/ }
       - { title: Runtimes, url: /silos/runtimes/ }
       - { title: Sets, images and updates, url: /silos/sets/ }
+      - { title: Host loss and moves, url: /silos/moves/ }
   - title: Networking and secrets
     pages:
       - { title: Networking, url: /networking/ }

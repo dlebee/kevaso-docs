@@ -34,6 +34,8 @@ Kinds: `namespaces` (`ns`), `hosts`, `silos`, `silosets` (`ss`), `services` (`sv
 | `kvo exec silo NAME -- CMD [ARGS…]` | Run a command inside; exits with its code; stdin passes through |
 | `kvo reset silo NAME` | Back onto its image: stopped, a fresh disk or container, volumes kept (a set's instance: onto the set's current image) |
 | `kvo protect silo NAME [--off]` | A set's scale-in never removes it |
+| `kvo move silo NAME --to HOST` | Move it with its data (`--recreate`: a fresh copy; `--confirm-fenced`: from a lost host) |
+| `kvo get silos -o wide` | Adds `MOVABLE`: where each silo could go |
 
 ### Sets
 
