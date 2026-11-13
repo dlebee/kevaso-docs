@@ -13,8 +13,24 @@ address. Updates are deliberate: a silo is *reset* onto a new image, never silen
 
 ## Images
 
-An Image names what silos start from. Its versions never change once added, so a silo on `v1`
-always runs the same thing; a new release is a new version.
+What a silo starts from depends on what kind of silo it is.
+
+**A container silo** (docker, podman, OpenShell's container runtime) names its image the way you
+would anywhere else: a registry reference. There is nothing to create first.
+
+```yaml
+kind: Silo
+spec:
+  runtime: docker
+  image: docker.io/ethereum/client-go:v1.15.0
+```
+
+Pin it by digest (`…@sha256:…`) if it must never change under you: a tag can move.
+`kvo describe silo` flags an image that isn't pinned, and shows the digest that was actually pulled.
+For a private registry, see [private registries]({{ '/secrets/' | relative_url }}).
+
+**A microVM silo** (cloud-hypervisor) boots from a disk image. It names either the built-in one,
+`ubuntu-24.04`, or an **Image** you define: a named list of disk versions.
 
 ```yaml
 apiVersion: kevaso/v1
@@ -23,23 +39,25 @@ metadata: { name: geth-node, namespace: web3 }
 spec:
   versions:                                    # oldest first
     - name: v1
-      container: docker.io/ethereum/client-go:v1.14.13
+      disk:
+        url: https://images.example.com/geth-v1.img
+        sha256: 9a31…                          # every host checks what it downloads
     - name: v2
-      container: docker.io/ethereum/client-go:v1.15.0
-      disk:                                    # the same release for cloud-hypervisor silos
+      disk:
         url: https://images.example.com/geth-v2.img
-        sha256: 4f0c…                          # every host checks what it downloads
+        sha256: 4f0c…
 ```
 
-A silo (or set) says `image: geth-node:v2`, or `image: geth-node` for the newest version.
+```yaml
+kind: Silo
+spec:
+  runtime: cloud-hypervisor
+  image: geth-node:v2          # or geth-node, for the newest version
+```
 
-Each runtime takes what fits it:
-
-- docker, podman and OpenShell take the `container` reference;
-- cloud-hypervisor takes the `disk`.
-
-A name that isn't an Image is used as it is: `ubuntu-24.04`, or any registry reference like
-`nginx:1.27`.
+An Image's versions never change once added, so a silo on `v1` always boots the same disk; a new
+release is a new version. An Image is only ever a disk: container images live in registries, and
+Kevaso keeps no second list of them.
 
 `kvo describe silo NAME` shows what its image resolved to, and what it runs right now.
 
@@ -100,7 +118,7 @@ apiVersion: kevaso/v1
 kind: SiloSet
 metadata: { name: rpc-pool, namespace: web3 }
 spec:
-  image: geth-node:v1
+  image: docker.io/ethereum/client-go:v1.15.0
   instances: 3
   spread: host                  # different hosts where possible (or zone, region)
   standby: 1                    # an extra one, booted and idle, ready to take over
