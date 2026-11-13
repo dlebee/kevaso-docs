@@ -216,22 +216,15 @@ The silo is the less trusted side, so the rules all point away from it:
 
 ## The macOS panes app
 
-`apps/panes` in the core repository is a small macOS app that shows a person's panes. Status panes
-are drawn natively. HTML panes run in a sealed web view with no network, no storage, no clipboard,
-no keyboard and no way to open anything else. It needs macOS 14 or later and Swift 6 (Xcode or the
-command line tools), and no admin rights.
+The panes app is a small macOS app that shows a person's panes. It lists your clusters, shows each
+cluster's panes, and lets you turn any of them into a small window that floats over your work.
+Status panes are drawn by the app as plain text. HTML panes run in a sealed view with no network, no
+storage, no clipboard, no keyboard and no way to open anything else.
 
-```bash
-cd apps/panes
-```
-
-```bash
-swift build
-```
-
-```bash
-swift run KevasoPanes
-```
+| | |
+|---|---|
+| **Needs** | macOS 14 or later. No admin rights. Other systems have no client yet. |
+| **Install** | Not packaged yet, so there is nothing to install. To try it before it's packaged, see the source's [README](https://github.com/dlebee/kevaso/blob/main/apps/panes/README.md). |
 
 ### Sign in
 
@@ -254,17 +247,15 @@ sign out or remove it. Only one cluster's panes float at a time.
 | **Sign out** | Tells the control plane to end the session (`POST /oidc/revoke`), then deletes the keychain item. If the cluster can't be reached, you're signed out locally and the session ends when idle |
 | **A copy of your token got out** | If the control plane sees an old refresh token used again, it ends the session for everyone. The app deletes its keychain item, closes that cluster's panes and shows that it's signed out |
 
-After a rebuild of an unsigned app, macOS may ask once whether the new program may read the
-keychain item.
+For CI and scripts, the app also reads these environment variables. When they are set, they win
+over the clusters you added:
 
-For CI and scripts the environment still works, and wins over the clusters:
-
-```bash
-KVO_SERVER=https://203.0.113.10:6443 KVO_CA_FILE=ca.pem KVO_TOKEN=… KVO_NAMESPACE=team swift run KevasoPanes
-```
-
-`KVO_TOKEN` is a [service-account token]({{ '/access/' | relative_url }}#tokens-for-ci) that may
-read panes and silos in that namespace, and `KVO_CA_FILE` is the cluster's CA certificate.
+| Variable | Meaning |
+|---|---|
+| `KVO_SERVER` | The cluster's address, like `https://203.0.113.10:6443` |
+| `KVO_CA_FILE` | The cluster's CA certificate file |
+| `KVO_TOKEN` | A [service-account token]({{ '/access/' | relative_url }}#tokens-for-ci) that may read panes and silos in that namespace |
+| `KVO_NAMESPACE` | The namespace to show |
 
 ### Floating panes
 
@@ -282,32 +273,19 @@ it can sit over your work.
 - **Needs you:** when a pane you turned on changes to `needs-you`, its rim glows, and if you ticked
   "Notify me when a pane needs me" (and allowed it in macOS) a notification says "SILO needs you ·
   PANE · NAMESPACE". The text is the app's, never the silo's. It rings at most once a minute for a pane,
-  and a pane can't raise one itself. Notifications need the app to run as a bundle; with `swift run` it
-  bounces the Dock icon instead.
+  and a pane can't raise one itself. Notifications need the packaged app, which doesn't exist yet; until then
+  the app bounces its Dock icon instead.
 - **Untrusted silos get a striped rim.** The app reads the label `kevaso.com/trust: untrusted` on
   the Silo, never anything the pane says. If it can't read the silo, the rim is striped too, and
   says "trust unknown": only a silo it read and found unmarked gets a solid rim. The label is not
   reserved yet: today anyone who may update the silo can set it, and nothing in the control plane
   enforces or copies it.
 
-### The test suite
-
-Panes are the one place a silo's content runs on your computer, so the app has a hostile-pane
-suite, with a pane that tries to reach the network, the clipboard, your files, other panes and its
-own window. Run it after every macOS or Safari update:
-
-```bash
-swift test
-```
-
-It takes about 3 minutes and needs a logged-in desktop: small panes appear on screen and are
-clicked on. The sign-in tests use a keychain service of their own and delete it afterwards.
-
 ### Not done yet
 
-- **No packaging.** It runs with `swift run`: no signed or notarised build.
-- **A private WebKit API.** The sealed view depends on WebKit settings Apple doesn't document, so
-  a macOS update can change them. That is what the suite is for.
+- **Not packaged.** There is no signed download and no install command yet.
+- **A macOS update can change how the sealed view behaves.** The app has a test with hostile panes
+  for this; it is run by people building the app, not by you.
 - **The untrusted label isn't reserved or copied into the pane,** so a person who may read panes but
   not silos sees every rim as "trust unknown".
 - **The streamed browser, Linux, Windows, a web client:** none yet.
