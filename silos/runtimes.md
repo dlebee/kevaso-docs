@@ -117,5 +117,5 @@ spec:
 | `command` | The main process. Without it, the image's own (for `ubuntu-24.04`, one that sleeps, so it's a machine to `exec` into) |
 | Init steps | **Init containers**: each step runs in a container of its own from the silo's image, on its network and volumes, **before** the main container starts |
 | Persistence | Volumes survive restarts; the container's own files stay on its host |
-| Secrets | `inject` and `broker` (the socket is at `/run/kevaso/broker.sock`, `kvo-guest` is mounted in) |
+| Secrets | `inject` and `broker`: the socket is at `/run/kevaso/broker.sock` (one JSON line each way). Nothing of Kevaso's is put in your image: bring a client, or copy `kvo-guest` in with your image's build |
 | Volume `size` | Not enforced on containers |

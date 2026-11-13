@@ -25,7 +25,7 @@ raw TCP or UDP to **one** silo; an ingress reads HTTP and routes to **many**.
 
 | Object | What it is |
 |---|---|
-| **Ingress controller** | An ordinary silo running `kvo-guest ingress`, exposed on 80 and 443 |
+| **Ingress controller** | An ordinary silo from Kevaso's `kevaso-ingress` image (`kvo-guest ingress`), exposed on 80 and 443 |
 | **IngressClass** | Which silo serves a class of Ingresses, and whether the class is public |
 | **Ingress** | Host names and paths → a silo's port, and where its certificate comes from |
 | **Issuer** | Where certificates come from: an ACME server (Let's Encrypt) or the cluster's own CA |
@@ -49,8 +49,7 @@ kind: Silo
 metadata: { name: ingress-public, namespace: kevaso-system }
 spec:
   runtime: docker
-  image: ubuntu-24.04
-  command: [kvo-guest, ingress]
+  image: kevaso-ingress          # Kevaso's own image: built on each host from kevasod, never pulled
   service:
     ports:
       - { name: http,  port: 80 }
@@ -68,7 +67,12 @@ On a `cloud-hypervisor` silo, run it as a service with an init step instead:
 ```
 
 The controller gets its routes and certificates from its host, over its own private channel: a silo
-that isn't a class's controller gets nothing.
+that isn't a class's controller gets nothing. It runs with the same isolation as any silo: nothing
+is mounted into it beyond that channel and the CA bundle.
+
+> One controller silo with `expose: hostPort` is the simple shape. A SiloSet of controllers behind a
+> standalone Service ([Sets, images and updates]({{ '/silos/sets/' | relative_url }})) is where this
+> is heading, so a class survives losing one.
 
 ## 2 · The class
 
@@ -79,8 +83,10 @@ metadata: { name: public }
 spec:
   controller: { silo: ingress-public, namespace: kevaso-system }
   public: true
-  issuer: letsencrypt
 ```
+
+A class says who serves it and whether it's public; where certificates come from is each Ingress's
+choice (below).
 
 > **Publishing on a public class is its own permission:** `create` on `ingresses/publish-public`
 > in the namespace. Namespace `admin`s have it, `editor`s don't, so nobody puts something on the
@@ -166,7 +172,11 @@ Now `https://api.example.com` reaches the silo, and `http://` redirects to it.
 | `hosts` | The names this Ingress answers for |
 | `rules[].path` | A path prefix; the longest matching one wins (`/admin` before `/`) |
 | `rules[].silo` | A silo in the Ingress's namespace, and the name of one of its service ports |
-| `tls.mode` | `acme` (default on public classes), `internal-ca` (default otherwise), or `none` (plain HTTP) |
+| `tls.issuer` | The Issuer its certificate comes from. Without one: the cluster's default for the class, `letsencrypt` on public classes and `internal-ca` on private ones (`kevasod --default-issuer-public` / `--default-issuer-private`) |
+| `tls.secretName` | A certificate you keep yourself, in that Secret (chain and key, PEM): no certificate is made |
+| `tls.none` | `true`: plain HTTP, on private classes only |
+
+At most one of the three.
 
 The app sees the original `Host` and the browser's address in `X-Forwarded-For`.
 
@@ -205,7 +215,7 @@ spec:
       …
 ```
 
-Use it from a class with `issuer: company-acme`.
+Use it from an Ingress with `tls: { issuer: company-acme }`.
 
 ### Solvers: proving you own a name
 
