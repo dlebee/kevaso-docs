@@ -36,6 +36,17 @@
       {% endfor %}
     </details>
     <script>if (matchMedia("(max-width: 860px)").matches) document.querySelector(".side details").removeAttribute("open");</script>
+    <script>
+      // Keep the sidebar where it was scrolled when the next page loads.
+      (function () {
+        var side = document.querySelector(".side"), key = "kevaso-docs-side-scroll";
+        try { side.scrollTop = +sessionStorage.getItem(key) || 0; } catch (e) {}
+        var save = function () { try { sessionStorage.setItem(key, side.scrollTop); } catch (e) {} };
+        side.addEventListener("scroll", save, { passive: true });
+        side.addEventListener("click", save);
+        addEventListener("pagehide", save);
+      })();
+    </script>
   </aside>
   <main>
 {{ content }}
