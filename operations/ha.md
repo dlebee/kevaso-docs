@@ -10,7 +10,10 @@ third vote), you can lose one machine and nothing stops: the API answers, silos 
 `kvo exec` works.
 
 This page is about the machines that run the control plane. For what happens to the *silos* on a
-lost worker, see [Host loss and moves]({{ '/silos/moves/' | relative_url }}).
+worker that loses them, or on a lost worker, see
+[When the control plane is lost]({{ '/silos/control-plane-loss/' | relative_url }}). Several system
+nodes are also what makes the opt-in `onControlPlaneLoss: Stop` reasonable to use: with one, it
+stops the silo every time that node is out of reach.
 
 ---
 
@@ -143,7 +146,8 @@ the server is comma-separated, in `~/.kevaso/config.yaml`.
 A worker keeps a connection to **every** system node, and remembers them (in
 `/var/lib/kevaso/pki/servers`), including a worker that was added when there was only one control
 plane. When a system node is lost, the worker uses the others for its heartbeat and its watches,
-and `kvo exec` reaches its silos through any node.
+and `kvo exec` reaches its silos through any node. A worker that can reach none of them keeps
+every silo running and changes nothing.
 
 ### Not yet covered
 

@@ -1,32 +1,19 @@
 ---
-title: Host loss and draining
+title: Draining a host
 permalink: /workers/host-loss/
 ---
 
-# Host loss and draining
+# Draining a host
 
-Machines fail and need maintenance. What happens to their silos is yours to decide, per silo.
+Machines fail and need maintenance. This page is about taking one out on purpose.
 
 ## When a host goes away
 
-A host that stops reporting for **40 seconds** is marked lost. What happens to its silos is
-**yours to choose**, per silo:
-
-```yaml
-spec:
-  availability:
-    onHostLoss: Wait        # Wait (default) | Recreate | Move (with its data: see Host loss and moves)
-```
-
-| Policy | Meaning | Good for |
-|---|---|---|
-| `Wait` | Stays where it is, down, until the host is back. Its disk is never lost. | Anything with state you care about |
-| `Recreate` | Started fresh from its image on another host, 30 s after the host is marked lost. Its disk on the lost host is given up. | Stateless or rebuildable silos |
-| `Move` | Started on another host with its data, 30 s after the host is marked lost. Every disk and volume must be on storage that can attach elsewhere. | Silos with data on movable storage |
-
-To make sure two copies never run at once, a worker that loses the control plane for 30 seconds
-**stops its own `Recreate` and `Move` silos** before the control plane would recreate them elsewhere,
-even if `kevasod` itself has stopped: the small `kevaso-fence` service does it ([the fence]({{ '/silos/moves/#the-fence' | relative_url }})).
+A host that stops reporting for **40 seconds** is marked `Unknown`. Nothing is moved because of it:
+its silos keep running if it is only cut off, and Kevaso starts no other copy until you say the old
+one is off, or a silo has opted in to be stopped and restarted elsewhere. What you see, what to do
+and the opt-in are on one page:
+[When the control plane is lost]({{ '/silos/control-plane-loss/' | relative_url }}).
 
 ---
 
@@ -47,7 +34,7 @@ has no other flags. It does two things:
 Silos with `Wait` or `Move` stay where they are: `drain` prints
 `NAMESPACE/NAME stays: onHostLoss Wait pins it to hv2 (its disk is local)`. Delete them, change their
 policy, or move them yourself with `kvo move silo NAME --to HOST`
-([Host loss and moves]({{ '/silos/moves/' | relative_url }})). When none stay, it prints that the
+([Moves]({{ '/silos/moves/' | relative_url }})). When none stay, it prints that the
 host is empty of silos once the moved ones are gone.
 
 `drain` does not wait. It returns once it has written the new state. Watch the silo with
@@ -66,18 +53,18 @@ bin/kvoadm host uncordon hv2
 
 ### When the old host is dead
 
-The new host waits for the old host's agent. If `hv2` is down, nobody answers for it, so the silo
-stays in `Moving` until `hv2` comes back and lets go. Nothing else clears `movingFrom`.
+The new host waits for the old host's agent to stop the silo and let go. If `hv2` is down, nobody
+answers for it, so the silo stays in `Moving`, and Kevaso does not assume the old copy is off.
+Once you know it is, end the hand-off with:
 
-`kvo move` cannot get around this: it refuses a silo that has `movingFrom` set (`a move is already
-under way`), and its `--confirm-fenced` flag, which is for a move from a lost host, never gets
-looked at. `kvoadm host drain` has no `--confirm-fenced` flag. There is no command that
-tells Kevaso the old host is stopped for a silo that is already handing off.
+```bash
+kvo move silo NAME -n NAMESPACE --to HOST --confirm-fenced
+```
 
-So drain a host while it is up. For a host that is already lost, a `Recreate` silo is placed
-elsewhere by itself 30 s after the host is marked lost (above), without a handoff, and `kvo move
---confirm-fenced` is the way for a person to move a silo from a lost host
-([the fence]({{ '/silos/moves/#the-fence' | relative_url }})).
+A move that is already under way is refused without `--confirm-fenced` when its old host is lost
+(`a move is already under way (from hv2, which is lost): its host is lost: move it only once the old
+copy is provably stopped …`). `kvoadm host drain` has no `--confirm-fenced` flag: drain a host while
+it is up. [Moving a silo off a host you know is off]({{ '/silos/control-plane-loss/#moving-a-silo-off-a-host-you-know-is-off' | relative_url }}).
 
 ### What has run
 

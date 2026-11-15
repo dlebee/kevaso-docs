@@ -211,11 +211,15 @@ spec:
     loadBalancer: { class: linode-shared-ip, ip: edge }
 ```
 
-When the worker running it goes down, the silo is recreated on another Linode worker, and the
-address answers from there. In our test, with an address already in the account, that took 1m13s,
-nearly all of it the time Kevaso waits before deciding a host is lost and recreating its silo. The
-address itself moves in seconds. Reserving a new address for an `IP` hasn't been run on a real
-Linode yet.
+When the worker running it goes down, nothing moves by itself: once you know the Linode is off, `kvo move
+silo NAME --to HOST --confirm-fenced --recreate` starts the silo on another worker and the address
+answers from there ([When the control plane is lost]({{ '/silos/control-plane-loss/' | relative_url }})).
+Add `onControlPlaneLoss: Stop` to the silo and Kevaso restarts it by itself, but only on a cluster whose
+control plane is always reachable. In our test, with an address already in the account, the address
+answered from the other worker 1m13s after its host went down: the address itself moves in seconds, and
+the rest was the time Kevaso waited before restarting the silo. That test restarted the silo
+automatically, and has not been run with the opt-in. Reserving a new address for an `IP` hasn't been
+run on a real Linode yet.
 
 **Outgoing traffic can leave from the shared IP too.** Set `network: { egress: { source: sameAsService } }`
 on the silo, and its connections go out from the address people reach it on. See

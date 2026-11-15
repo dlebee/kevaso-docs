@@ -133,9 +133,14 @@ spec:
 
 Kevaso refuses:
 
-- automatic failover (`onHostLoss` other than `Wait`);
+- failover (`onHostLoss` other than `Wait`). A move is by hand, with `kvo move … --confirm-fenced`,
+  once you know the old copy is stopped;
 - extra instances during a set's rollout (`maxSurge`, `StartFirst`). An exclusive instance is
   always updated one at a time, stop-first.
+
+`exclusive` does not stop the silo when its worker loses the control plane: the silo keeps running
+there, and Kevaso starts no other copy. To have it stop itself, add `onControlPlaneLoss: Stop` on a
+cluster whose control plane is always reachable ([When the control plane is lost]({{ '/silos/control-plane-loss/#the-opt-in-stop-when-the-control-plane-is-lost' | relative_url }})).
 
 > A single silo can't use `update.strategy: StartFirst` at all: Kevaso refuses it, since it would
 > need the disk cloned. A set can use it, by starting an extra instance instead.

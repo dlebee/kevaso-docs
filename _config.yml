@@ -26,7 +26,7 @@ sections:
   - title: Workers
     pages:
       - { title: Adding workers, url: /workers/ }
-      - { title: Host loss and draining, url: /workers/host-loss/ }
+      - { title: Draining a host, url: /workers/host-loss/ }
   - title: Silos
     pages:
       - { title: Your first silo, url: /silos/first-silo/ }
@@ -34,7 +34,8 @@ sections:
       - { title: Sets, images and updates, url: /silos/sets/ }
       - { title: Probes and routing, url: /silos/probes/ }
       - { title: Volumes, url: /silos/volumes/ }
-      - { title: Host loss and moves, url: /silos/moves/ }
+      - { title: When the control plane is lost, url: /silos/control-plane-loss/ }
+      - { title: Moves, url: /silos/moves/ }
       - { title: Daemons and upkeep, url: /silos/daemons/ }
       - { title: Terminals, files and the small UI, url: /silos/terminals/ }
       - { title: Panes, url: /panes/ }

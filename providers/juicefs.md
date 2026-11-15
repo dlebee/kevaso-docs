@@ -14,7 +14,7 @@ The JuiceFS provider gives silos **volumes that follow the silo to any host**:
 JuiceFS keeps a volume's **data in a bucket** (any S3-compatible object store) and its **metadata in a database** (Postgres, Redis and others). A host that can reach
 both can mount the volume, in any region, with no shared network and no cloud-specific disk. So a
 silo whose volumes are all on a JuiceFS class can move to **any** host, and its `MOVABLE` column
-says `Anywhere` ([Host loss and moves]({{ '/silos/moves/' | relative_url }})).
+says `Anywhere` ([Moves]({{ '/silos/moves/' | relative_url }})).
 
 ```mermaid
 flowchart LR
@@ -180,8 +180,8 @@ kvo get silos -n payments -o wide
 ```
 
 ```text
-NAME   RUNTIME  PHASE    READY  HOST  MOVABLE   AGE
-db-1   docker   Running  True   hv2   Anywhere  3m
+NAME   RUNTIME  PHASE    READY  HOST  MOVABLE   ON-CP-LOSS  AGE
+db-1   docker   Running  yes    hv2   Anywhere  -           3m
 ```
 
 `kvo move silo db-1 --to hv3` now works with the data: the old host stops the silo and unmounts the

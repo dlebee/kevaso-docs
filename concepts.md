@@ -65,6 +65,7 @@ flowchart LR
 | **Init steps** | Optional. Scripts that run inside a new silo before it counts as Ready: install tools, clone a repo. A silo with none is fine. |
 | **Grant** | What a silo may reach outside the cluster and which secrets it gets, and how. Nothing outside is reachable without one. |
 | **Secret** | A value (an API key, a password, a signing key) kept encrypted. Silos get it only through Grants: injected on the way out, written as a file or an environment variable by the host, or asked for from a local endpoint. [Secrets]({{ '/secrets/' | relative_url }}). |
+| **Control-plane loss** | A worker that can't reach the control plane changes nothing: its silos keep running, and no other copy starts elsewhere unless you say the old one is off, or the silo opted in. [When the control plane is lost]({{ '/silos/control-plane-loss/' | relative_url }}) |
 | **Context** | In `kvo`, a saved combination of cluster, identity and default namespace, like a kubeconfig context. |
 
 ---
@@ -79,7 +80,8 @@ Everything in Kevaso is an object with a **spec** (what you want) and a **status
 3. That host's **agent** sees the silo, creates it with the runtime, starts it, runs its init steps (if it has any),
    and reports `Running` and `Ready`.
 4. If anything drifts later (the VM dies, the host restarts), the agent puts it back. That's the
-   loop: *declare, and Kevaso keeps it so*.
+   loop: *declare, and Kevaso keeps it so*. If the control plane is out of reach, the agent changes
+   nothing and the silos keep running as they were.
 
 `kvo watch silos` shows these steps as they happen.
 

@@ -31,7 +31,7 @@ To understand what fails when it does, here is what lives on a system node:
 |---|---|
 | The API (everything `kvo` and `kvoadm` do) | No changes: no new silos, no `apply`, no `exec` |
 | The store (every object) and the cluster CA | Safe on its disk; back once it's up |
-| The scheduler and controllers | Nothing new is placed; lost hosts aren't handled |
+| The scheduler and controllers | Nothing new is placed; a silent host's silos are not marked or moved |
 | The sign-in provider | Nobody can sign in or refresh a token |
 | The secrets' master key, and the broker's decisions | Silos can't fetch secrets (a silo's request for a secret to its local endpoint fails) |
 
@@ -39,8 +39,8 @@ And what keeps working on the workers without it:
 
 | Silo | Without the system node |
 |---|---|
-| `onHostLoss: Wait` (the default) | **Keeps running.** Its host keeps it up and restarts it if it dies. |
-| `onHostLoss: Recreate` or `Move` | **Stopped after 30 seconds** by its own host, on purpose: the system node may be recreating or moving it elsewhere, and two copies must never run. |
+| Any silo (the default) | **Keeps running.** A worker that loses the control plane changes nothing. Its host keeps it up and restarts it if it dies. |
+| `onControlPlaneLoss: Stop` | **Stopped** by its own host once it has been cut off for the silo's `after` (default 2 minutes), on purpose. Don't use it with one system node: the silo stops every time the system node is out of reach ([When the control plane is lost]({{ '/silos/control-plane-loss/#when-not-to-use-it' | relative_url }})). |
 | Injected keys (Kevaso's egress gate) | Keep working for about a minute (cached), then the gate stops adding them |
 | Injected keys on OpenShell silos | Keep working: OpenShell holds them |
 
@@ -76,7 +76,7 @@ flowchart LR
 
 | | |
 |---|---|
-| **Fault tolerance** | Losing a **worker**: its `Wait` silos wait, its `Recreate` silos start elsewhere 30 s after the host is marked lost (40 s without a report), and its `Move` silos move with their data. Losing the **system node**: running `Wait` silos keep running, but nothing changes until it's back (see the tables above); [several system nodes](#several-system-nodes) remove that. |
+| **Fault tolerance** | Losing a **worker**: its silos are marked `HostUnreachable` after 40 s and nothing starts elsewhere until you say the old copy is off (`kvo move … --confirm-fenced`) or a silo opted in ([When the control plane is lost]({{ '/silos/control-plane-loss/' | relative_url }})). Losing the **system node**: running silos keep running, but nothing changes until it's back (see the tables above); [several system nodes](#several-system-nodes) remove that. |
 | **Recovery** | Bring the machine back, and everything resumes. |
 | **Operational risk** | The system node is a single point of control: keep it small, patched, and running nothing else. |
 | **Security** | A silo broken out of its VM lands on a *worker*, which only ever gets the secrets of its own silos, and can't act as another host. |

@@ -1,16 +1,19 @@
 ---
-title: Host loss and moves
+title: Moves
 permalink: /silos/moves/
 ---
 
-# Host loss and moves
+# Moves
 
 Silos are stateful, so Kevaso never moves one as a side effect. Two things decide what can
 happen when a silo has to leave its host:
 
 1. **What its storage allows.** A silo moves *with its data* only if everything it keeps can
    attach somewhere else.
-2. **What the silo wants** when its host is lost: `spec.availability.onHostLoss`.
+2. **What the silo wants** once its old host is known to be off: `spec.availability.onHostLoss`.
+
+What happens when a host is simply out of reach is on another page:
+[When the control plane is lost]({{ '/silos/control-plane-loss/' | relative_url }}).
 
 ---
 
@@ -32,22 +35,26 @@ kvo get silos -o wide
 ```
 
 ```text
-NAME   RUNTIME            PHASE     READY   HOST      MOVABLE              AGE
-api    cloud-hypervisor   Running   yes     hv1       Pinned (hv1)         3d
-db-1   docker             Running   yes     cloud-1   Region (ca-central)  3d
-runner cloud-hypervisor   Running   yes     hv1       Recreate             1d
-dev    cloud-hypervisor   Running   yes     hv1       Anywhere             2h
+NAME     RUNTIME            PHASE     READY   HOST      MOVABLE               ON-CP-LOSS   AGE
+api      cloud-hypervisor   Running   yes     hv1       Pinned (hv1)          -            3d
+db-1     docker             Running   yes     cloud-1   Region (ca-central)   -            3d
+runner   cloud-hypervisor   Running   yes     hv1       Recreate              -            1d
+dev      cloud-hypervisor   Running   yes     hv1       Anywhere              -            2h
 ```
 
 ---
 
-## When a host is lost
+## What `onHostLoss` means
 
-| `onHostLoss` | What happens |
+| `onHostLoss` | What a confirmed move does |
 |---|---|
-| `Wait` (default) | The silo stays. It's down until the host comes back. |
-| `Recreate` | A fresh copy from its image starts on another host. Its own disk is lost, by declaration. |
-| `Move` | It starts on another host **with its data**: its volumes are detached and attached there. |
+| `Wait` (default) | The silo stays on its host. It can still be moved by hand if its storage can move |
+| `Recreate` | A fresh copy from its image starts on another host. Its own disk is lost, by declaration |
+| `Move` | It starts on another host **with its data**: its volumes are detached and attached there |
+
+`onHostLoss` never moves a silo on its own. It says how a move goes once the old host is known to be
+off: you run `kvo move … --confirm-fenced`, or the silo [opted in]({{ '/silos/control-plane-loss/#the-opt-in-stop-when-the-control-plane-is-lost' | relative_url }}) to be
+stopped and restarted elsewhere.
 
 ```yaml
 spec:
@@ -62,9 +69,7 @@ spec:
 - **A volume is never left behind:** a volume is always kept data, so `Recreate` (and
   `kvo move --recreate`) is refused for a silo with a host-local volume, with the volume named.
   Keep disposable data on the silo's own disk, put the volume on a class that travels, or use `Wait`.
-- **Two copies never run.** A lost host stops its `Recreate` and `Move` silos once it's cut off,
-  and the control plane waits until then before starting them elsewhere. `Wait` silos
-  are never started elsewhere on their own. [How, and how long it takes](#the-fence).
+- **`exclusive: true`** requires `Wait`: a move is by hand, once the old copy is known to be stopped.
 
 ---
 
@@ -88,55 +93,6 @@ The old host stops the silo and lets go of its volumes first, then the new host 
 A move from a **lost** host needs `--confirm-fenced`: nobody is there to stop the old copy, so
 you say it's stopped. Only say it when the old copy really is stopped: if two copies of a silo
 must never run at the same time (a single-writer database, or a system with equivocation penalties),
-that is the check that keeps it so.
+that is the check that keeps it so. [How to use it, and what a returning host does]({{ '/silos/control-plane-loss/#moving-a-silo-off-a-host-you-know-is-off' | relative_url }}).
 
 Moving needs `create` on `silos/move` (the built-in `editor` and `admin` roles have it).
-
----
-
-## The fence
-
-A lost host may not be lost at all: it may only be cut off, with its silos still running and
-writing. So before the control plane starts a copy elsewhere, the host has to stop its own.
-
-Every worker host runs a second, small service for this, `kevaso-fence.service`, separate from
-`kevasod` and installed by `kvoadm host add --install worker`:
-
-```bash
-sudo systemctl status kevaso-fence
-```
-
-- The agent writes a record every second to `/run/kevaso-fence/`: when it last reached the control
-  plane, and each silo's `onHostLoss`.
-- If the last contact is **older than 30 seconds**, the fence kills this host's `Recreate` and
-  `Move` silos (a kill, not a graceful stop). It does this whether the agent is cut off or **not running at all** (`kevasod`
-  stopped, or killed). `Wait` silos are left alone.
-- A quick restart of `kevasod` stops nothing.
-
-It is `kevasod fence-watch`, with `--fence-after` (default `30s`), `--dir`, `--data` and one
-`--runtime` per runtime on the host. You don't run it yourself.
-
-The timing, from the constants in the code:
-
-| | |
-|---|---|
-| The fence acts | When the last contact is older than **30 s** (checked every second) |
-| Every silo it stops is dead | By **36 s** after the last contact |
-| The control plane calls the host lost | After **40 s** without a heartbeat |
-| It starts the copy elsewhere | **30 s** after that: **67 s** after the last contact at the earliest, allowing for clock skew |
-
-So the old copy is dead at least about 30 seconds before the new one starts. A test of these
-constants holds the gap at 15 seconds or more. It has not been measured across two real machines.
-
-What the fence doesn't cover:
-
-- A silo with **no recorded policy** is not stopped. The agent records a silo before it starts it,
-  so a running silo without a record is a fault: the fence logs it, and the agent reports it once
-  it is back in contact.
-- A **control-plane host that is also a worker** (`kvoadm init --worker`, a system node that runs
-  silos) has the fence unit, but it acts only when the rest of the control plane can carry on
-  without that host (another system node serves the API and the others hold a majority of the
-  store). A one-node or two-node control plane has nobody to start the silos elsewhere, so the
-  fence stops nothing there.
-
-If you can't live with that, use `Wait`, and when the host really is dead, `kvo move … --confirm-fenced`.

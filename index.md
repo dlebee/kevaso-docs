@@ -36,7 +36,7 @@ entering it.
 | Keep an address, or share one load balancer | [Addresses you keep]({{ '/networking/ips/' | relative_url }}) |
 | Send traffic only to silos that are ready | [Probes]({{ '/silos/probes/' | relative_url }}) |
 | Give a silo a secret without installing anything in it | [Secrets]({{ '/secrets/' | relative_url }}) |
-| Give silos volumes, or make a microVM movable | [Volumes]({{ '/silos/volumes/' | relative_url }}), [Host loss and moves]({{ '/silos/moves/' | relative_url }}) |
+| Give silos volumes, or make a microVM movable | [Volumes]({{ '/silos/volumes/' | relative_url }}), [Moves]({{ '/silos/moves/' | relative_url }}), [When the control plane is lost]({{ '/silos/control-plane-loss/' | relative_url }}) |
 | Survive losing a system node, or upgrade without stopping | [High availability]({{ '/operations/ha/' | relative_url }}) |
 | Add your own kinds and rules, or install a plugin | [Defining your own kind]({{ '/extending/kinds/' | relative_url }}), [Policies]({{ '/extending/policies/' | relative_url }}), [Plugins]({{ '/extending/plugins/' | relative_url }}), [Plugins for kvo]({{ '/extending/kvo-plugins/' | relative_url }}) |
 | See what has been proven on real machines | [What's proven where]({{ '/operations/#whats-proven-where' | relative_url }}) |
