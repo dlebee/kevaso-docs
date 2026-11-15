@@ -92,7 +92,10 @@ A JSON file naming the classes. It holds no secrets: credentials are only *named
 | `volumesDir` | The folder the node side mounts under | `/var/lib/kevaso/volumes` |
 
 One file system per class, and one folder per volume in it. A silo is only given its own folder, so
-it never sees another volume's files. The credentials reach `juicefs` through its environment,
+it never sees another volume's files.
+
+**A class is shared by every namespace.** Any namespace can create volumes in any class, so a
+class is not a way to give one team its own bucket: every class's bucket is the cluster's. The credentials reach `juicefs` through its environment,
 never its command line, and **never reach the silo**: it only gets the mounted folder.
 
 ---
