@@ -128,14 +128,14 @@ kvo open silo node-1 --port debug --for 1h
 silo/node-1 port debug: waiting for a yes: kvo approve node-1-debug-3f9a1c -n infra (expires 4:12PM)
 ```
 
-Someone else answers:
+Someone else answers. The `REQUEST` column and `--request` are the same as for a secret: [approvals]({{ '/secrets/#ask-a-person-first-approvals' | relative_url }}).
 
 ```bash
 kvo get approvals -n infra
 ```
 
 ```bash
-kvo approve node-1-debug-3f9a1c -n infra
+kvo approve node-1-debug-3f9a1c -n infra --request 3f9a1c2e4b7d6a0c8e1f2a3b4c5d6e7f
 ```
 
 ```bash

@@ -329,19 +329,36 @@ The `428` body has the pending name and says `kvo approve NAME -n ops`; it is al
 the secret without asking again. `wait` is how long a request may wait for an answer. For an
 injection, the request itself waits at the egress gate.
 
-**You** see the queue and answer:
+**You** see the queue and answer. `kvo get approvals` and `kvo watch approvals` have a `REQUEST` column. It is the first 32 hex digits of the request's id. The full id is 64 hex digits. It names what this request asks for. A silo that asks again with anything different gets a new id. A yes is for the id you read. That keeps it from landing on a different ask.
 
 ```bash
 kvo get approvals -n ops
 ```
 
+On a terminal, `kvo approve` shows the request and asks `approve this request (ID)? [y/N]`. `ID` is those 32 hex digits. The yes is for the request it showed. `y` or `yes` approves it. Anything else prints `not approved` and changes nothing.
+
 ```bash
 kvo approve db-3f9a1c2e -n ops
+```
+
+Off a terminal, name the request. `--request` takes the `REQUEST` column, a longer prefix of the same id, or the full 64 hex digits. A prefix shorter than 32 digits is refused. A shorter one can match two requests. `kvo` completes a prefix from the approval you named, and only when that id starts with what you typed. It then sends the full 64 digits.
+
+```bash
+kvo approve db-3f9a1c2e -n ops --request 3f9a1c2e4b7d6a0c8e1f2a3b4c5d6e7f
 ```
 
 ```bash
 kvo deny db-3f9a1c2e -n ops --reason "not during the freeze"
 ```
+
+| `--request` on `kvo approve` | |
+|---|---|
+| The `REQUEST` column, a longer prefix, or the full 64 hex digits | Accepted. The yes is for that request |
+| Fewer than 32 hex digits | `request "…": too short, give at least 32 digits of the REQUEST column` |
+| Not hex | `request "…": not a request ID (hex digits, from kvo get approvals)` |
+| The pending request no longer starts with it | `approval NAME: the request changed since it was read: no pending request starts with … (it is … now)` |
+| The full id is for a different request | `Conflict (409): approval NAME: the request changed since it was read: it is request … now (…, for …); read it again and answer that one` |
+| Omitted, and stdin is not a terminal | `approve NAME: say which request with --request ID (the REQUEST column of kvo get approvals)` |
 
 - **Every request expires.** Nobody answers: the call fails, saying it expired.
 - **Asking again replaces the pending request**, so the queue never fills with copies.

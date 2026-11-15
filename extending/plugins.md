@@ -63,8 +63,23 @@ A plugin that has to mount file systems can't live in that. Its package carries 
 | `capabilities` | Exactly these, and no others (like `CAP_SYS_ADMIN` to mount) |
 | `devices` | Read-write access to these devices, and no others (like `/dev/fuse`) |
 | `hostMounts` | The host's own mount namespace, so what it mounts is seen by `kevasod`, the container runtime and `virtiofsd`. Needs `root`. **It costs the read-only system and the private `/tmp`**, since those need a namespace of their own |
-| `writePaths` | Folders it may write; the rest of the system stays read-only. Not with `hostMounts` |
+| `writePaths` | Folders it may write; the rest of the system stays read-only. Not with `hostMounts`. A write path on its own is a privilege: install shows it and waits for `--yes`, or for `y` on a terminal |
 | `socket` | `plugin.sock` or `node.sock`: the only two `kevasod` looks for |
+
+A plugin may ask to write only its own folder, one level under one of four roots. Anything else is refused, so a plugin cannot be given `/var/lib/kevaso`, another plugin's folder, or a folder inside its own. For a plugin named `db`:
+
+| Root | Folders |
+|---|---|
+| `/var/lib` | `/var/lib/kevaso-plugin-db`, `/var/lib/kevaso-provider-db` |
+| `/var/cache` | `/var/cache/kevaso-plugin-db`, `/var/cache/kevaso-provider-db` |
+| `/var/log` | `/var/log/kevaso-plugin-db`, `/var/log/kevaso-provider-db` |
+| `/srv` | `/srv/db` |
+
+```text
+kevaso-plugin.json: plugin manifest: controller: write path "/etc": plugin db may write only its own folder: /var/lib/kevaso-plugin-db, /var/lib/kevaso-provider-db, /var/cache/kevaso-plugin-db, /var/cache/kevaso-provider-db, /var/log/kevaso-plugin-db, /var/log/kevaso-provider-db, /srv/db
+```
+
+A path that is not a clean absolute folder is `write path "…": a clean absolute folder`. On the host, a symlink in the path is `PATH is a symlink: refusing to grant it`, and something that is not a folder is `PATH is not a folder: refusing to grant it`.
 
 A manifest naming something `kvoadm` doesn't know is refused, so a need is never dropped silently.
 
@@ -83,11 +98,49 @@ kvoadm plugin install root@203.0.113.20 --name juicefs --side node --binary ./ke
 kvoadm: plugin juicefs's node side asks for the privileges above (manifest ./kevaso-plugin.json): add --yes to grant them
 ```
 
-A side that asks for nothing extra installs without `--yes`. Everything else a unit has
-(a system-call filter, no new privileges, no realtime, …) stays on.
+A side that asks for nothing extra installs without `--yes`. A side that only asks for a folder to
+write does not: the folder is shown (`writes /var/lib/kevaso-plugin-db (made for it if missing)`,
+then `the rest is read-only`) and install stops unless you pass `--yes` or answer `y` or `yes`.
+Off a terminal the refusal is `plugin db's controller side asks for the privileges above (manifest FILE): add --yes to grant them`.
+Everything else a unit has (a system-call filter, no new privileges, no realtime, …) stays on.
 
 Read it before you say yes: root with `CAP_SYS_ADMIN` and the host's mount namespace is a lot to
 give a program, and this one handles your storage.
+
+### Every call has a deadline
+
+Every call to a provider plugin has a deadline. A call that does not answer ends then. A plugin
+that misses one is left alone for a while, so it holds a worker for at most one deadline at a time.
+
+| Call | Deadline |
+|---|---|
+| A question: what the plugin is, or which hosts it recognises | 10 seconds |
+| A call that changes something: a volume, an address, a load balancer, a DNS record, or a mount | 1 minute |
+
+| After that | |
+|---|---|
+| The call that ran out | `plugin db: EnsureVolume: no answer within 1m0s: plugin unresponsive` |
+| Later calls, except asking what the plugin is | Not made, for 30 seconds, doubling up to 5 minutes, until one answer arrives. `plugin db: EnsureVolume not called: its EnsureVolume had no answer within 1m0s; next try in 30s: plugin unresponsive` |
+| Calls already waiting | At most 3. Another waits 5 seconds, then `plugin db: EnsureVolume not called: 3 calls already waiting on it: plugin unresponsive` |
+
+The object the call was for is reported and tried again. Asking what the plugin is still has the
+10 second deadline, and a miss there does not pause the other calls.
+
+### A plugin from another release
+
+`kevasod` accepts a plugin of revision 1. Any other revision is refused, and the line is logged
+once. Install does not check this. The plugin is refused when `kevasod` connects to it.
+
+```text
+plugin db 0.1.0 at /run/kevaso-plugins/db/plugin.sock refused: built against an sdk from before wire revisions; this kevasod serves revisions 1 to 1: rebuild the plugin against this release's kevaso.com/core/sdk
+```
+
+```text
+plugin db 0.1.0 at /run/kevaso-plugins/db/plugin.sock refused: built against sdk wire revision 2; this kevasod serves revisions 1 to 1: rebuild the plugin against this release's kevaso.com/core/sdk (or upgrade kevasod)
+```
+
+The first is a plugin from before revisions. The second is any revision other than 1. Rebuild the
+plugin for this release, or run a `kevasod` that serves the revision the plugin was built with.
 
 > **Not proven on a real machine:** a privileged node side installed this way hasn't run on a real
 > host yet.

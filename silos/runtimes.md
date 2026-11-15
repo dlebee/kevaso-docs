@@ -85,7 +85,8 @@ with the real one.
 | Injection format | `Bearer {{value}}` in `Authorization`, or `{{value}}` in any header |
 | Init steps | Run as the sandbox's user, not root |
 | `kvo exec` stdin | At most 4 MiB (compress bigger files) |
-| Gateways | One per namespace by default (`--openshell-gateway-scope host | namespace | silo` on the worker): sandboxes of one gateway share its user, so the scope is how far an escape reaches. Each gateway runs as its own user, locked down. |
+| Gateways | One per namespace by default (`--openshell-gateway-scope host \| namespace \| silo` on the worker): sandboxes of one gateway share its user, so the scope is how far an escape reaches. Each gateway runs as its own user, locked down. |
+| `onControlPlaneLoss: Stop` | Refused, on `openshell` and `openshell-container`. The gateway brings the sandbox back by itself, so nothing keeps it stopped. `onControlPlaneLoss: Stop isn't available on openshell: its gateway brings its sandboxes back by itself (a restart of the gateway, a reboot), so nothing keeps it stopped without the control plane` |
 
 ## openshell-container
 

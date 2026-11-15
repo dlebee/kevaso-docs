@@ -235,7 +235,9 @@ What to do, in order of preference:
 A restore starts a **new history** of the same cluster, and workers accept it as a deliberate
 restore. Anything else that makes a control plane older than what a worker saw (a disk snapshot put
 back, files copied over) is not announced, and the worker [holds]({{ '/silos/control-plane-loss/#a-control-plane-older-than-what-the-worker-last-saw' | relative_url }}):
-it keeps every silo running and deletes nothing, until a restore.
+it keeps every silo running and deletes nothing. The hold ends when an answer of the same history
+arrives at or above the revision the worker kept. A new history from `kvoadm init --restore` is
+accepted as well.
 
 Whatever a worker runs that the restored state **does not know** is **kept, never deleted**: the silo keeps
 running with its disk and volumes. A worker removes a silo's data only when it has seen that silo being
@@ -248,7 +250,7 @@ keeping … on hv2: the control plane doesn't know it and no delete of it was se
 Find them on a worker with `journalctl -u kevasod | grep keeping`. Nothing lists them in `kvo`, and
 Kevaso never removes them: stopping one is a step you take on that worker.
 
-Not yet connected: the hold. See [what is not built]({{ '/silos/control-plane-loss/#what-is-not-built-and-what-has-not-run-on-real-machines' | relative_url }}).
+The hold has not been run on a real machine. See [what is not built]({{ '/silos/control-plane-loss/#what-is-not-built-and-what-has-not-run-on-real-machines' | relative_url }}).
 
 ---
 

@@ -297,7 +297,11 @@ a driver this cluster doesn't have) and `CertificatePending`.
 
 Values are checked before they reach the configuration: nothing is quoted or escaped for you.
 
-Fix the Ingress and apply it again; it is served by itself on the next pass.
+An Ingress the proxy refused is left out and tried again on a backoff, with no change required.
+The first try is 30 seconds later. Each refusal after that doubles the wait, up to 10 minutes, and
+it stays at 10 minutes while the proxy still refuses. Once the proxy accepts it, it is served and
+the status clears. The other Ingresses of the class keep being served the whole time. Applying a
+fix is checked on the next pass, without waiting out the backoff.
 
 ### How the broken one is found
 
@@ -311,8 +315,8 @@ When the proxy refuses the whole configuration, Kevaso looks for the Ingress at 
    took more than 12 test runs`: it is not served, and tried again on the next pass.
 
 Kong has no test on the side: applying the previous state plus some changes is its test, which never
-drops a route that was working. An unchanged state costs no test run, and a refused Ingress is tested
-again only when it, or the class's options, change.
+drops a route that was working. An unchanged state costs no test run until the backoff above is due.
+A refused Ingress is tried again on that backoff even when it and the class's options are unchanged.
 
 ### When the whole class is held
 
@@ -327,9 +331,10 @@ part: …`. Fixing the class's options releases it.
 | Still served | The last good routes and certificates, new valid Ingresses (not while the whole class is held), and **ACME HTTP-01 challenges**, so one tenant's bad annotation does not stop certificates being issued or renewed |
 | Not served | The broken Ingress's change (its last good version stays), a changed class option while held |
 
-One limit. The agent keeps the last good configuration in memory: after the agent restarts, a left-out
-Ingress has no earlier version to keep serving, and a held class that was never applied in full applies
-nothing.
+The controller silo keeps a record of what the proxy accepted. An agent restart reads that record
+and checks it against what the proxy is running. A restart changes no route. A missing, truncated
+or corrupted record does not by itself change what the proxy serves: the proxy is read first, and
+a class is held rather than dropping a route that may still be there.
 
 ---
 

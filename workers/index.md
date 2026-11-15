@@ -135,7 +135,19 @@ bin/kvoadm reset root@198.51.100.20 \
 ```
 
 It looks at the machine first and prints what it will remove and what it will keep. Then it asks you
-to type `yes`. Nothing is changed before that.
+to type `yes`. Nothing is changed before that. `--dry-run` stops after the plan.
+
+After you confirm, `reset` stops `kevasod` and the fence, then looks at the machine again, before it
+removes anything. The plan can sit while you read it, and a silo or a volume can appear in that
+time. If the second look matches what was shown, `reset` goes on and removes what the plan listed. If it
+finds a silo that was not shown, or a volume whose data would be lost that was not listed, nothing
+is removed. `kevasod` and the fence are started again, and the command stops:
+
+```text
+the host changed since it was shown: silo container payments/api. Nothing was removed and kevasod is started again: run kvoadm reset again to see what it would remove now
+```
+
+If the second look itself fails, the message is `looking at the host again before removing anything: … (kevasod is started again; nothing was removed)`. `--yes` skips the question and still stops the agent and looks again.
 
 | Flag | Meaning |
 |---|---|

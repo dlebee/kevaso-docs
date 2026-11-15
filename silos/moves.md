@@ -95,4 +95,19 @@ you say it's stopped. Only say it when the old copy really is stopped: if two co
 must never run at the same time (a single-writer database, or a system with equivocation penalties),
 that is the check that keeps it so. [How to use it, and what a returning host does]({{ '/silos/control-plane-loss/#moving-a-silo-off-a-host-you-know-is-off' | relative_url }}).
 
+`--confirm-fenced` is refused while the source host claimed a start of this silo less than 30
+seconds ago. The host may count as lost, but it answered then and may be starting the silo, so the
+old copy is not provably stopped. That keeps a second copy from starting. The message names the
+host, how long ago, and how long to wait. For a claim 10 seconds old it is:
+
+```text
+kvo: Conflict (409): move payments/api: its host just claimed its start of this silo: baremetal-1 claimed its start 10s ago, so it answered then and may be starting it now: it is not provably stopped. Wait 20s, or add --insist if you know the old copy is off
+```
+
+Wait for the time it names. `kvo move` has no `--insist` flag. Adding one is refused:
+
+```text
+kvo: unknown flag --insist
+```
+
 Moving needs `create` on `silos/move` (the built-in `editor` and `admin` roles have it).
