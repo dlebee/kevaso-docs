@@ -18,15 +18,62 @@ Either way, a plugin never gets more than it shows you first.
 
 ## Install a provider plugin
 
+A plugin reads each secret by name from its credential directory. You store the value as a cluster secret, then allow that plugin's service account to read that name and no other.
+
+The service account is `plugin-NAME` in the namespace `kevaso-system`. A host fetches a value for a plugin only when that account may read the name.
+
+Save the value in a file only you can read:
+
 ```bash
-kvoadm plugin install root@203.0.113.10 --name cloud --binary ./kevaso-provider-cloud-linux-amd64 --credential token=$HOME/cloud-token.txt
+chmod 600 ~/cloud-token.txt
 ```
+
+```bash
+kvo create clustersecret token --from-file ~/cloud-token.txt
+```
+
+Save this as `cloud-secrets.yaml`. `resourceNames` lists exactly this plugin's secrets. A rule with no names grants none.
+
+```yaml
+apiVersion: kevaso/v1
+kind: ClusterRole
+metadata: { name: cloud-secrets }
+rules:
+  - verbs: [get]
+    resources: [clustersecrets/value]
+    resourceNames: [token]
+---
+apiVersion: kevaso/v1
+kind: ClusterRoleBinding
+metadata: { name: cloud-secrets }
+roleRef: { kind: ClusterRole, name: cloud-secrets }
+subjects:
+  - { kind: ServiceAccount, name: plugin-cloud, namespace: kevaso-system }
+```
+
+```bash
+kvo apply -f cloud-secrets.yaml
+```
+
+```bash
+kvoadm plugin install root@203.0.113.10 --name cloud --binary ./kevaso-provider-cloud-linux-amd64 --cluster-secret token
+```
+
+Install creates the service account `plugin-cloud` in the namespace `kevaso-system` and prints the account to bind. It records the name. It does not copy the file. Each host fetches the value and keeps a copy only root can read. The plugin reads `token` from its credential directory. Repeat `--cluster-secret` once for each name.
+
+To replace a value:
+
+```bash
+kvo set clustersecret token --from-file ~/cloud-token.txt
+```
+
+Each host writes the new copy and restarts the plugin. The same bytes again leave the plugin running.
 
 | Flag | Meaning |
 |---|---|
 | `--name NAME` | What to call it (lower case, digits and `-`) |
 | `--binary FILE` | The plugin's program, built for the host. `kvoadm` signs it; the host checks the signature before it installs it |
-| `--credential NAME=FILE` | A secret, read from a file (never the command line), kept on the host root-only and handed to the plugin through systemd |
+| `--cluster-secret NAME` | A cluster secret this side loads. Repeat for each name. A name, not a file |
 | `--config FILE` | Its settings (not secret) |
 | `--side controller\|node` | `controller` on a control plane (default), `node` on a worker |
 | `--manifest FILE` | What the plugin needs from the host: [below](#what-a-manifest-asks-for) |
@@ -37,6 +84,8 @@ To remove one:
 ```bash
 kvoadm plugin remove root@203.0.113.10 --name cloud
 ```
+
+Removing the last side on a host deletes the service account. The cluster secret and the role stay until you delete them.
 
 ### The default is small
 

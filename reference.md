@@ -24,7 +24,7 @@ Every command on one page. `kvo` uses your current context (`kvo ctx`); `-n NS` 
 
 Kinds: `namespaces` (`ns`), `hosts`, `silos`, `silosets` (`ss`), `services` (`svc`), `vmimages`
 (`vmi`), `secrets`, `grants`, `ips`, `ingresses` (`ing`), `ingressclasses`, `certificates`
-(`cert`), `issuers`, `roles`, `rolebindings`, `clusterroles`, `clusterrolebindings`,
+(`cert`), `issuers`, `roles`, `rolebindings`, `clusterroles`, `clusterrolebindings`, `clustersecrets`,
 `serviceaccounts` (`sa`), `approvals`, `panes`, `kinddefinitions` (`kd`), `validationpolicies`,
 `mutationpolicies`, `leases`, `plugins`, and any [kind you define]({{ '/extending/kinds/' | relative_url }}) (by its plural,
 or `PLURAL.GROUP` when two share one).
@@ -88,6 +88,10 @@ See [Panes]({{ '/panes/' | relative_url }}).
 | `kvo create secret NAME --type registry --server HOST --username U --from-file - [--default-pull]` | A [private registry's]({{ '/secrets/' | relative_url }}) credential: write-only, the password on stdin. `--default-pull`: the one used for that registry when a silo names none |
 | `kvo secret set NAME --from-file F\|-` | A new value (rotation) |
 | `kvo get secret NAME --reveal` | Print the value (needs `read-value`; never for write-only) |
+| `kvo create clustersecret NAME [--description TEXT] --from-file F\|-` | A secret with no namespace, for a plugin. Cluster-admin only. The value comes from a file or from stdin |
+| `kvo set clustersecret NAME --from-file F\|-` | Replace that value. Each host that has it writes the new copy and restarts the plugin |
+| `kvo get clustersecret [NAME] [--reveal]` | The name and description. `--reveal` prints the value |
+| `kvo delete clustersecret NAME` | Delete it |
 | `kvo get approvals` / `kvo watch approvals` | Silos waiting for a person's yes. The `REQUEST` column is 32 hex digits, the start of the request's 64-digit id |
 | `kvo approve NAME [--request ID]` | Say yes (needs `approve` on that secret; people only). `--request` is that column, a longer prefix, or the full 64 hex digits. At least 32 digits. On a terminal you can omit it: the request is shown and the yes is for what was shown. [Approvals]({{ '/secrets/#ask-a-person-first-approvals' | relative_url }}) |
 | `kvo deny NAME [--reason R]` | Say no |
@@ -214,11 +218,11 @@ Both look at the machine first and stop, changing nothing, if something won't wo
 |---|---|
 | `kvoadm backup [USER@]ADDR --ssh-key KEY --output FILE` | A backup of the control plane, sealed to the recovery key |
 | `kvoadm init [USER@]ADDR … --restore FILE` | A fresh machine from a backup; asks for the recovery key (or reads it from stdin), then reconnects the workers. It starts a new history of the same cluster, which workers accept as a deliberate restore. Silos on workers that the restored state does not know are kept, never deleted. [Backup and restore]({{ '/operations/backup/' | relative_url }}) |
-| `kvoadm plugin install [USER@]ADDR --name N --binary FILE [--credential NAME=FILE]… [--config FILE] [--side controller\|node] [--manifest FILE [--yes]]` | A provider plugin as a hardened service (credentials read from files, root-only on the host). A manifest's privileges are shown and need `--yes`. A folder the plugin asks to write is one of those, and only its own folders are allowed. [Plugins]({{ '/extending/plugins/#what-a-manifest-asks-for' | relative_url }}) |
+| `kvoadm plugin install [USER@]ADDR --name N --binary FILE [--cluster-secret NAME]… [--config FILE] [--side controller\|node] [--manifest FILE [--yes]]` | A provider plugin as a hardened service. Each `--cluster-secret` names a cluster secret. Install creates service account `plugin-NAME` in namespace `kevaso-system` and prints the account to bind; you pin those names in a ClusterRole and bind that account. The host fetches each value and keeps it root-only, and the plugin reads that name from its credential directory. Repeat the flag for each name. A manifest's privileges are shown and need `--yes`. A folder the plugin asks to write is one of those, and only its own folders are allowed. [Plugins]({{ '/extending/plugins/#install-a-provider-plugin' | relative_url }}) |
 | `kvoadm plugin install [USER@]ADDR --package DIR [--binary FILE] [--api-server URL] [--adopt] [--yes]` | A [plugin operator]({{ '/extending/plugins/#plugin-operators' | relative_url }}): shows every rule its controller gets, installs on `yes` |
 | `kvoadm plugin uninstall NAME [--force]` | Remove an operator and what it owns; refused while objects of its kinds exist unless `--force` |
 | `kvoadm plugin list` | Operators: version, kinds, whether the controller runs, host |
-| `kvoadm plugin remove [USER@]ADDR --name N` | Removes it: unit, program, credentials |
+| `kvoadm plugin remove [USER@]ADDR --name N` | Removes one side: its unit, and the program, cached secrets and service account once no side is left |
 
 ---
 
