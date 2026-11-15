@@ -53,9 +53,9 @@ overrides) from status text that silos and hosts write, so a silo can't change w
 | `kvo ui silo NAME [--no-browser]` | A web page on `127.0.0.1` with the silo's terminal and files. Ctrl-C stops it |
 | `kvo reset silo NAME` | Back onto its image: stopped, a fresh disk or container, volumes kept (a set's instance: onto the set's current image) |
 | `kvo protect silo NAME [--off]` | A set's scale-in never removes it |
-| `kvo move silo NAME --to HOST` | Move it with its data (`--recreate`: a fresh copy; `--confirm-fenced`: from a lost host) |
-| `kvo get silos [-o wide]` | `NAME`, `RUNTIME`, `PHASE`, `READY`, `HOST`, `AGE`. `-o wide` adds `MOVABLE`: where each silo could go |
-| `kvo describe silo NAME` | Its state, [probes]({{ '/silos/probes/' | relative_url }}), what it starts from, and each port with its addresses and lease. [Addresses, ports and names]({{ '/networking/model/' | relative_url }}) |
+| `kvo move silo NAME --to HOST [--recreate] [--confirm-fenced] [-n NS]` | Move it with its data. `--recreate`: a fresh copy from its image (only `onHostLoss: Recreate` silos). `--confirm-fenced`: its host is lost and you know the old copy is off; without it a move from a lost host is refused. [Moves]({{ '/silos/moves/' | relative_url }}), [Moving a silo off a host you know is off]({{ '/silos/control-plane-loss/#moving-a-silo-off-a-host-you-know-is-off' | relative_url }}) |
+| `kvo get silos [-o wide]` | `NAME`, `RUNTIME`, `PHASE`, `READY`, `HOST`, `AGE`. `-o wide` adds `MOVABLE` (where each silo could go) and `ON-CP-LOSS` (`stops after 2m` for a silo with `onControlPlaneLoss: Stop`, `-` for the others). A silo on a silent host has phase `Unknown` |
+| `kvo describe silo NAME` | Its state, [probes]({{ '/silos/probes/' | relative_url }}), what it starts from, what it does when its host loses the control plane (`On control-plane loss`), its conditions (`HostUnreachable`, `FenceArmed`), and each port with its addresses and lease. [Addresses, ports and names]({{ '/networking/model/' | relative_url }}) |
 | `kvo open silo NAME --port PORT [--port PORT]… [--for D] [--no-wait]` | Open [leased ports]({{ '/networking/leases/' | relative_url }}) for a while. Each port is its own lease, on its own terms. If a lease needs a yes, wait for it (`--no-wait`: don't). A refused port doesn't stop the others, and the command exits non-zero |
 | `kvo close silo NAME --port PORT [--port PORT]…` | Close them early |
 | `kvo get leases [-n NS \| -A]` | The leased ports and their state: `SILO`, `PORT`, `PHASE`, `WHEN`, `BY` |
@@ -152,10 +152,10 @@ A plugin never takes the name of a `kvo` command. See [Plugins for kvo]({{ '/ext
 
 | Command | Does |
 |---|---|
-| `kvoadm init [USER@]ADDR --ssh-key KEY --host-key SHA256:… --kevasod BIN [--name N] [--cluster C] [--api-server URL] [--store sqlite\|etcd]` | Install the control plane; write your kvo context; print the recovery key. `--store etcd`: start on etcd, ready for [more system nodes]({{ '/operations/ha/' | relative_url }}) |
-| `kvoadm host enable-worker [USER@]ADDR --ssh-key KEY [--runtime R]… [--loop-storage SIZE]` | The control-plane host runs silos too |
+| `kvoadm init [USER@]ADDR --ssh-key KEY --host-key SHA256:… --kevasod BIN [--name N] [--cluster C] [--api-server URL] [--store sqlite\|etcd] [--worker] [--storage-device /dev/DISK \| --loop-storage SIZE]` | Create the cluster (the only command that does), install the control plane, write your kvo context, print the recovery key. `--store etcd`: start on etcd, ready for [more system nodes]({{ '/operations/ha/' | relative_url }}). `--worker`: the machine runs silos too. [Starting a cluster]({{ '/operations/backup/#starting-a-cluster-and-a-node-that-finds-its-data-gone' | relative_url }}) |
+| `kvoadm host enable-worker [USER@]ADDR --ssh-key KEY [--runtime R]… [--loop-storage SIZE \| --storage-device /dev/DISK]` | The control-plane host runs silos too |
 | `kvoadm host reconnect [USER@]ADDR --ssh-key KEY [--server URL]` | Point a worker at the control plane again (after a restore onto another address) |
-| `kvoadm host add [USER@]ADDR --ssh-key KEY --kevasod BIN --install worker [--name N] [--region R] [--zone Z] [--label K=V] [--runtime R] [--behind-nat] [--internal-ip IP] [--external-ip IP]` | Add a worker |
+| `kvoadm host add [USER@]ADDR --ssh-key KEY --kevasod BIN --install worker [--name N] [--region R] [--zone Z] [--label K=V] [--runtime R] [--behind-nat] [--internal-ip IP] [--external-ip IP] [--storage-device /dev/DISK \| --loop-storage SIZE]` | Add a worker. `--storage-device`: a whole, empty disk for the silos' volume group, when the host has none. `--loop-storage`: development only, a sparse file instead. With neither and no `kevaso` volume group, the microVM runtime stops with a message. [Where silo disks live]({{ '/workers/#where-silo-disks-live' | relative_url }}) |
 | `kvoadm host add [USER@]ADDR … --install control-plane [--state-only] [--cluster-dns NAME] [--internal-ip IP] [--external-ip IP]` | A second or third [system node]({{ '/operations/ha/#add-a-system-node' | relative_url }}); `--state-only`: a light node (a vote only) |
 | `kvoadm host install HOST control-plane [--state-only] [--ssh-key KEY]` | Make an existing worker a system node too |
 | `kvoadm host uninstall HOST control-plane` | Take the control plane off a host that is a worker too (refused if it would lose the store's majority) |
@@ -165,9 +165,9 @@ A plugin never takes the name of a `kvo` command. See [Plugins for kvo]({{ '/ext
 | `kvoadm host list` | Hosts, both of their IPs, and their state |
 | `kvoadm host addresses HOST add\|remove CIDR…` | The extra addresses routed to a host, which the built-in `ip-pool` class hands out ([Addresses you keep]({{ '/networking/ips/' | relative_url }})). `remove` is refused for an address an IP holds |
 | `kvoadm host addresses HOST list` | Each range, and which IP holds each address |
-| `kvoadm host drain NAME` | Stop new silos landing on the host, and hand off the silos that can move, the way `kvo move` does. Silos that must stay with their local disk are listed. [Host loss and draining]({{ '/workers/host-loss/' | relative_url }}) |
+| `kvoadm host drain NAME` | Stop new silos landing on the host, and hand off the silos that can move, the way `kvo move` does. Silos that must stay with their local disk are listed. [Draining a host]({{ '/workers/host-loss/' | relative_url }}) |
 | `kvoadm host uncordon NAME` | The host takes new silos again |
-| `kvoadm reset [USER@]ADDR --ssh-key KEY [--host-key SHA256:…] [--ssh-port N] [--dry-run] [--yes] [--force] [--wipe-storage]` | Take Kevaso off a machine again. Shows what it will remove and keep, and asks first (`--yes`: don't ask). Refused while silos are on it (`--force`: go ahead, their data is lost). `--wipe-storage`: also remove the silo storage on a real disk. [Reset a machine]({{ '/workers/#reset-a-machine' | relative_url }}) |
+| `kvoadm reset [USER@]ADDR --ssh-key KEY [--host-key SHA256:…] [--ssh-port N] [--dry-run] [--yes] [--force] [--wipe-storage]` | Take Kevaso off a machine again. Shows what it will remove and keep, and asks first (`--yes`: don't ask). Refused while silos are on it (`--force`: go ahead, their data is lost). `--wipe-storage`: also remove the silo storage on a real disk. Nothing under Kevaso's paths is removed while something is mounted there. [Reset a machine]({{ '/workers/#reset-a-machine' | relative_url }}) |
 
 Every command that logs in takes `--ssh-key PATH` (a key with a passphrase is taken from `ssh-agent`
 or asked for) or `--password` (typed once, read from stdin when there's no terminal; kvoadm then adds
@@ -212,7 +212,7 @@ Both look at the machine first and stop, changing nothing, if something won't wo
 | Command | Does |
 |---|---|
 | `kvoadm backup [USER@]ADDR --ssh-key KEY --output FILE` | A backup of the control plane, sealed to the recovery key |
-| `kvoadm init [USER@]ADDR … --restore FILE` | A fresh machine from a backup; asks for the recovery key (or reads it from stdin), then reconnects the workers |
+| `kvoadm init [USER@]ADDR … --restore FILE` | A fresh machine from a backup; asks for the recovery key (or reads it from stdin), then reconnects the workers. It starts a new history of the same cluster, which workers accept as a deliberate restore. Silos on workers that the restored state does not know are kept, never deleted. [Backup and restore]({{ '/operations/backup/' | relative_url }}) |
 | `kvoadm plugin install [USER@]ADDR --name N --binary FILE [--credential NAME=FILE]… [--config FILE] [--side controller\|node] [--manifest FILE [--yes]]` | A provider plugin as a hardened service (credentials read from files, root-only on the host). A manifest's privileges are shown and need `--yes` |
 | `kvoadm plugin install [USER@]ADDR --package DIR [--binary FILE] [--api-server URL] [--adopt] [--yes]` | A [plugin operator]({{ '/extending/plugins/#plugin-operators' | relative_url }}): shows every rule its controller gets, installs on `yes` |
 | `kvoadm plugin uninstall NAME [--force]` | Remove an operator and what it owns; refused while objects of its kinds exist unless `--force` |
@@ -227,13 +227,14 @@ You rarely run it yourself; `kvoadm` installs it as a service.
 
 | Command | Does |
 |---|---|
-| `kevasod control-plane --name N [--internal-ip IP] [--external-ip IP] [--dns-suffix SUFFIX] [--worker --runtime R…]` | The control plane (and worker). Give at least one of the two IPs |
-| `kevasod worker --name N --server URL[,URL…]` | A worker-only host. Several URLs: every system node; it fails over between them |
-| `kevasod fence-watch [--fence-after D] [--dir DIR] [--runtime R]…` | A worker's [fence]({{ '/silos/moves/#the-fence' | relative_url }}): stops `Recreate` and `Move` silos when the agent's last contact is older than `D` (default `30s`). Its own unit, `kevaso-fence.service` |
+| `kevasod control-plane --name N [--internal-ip IP] [--external-ip IP] [--dns-suffix SUFFIX] [--worker --runtime R… [--storage-device /dev/DISK \| --loop-storage SIZE]]` | The control plane (and worker). Give at least one of the two IPs. Refuses to start on a machine with no cluster record, or whose store is gone: [Starting a cluster]({{ '/operations/backup/#starting-a-cluster-and-a-node-that-finds-its-data-gone' | relative_url }}) |
+| `kevasod worker --name N --server URL[,URL…] [--storage-device /dev/DISK \| --loop-storage SIZE]` | A worker-only host. Several URLs: every system node; it fails over between them |
+| `kevasod fence-watch [--fence-after D] [--dir DIR] [--runtime R]…` | A worker's [fence]({{ '/silos/control-plane-loss/#the-fence' | relative_url }}): kills the silos with `onControlPlaneLoss: Stop` when the agent's last contact is older than each one's `after`. `--fence-after` (default `30s`) has no effect on the records the agent writes. Its own unit, `kevaso-fence.service` |
 | `kevasod version` | Its version |
 | `kevasod platforms` | The operating systems this build supports (`kvoadm` reads the same list). [Supported operating systems]({{ '/setup/prepare/#supported-operating-systems' | relative_url }}) |
 | `kevasod admin recovery-key` / `kms-rotate [--new-recovery-key]` / `backup` | Through the admin socket, as root |
-| `kevasod admin restore [--data DIR]` | Put a backup into a fresh data directory (`kvoadm init --restore` runs it) |
+| `kevasod admin create-cluster --cluster NAME [--data DIR]` | Make this machine belong to cluster NAME: writes its record and nothing else (`kvoadm init` runs it). Does nothing if the record already names NAME; refused if it names another cluster. `kevasod control-plane` never creates a cluster |
+| `kevasod admin restore [--data DIR]` | Put a backup into a fresh data directory and mark it a deliberate restore (`kvoadm init --restore` runs it) |
 | `kevasod control-plane --dns-suffix SUFFIX` | The last label of the cluster's names (default `kevaso`): `SERVICE.NAMESPACE.SUFFIX`. [Addresses, ports and names]({{ '/networking/model/' | relative_url }}) |
 | `kevasod control-plane --store sqlite\|etcd` | Where objects live: SQLite (default) or an embedded etcd member. The first `etcd` start moves `store.db` into it. [Operations]({{ '/operations/#the-store' | relative_url }}) |
 | `kevasod control-plane --etcd-client-listen ADDR` | With `--store etcd`: the member's client address (default `127.0.0.1:2379`; keep it on loopback) |
