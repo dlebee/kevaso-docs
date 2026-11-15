@@ -65,6 +65,49 @@ It shows each host's internal and external IP; `kvoadm host list` shows them too
 
 ---
 
+## Where silo disks live
+
+A microVM's disks and its `local` volumes live in a volume group named `kevaso` on the worker. Kevaso
+makes it once, at host setup, in one of two ways:
+
+| You give | Kevaso does |
+|---|---|
+| `--storage-device /dev/DISK` | Uses that whole disk: makes the volume group on it |
+| `--loop-storage SIZE` | Development only: makes the volume group on a sparse file of that size (`/var/lib/kevaso-storage.img`). Don't use it for real data |
+| Neither, and a `kevaso` volume group already exists | Uses that volume group as it is |
+| Neither, and none exists | Stops: `volume group "kevaso" missing: name an empty disk for it (--storage-device), create it yourself, or allow a loop file for development` |
+
+```bash
+bin/kvoadm host add root@198.51.100.20 \
+    --ssh-key ~/.ssh/kevaso_ed25519 \
+    --host-key SHA256:… \
+    --kevasod bin/kevasod-linux-amd64 \
+    --install worker \
+    --name hv2 \
+    --storage-device /dev/nvme1n1
+```
+
+`--storage-device` is taken by `kvoadm init --worker`, `kvoadm host enable-worker` and
+`kvoadm host add`. It takes a path under `/dev/`, and not together with `--loop-storage`. The disk must
+be **whole and empty**: Kevaso never writes over a disk with anything on it, and says why when it is not:
+
+| The disk | Refused with |
+|---|---|
+| Doesn't exist | `/dev/nvme1n1: no such disk` |
+| Has partitions or something on top of it | `… has partitions or holders (…): Kevaso takes a whole, empty disk only` |
+| Is a partition or another kind of device | `… is "…", not a whole disk` |
+| Is mounted | `… is mounted on /mnt` |
+| Holds a file system, RAID, LVM or partition-table signature | `… isn't empty (wipefs found: …): Kevaso never writes over a disk with anything on it` |
+
+The flag is used only when the host has no `kevaso` volume group. On a host that has one, it changes
+nothing. A volume larger than the pool has left is refused ([Volumes]({{ '/silos/volumes/#what-kevaso-refuses' | relative_url }})).
+Containers don't use this storage.
+
+[Resetting a machine](#storage) never removes a volume group on a real disk unless you add
+`--wipe-storage`.
+
+---
+
 ## Placing silos
 
 ```yaml
@@ -126,6 +169,11 @@ are refused: `--kevasod isn't a reset flag`.
   `/etc/docker`. If it installed podman, the same for podman and `/var/lib/containers`. If Docker was
   already there, it stays and its `daemon.json` is put back as it was (or removed, if there was none).
 
+Nothing under Kevaso's paths is removed while something is still mounted there: `reset` unmounts
+first, and if a mount stays it stops that step and says `still mounted, so nothing under Kevaso's paths is
+removed: …`, so a volume mounted inside them is never reached. Files are removed without crossing into
+another file system.
+
 A step that fails does not stop the others. When all steps are done, `reset` runs a checklist
 (no Kevaso unit, process, file, mount, link, address, nftables table, container, loop device, user or
 volume group left; nothing listening on 2379, 2380 or 6443) and names anything it finds. Then it ends
@@ -146,8 +194,8 @@ Silo disks of the microVM runtime live in a volume group named `kevaso`.
 | Where the volume group is | What `reset` does | With `--wipe-storage` |
 |---|---|---|
 | None | Removes only a leftover `/var/lib/kevaso-storage.img` | Same |
-| On `/var/lib/kevaso-storage.img`, the loop file `--loop-storage` made, and it did not exist before Kevaso | Removes the volume group with every volume on it, detaches the loop device and deletes the file. The volumes are listed, and are lost. | Same |
-| On a real disk, or it existed before Kevaso (the record says so) | **Keeps** the volume group and its volumes, and says so | Removes the volume group with every volume on it, then the physical volumes' LVM labels (`lvremove`, `vgremove`, `pvremove`) |
+| On `/var/lib/kevaso-storage.img`, the loop file `--loop-storage` made, and it did not exist before Kevaso. If the file is there but its volume group can't be read, it is removed too, and the plan says so | Removes the volume group with every volume on it, detaches the loop device and deletes the file. The volumes are listed, and are lost. | Same |
+| On a real disk (named with `--storage-device`), or it existed before Kevaso (the record says so) | **Keeps** the volume group and its volumes, and says so | Removes the volume group with every volume on it, then the physical volumes' LVM labels (`lvremove`, `vgremove`, `pvremove`) |
 
 `--wipe-storage` removes only the volume group named `kevaso`, and only LVM's records of it: it does
 not repartition the disk or overwrite its data, and it touches no other volume group. It removes

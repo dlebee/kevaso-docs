@@ -42,6 +42,38 @@ space) belongs on the silo's own disk, not on a volume.
 
 ---
 
+## What Kevaso refuses
+
+**A name too long for the provider's label.** A volume on a class from a provider plugin (and a
+microVM's root disk on such a class) gets a label on the provider's side:
+`kvo-NAMESPACE-SILO-VOLUME`, then `-` and the first five characters of the silo's ID. A provider
+allows 32 characters, so `kvo-NAMESPACE-SILO-VOLUME` may be at most **26**. A longer one is **refused,
+never cut**: a cut label would give two volumes the same name, and a provider that finds a volume by
+label would hand one of them the other's disk. A silo set is checked with its longest instance name.
+`local` volumes have no provider label and are not checked.
+
+```text
+Silo payments: volume db-data: the provider's label kvo-production-payments-db-data is 31 characters and the label keeps 26, so volumes would share one: shorten the namespace, the silo's or the volume's name by 5
+```
+
+It is refused when you apply (status 422). An update that adds no volume is not checked again.
+
+**A `local` volume larger than the host has left.** On a microVM, a `local` volume is a thin volume in
+the host's `kevaso` volume group. The host never promises more than the pool holds: before it makes
+a volume it adds up what the pool already promised, and refuses one that doesn't fit. The silo does not
+start. A volume with no `size` counts as `10Gi`.
+
+```text
+volume data needs 40Gi: this host's storage (kevaso/silos) is 100Gi, 70Gi of it promised to other disks already (30Gi left)
+```
+
+This is the host's own check, made when the volume is created. The scheduler does not look at storage,
+so it does not choose a host with room: pick one with `placement`. It covers microVM volumes only;
+containers' `local` volumes and volumes on provider classes are not checked this way. Running out of
+space *inside* a volume is the silo's own problem.
+
+---
+
 ## On containers (`docker`, `podman`)
 
 The host mounts the volume and the container sees it at `mountPath`. `size` isn't enforced.
@@ -101,7 +133,7 @@ spec:
 The root disk is then an **image file in a volume of that class** (named `disk.root`), sized
 `disk.size`. It is made once, reused when the silo starts on another host, and made again only
 by a reset. A silo whose root disk and volumes are all on global classes is movable to
-`Anywhere`, and `onHostLoss: Move` and `kvo move` work on it ([Host loss and moves]({{ '/silos/moves/' | relative_url }})).
+`Anywhere`, and `onHostLoss: Move` and `kvo move` work on it ([Moves]({{ '/silos/moves/' | relative_url }})).
 
 - **One host at a time.** The control plane points the volume at a single host, and a move waits
   until the old host has stopped the VM and its `virtiofsd` and unmounted the volume before the new

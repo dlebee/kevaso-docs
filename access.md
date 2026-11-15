@@ -118,6 +118,34 @@ needs `use` on that IP.
 
 [Terminals, files and the small UI]({{ '/silos/terminals/' | relative_url }}) are as strong as `exec`: give them the same care.
 
+### You can't give more than you hold
+
+Creating or changing a Role, ClusterRole, RoleBinding or ClusterRoleBinding is refused when it would
+give a permission its author doesn't have, where the grant lands: in the namespace for a Role and a
+RoleBinding, everywhere for a ClusterRole and a ClusterRoleBinding. It prevents a person with `admin`
+in one namespace from making themselves, or anyone, more than that.
+
+- Every verb on every resource is compared on its own. A wildcard (`*`) needs the same wildcard held.
+  A permission held only for one named silo or for silos with a label never covers a wider one.
+- A binding is judged by the rules of the role it names. A binding to a role that doesn't exist is
+  refused too, because a role made later would silently reach its subjects, unless you hold `*` on
+  `*`.
+- A change that leaves the rules (or the role and subjects of a binding) as they are passes, so a
+  label can still change.
+- `cluster-admin` holds everything, so it can give anything. There is no `bind` verb: nobody can hand
+  out what they don't hold.
+
+The refusal is `403 Forbidden`, and names what is missing (the first six, then `and more`):
+
+```text
+Role deployer would grant permissions you don't hold in namespace payments: get hosts; update silos/status
+```
+
+For a binding: `RoleBinding ops (ClusterRole cluster-admin) would grant permissions you don't hold in
+namespace payments: …`, or `RoleBinding ops: Role deployer doesn't exist, and a binding to a role
+made later could grant anything: create the role first`. So a namespace `admin` can write roles and
+bindings in its namespace, but only with permissions its own role has.
+
 **Kinds you define** are named by their resource, `PLURAL.GROUP` (`databases.acme.dev`), with
 `PLURAL.GROUP/status` for the status, and `PLURAL.GROUP/scale` (`get`, `update`) for `kvo scale`. No
 built-in role has them, only `cluster-admin`; you write a role, as in [Defining your own kind]({{ '/extending/kinds/' | relative_url }}#roles).

@@ -280,51 +280,66 @@ The app sees the original `Host`. `nginx` and `caddy` pass the client's address 
 ## When the proxy refuses a configuration
 
 A new configuration is checked inside the silo, with the proxy's own test, **before** the running proxy
-sees it. If the check refuses it, nothing is applied: the proxy keeps serving the last good
-configuration, the new files are removed, and Kevaso says why.
+sees it. **One broken Ingress holds back only itself.** An Ingress that its driver refuses (an
+annotation it doesn't know, a bad value, a host name or path it can't take), that won't render, or
+that makes the proxy's test fail is left out with the reason. Every other Ingress of the class, new
+ones included, is applied, and the class keeps issuing and renewing certificates. An Ingress that was
+already being served keeps being served in its last good version; only the change is held back.
 
 | Where | What it shows |
 |---|---|
-| `kvo get ingressclass NAME -o yaml` | `status.controllers[]`, one per controller silo: `applied` (the configuration in effect), `rejected` (the proxy's own words), `blamed` (the Ingresses the refusal points at). The condition `Applied` is false with the reason `Rejected` |
+| `kvo get ingressclass NAME -o yaml` | `status.controllers[]`, one per controller silo: `applied` (the configuration in effect), `rejected` (one segment per Ingress that is left out: `ingress NAMESPACE/NAME: why; ingress …`), `blamed` (those Ingresses). The condition `Applied` is false with the reason `Rejected` while any Ingress is left out, although the rest is served |
 | `kvo get ingresses` | The Ingress that caused it has `READY` false. `Rejected`: the proxy blamed it. `Refused`: its driver refuses an annotation or a value before it gets that far |
 | `kvo describe ingress NAME` | Its conditions, with the reason and message |
 
 Other reasons an Ingress isn't ready: `NoClass` (the class doesn't exist), `NoDriver` (the class names
 a driver this cluster doesn't have) and `CertificatePending`.
 
-An annotation the driver doesn't know, a bad value, an unknown option or a host name, path or address
-with characters the driver won't paste into a configuration is refused the same way. Values are
-checked before they reach the configuration: nothing is quoted or escaped for you.
+Values are checked before they reach the configuration: nothing is quoted or escaped for you.
 
-Fix the Ingress and apply it again; the class recovers by itself.
+Fix the Ingress and apply it again; it is served by itself on the next pass.
 
-### While a class is held
+### How the broken one is found
 
-A class is **held** (not the same as a silo held back by `routeWhen`) when its driver refuses an Ingress (an annotation it doesn't know, a bad value, a host
-name or path it can't take). Nothing new is applied: the proxy keeps serving the last good configuration.
-The class shows it: the condition `Applied` is false with the reason `Rejected`, and
-`status.controllers[]` has `rejected` (`ingress NAMESPACE/NAME: driver DRIVER refuses it: ...`) and
-`blamed` (that Ingress). Fixing or deleting the Ingress releases the class.
+When the proxy refuses the whole configuration, Kevaso looks for the Ingress at fault:
 
-| While held | |
+1. It takes the proxy's own blame, when the proxy names one.
+2. Otherwise it tests the Ingresses changed since the last good configuration, each on its own and by
+   halving, on the side (the proxy's test is run on files that are not the running ones). It spends at
+   most **12** test runs per change.
+3. An Ingress the 12 runs did not reach is `not checked yet: finding the Ingress the proxy refuses
+   took more than 12 test runs`: it is not served, and tried again on the next pass.
+
+Kong has no test on the side: applying the previous state plus some changes is its test, which never
+drops a route that was working. An unchanged state costs no test run, and a refused Ingress is tested
+again only when it, or the class's options, change.
+
+### When the whole class is held
+
+A class is **held** only when the proxy refuses even the configuration with none of your Ingresses
+in it: the class's own part, its options or its challenges. (This is not the same as a silo held back
+by `routeWhen`.) Nothing new is applied and the last good configuration keeps being served. The class
+shows `rejected` as `held (the last good configuration stays): the proxy refuses even the class's own
+part: …`. Fixing the class's options releases it.
+
+| While left out or held | |
 |---|---|
-| Still served | The last good routes and certificates, and **ACME HTTP-01 challenges**: the control plane's current ones are put into the last good configuration, so one tenant's bad annotation does not stop certificates being issued or renewed for the whole class |
-| Not served | An Ingress made or changed since, a backend whose address changed, a certificate issued or renewed since (the proxy keeps the old one), a changed class option |
+| Still served | The last good routes and certificates, new valid Ingresses (not while the whole class is held), and **ACME HTTP-01 challenges**, so one tenant's bad annotation does not stop certificates being issued or renewed |
+| Not served | The broken Ingress's change (its last good version stays), a changed class option while held |
 
-Two limits. The agent keeps the last good configuration in memory: after the agent restarts, or if
-nothing was ever applied in full, a held class applies nothing, challenges included. And when the
-proxy's own check refuses a configuration, the challenges are in that refused configuration too, so
-they are not served until it is fixed. The held-class challenge is covered by a one-machine test; it
-was found on a bare-metal machine with Let's Encrypt's staging server.
+One limit. The agent keeps the last good configuration in memory: after the agent restarts, a left-out
+Ingress has no earlier version to keep serving, and a held class that was never applied in full applies
+nothing.
 
 ---
 
 ## Not proven yet
 
 The drivers' output is checked in tests, including each proxy's own configuration test where its
-program is on the machine, and an agent applying configurations to a fake runtime. A run on real
-machines (stock nginx, HTTPS with Let's Encrypt's test server over HTTP-01 and DNS-01, a refused
-configuration keeping the last good one, Kong's admin call from the host) has not been done yet.
+program is on the machine, and an agent applying configurations to a fake runtime. On a real machine
+with Let's Encrypt's staging server, nginx has been run, and a class refused for one annotation still
+served its challenges. Not run on real machines: leaving out one broken Ingress while the others
+are applied, the search for the broken one, DNS-01, and Kong's admin call from the host.
 Not built: drivers from plugins, request limits and authentication in front of a route, TCP and UDP
 routes, HTTP/3, and a proxy managing its own certificates.
 

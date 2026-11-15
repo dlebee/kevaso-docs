@@ -103,6 +103,37 @@ says which rule excluded each host, for example `no external IP, which port 443/
 
 ---
 
+## `sources`, and IPv6
+
+`sources` on a service port is a list of IPv4 addresses and ranges. Kevaso checks each entry when you
+apply, and writes it in one form before storing it:
+
+- an address with a mask is written with the mask applied (`10.0.0.5/24` becomes `10.0.0.0/24`);
+- a single address is written without `/32`;
+- the list is sorted, and a range that another entry already holds is dropped.
+
+So a list never has a duplicate or an overlap that the host's firewall would choke on. The same check
+applies to the destinations of a `Grant`'s `egress` and to an `IP`'s `address`. An entry that is not an
+address or a range is refused:
+
+| You wrote | Refused with |
+|---|---|
+| `10.0.0.0/33`, `10.0.0.x`, a host name | `service.ports[web].sources: "10.0.0.0/33" isn't an address or CIDR` |
+| `2001:db8::/32`, `2001:db8::1` | `service.ports[web].sources: "2001:db8::/32": IPv6 comes later; IPv4 for now` |
+| `::ffff:10.0.0.1` (IPv4 inside IPv6), or an address with a zone | The same refusal |
+
+**IPv6 ranges are refused for now.** Silos are IPv4 inside: a silo's address, the mesh, hosts'
+internal and external addresses and every rule Kevaso writes are IPv4. The silo bridge drops IPv6
+packets, so nothing a rule closes is reachable over IPv6. A silo can only send from its own address:
+a packet with another source address is dropped at its port, including before its address is
+known.
+
+One thing to know about hosts: the API listens on `0.0.0.0:6443` by default, which also answers on a
+host's IPv6 addresses. It still needs your certificate or sign-in, but a host firewall that only
+covers IPv4 does not cover it. Close the port on IPv6 yourself if the host has a global IPv6 address.
+
+---
+
 ## Three ways in
 
 ![One API behind three ingress setups: hosts with their own external IP, a LAN behind one shared external IP, and internal only]({{ '/assets/three-ways-in.svg' | relative_url }})

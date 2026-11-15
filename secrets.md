@@ -175,8 +175,9 @@ without an `env` secret never goes through it.
 - **The fallback and its warning.** On Podman, a rootless Docker, a default runtime that isn't
   `runc`, a Docker older than 24, or a host where Kevaso's runtime didn't register, the variables go
   in through the engine's own environment option. Applying the silo prints `Warning:` on stderr
-  saying that anyone with access to the host's engine sees the value, and that it is on the host's
-  disk. The warning is left out when every ready host of that runtime uses Kevaso's runtime.
+  saying the value is delivered as an environment variable, that the engine records it on that
+  worker, and that it is visible in the engine's records there (`inspect`, its files on disk) to
+  anyone who can read them. Files don't have this weakness. The warning is left out when every ready host of that runtime uses Kevaso's runtime.
   `kvo describe silo` shows the way a silo got in `SecretsDelivered`.
 - A rotated variable reaches a container at its next start. Each start reads the new value.
 - If the host's Docker remaps users (`userns-remap`), a `0400` file owned by root can't be read
