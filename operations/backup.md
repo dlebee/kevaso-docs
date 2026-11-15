@@ -31,7 +31,7 @@ only the key opens one. A backup that leaks is useless on its own. A backup **an
 together open every secret in it, so never keep the two in the same place.
 
 Silo data is yours to back up from inside the silo (a database dump, `restic`, your volumes'
-snapshots). After a restore, silos come back from their specs with empty disks.
+snapshots). After a restore, silos that ran on the restored machine come back from their specs with empty disks. Silos on workers keep running.
 
 ---
 
@@ -197,6 +197,58 @@ checked against the one recorded when the worker was added.
 
 The WireGuard mesh between hosts heals by itself: the restored control plane gets new mesh keys,
 publishes them, and every worker picks them up.
+
+---
+
+## Starting a cluster, and a node that finds its data gone
+
+**Only `kvoadm init` creates a cluster.** It runs `kevasod admin create-cluster --cluster NAME` on the
+machine (`→ cluster NAME created on this host (its record in /var/lib/kevaso)`) and then starts the
+service. The record is a small file in `/var/lib/kevaso/pki/` that says "this machine belongs to cluster
+NAME". `kvoadm init --restore` makes no new cluster: the restore brings the record with it. Running
+`init` again for the same name changes nothing; for another name it is refused.
+
+The service itself, `kevasod control-plane`, never creates one. So a machine that comes back with its
+data gone does not quietly start an empty cluster, with a new CA, that your workers would not trust.
+**It refuses to start**, and the service's log (`journalctl -u kevasod`) says why:
+
+| What it found | The refusal |
+|---|---|
+| A record, but no store | `this node belongs to cluster "home" (/var/lib/kevaso/pki/cluster.json), but its store is gone from /var/lib/kevaso: not starting an empty cluster. Either restore a backup onto a fresh machine (kvoadm init --restore BACKUP), or make a new cluster on purpose (kvoadm reset, then kvoadm init)` |
+| A record, and a store of another cluster | `this node belongs to cluster "home" (id …), but its store is another cluster's ("lab", id …): not starting. Either …` |
+| A record, and a store with no cluster in it | `… but its store holds no cluster: not starting an empty one. Either …` |
+| No record and no store | `this node belongs to no cluster (no /var/lib/kevaso/pki/cluster.json, no store in /var/lib/kevaso): kvoadm init creates one, or restore a backup onto a fresh machine (kvoadm init --restore BACKUP)` |
+| A new machine running `kevasod control-plane` by hand | The same: nothing is made until `kvoadm init` says so |
+
+A lost cluster CA is never made again either.
+
+What to do, in order of preference:
+
+1. **Restore the latest backup** onto a fresh machine, as above. The cluster, its CA and its identity
+   come back, and workers carry on.
+2. **Start over on purpose:** `kvoadm reset` the machine, then `kvoadm init`. This is a **new cluster**
+   with a new CA. Workers of the old cluster don't trust it and ignore it: reset them and add them
+   again.
+
+### What workers do after a restore
+
+A restore starts a **new history** of the same cluster, and workers accept it as a deliberate
+restore. Anything else that makes a control plane older than what a worker saw (a disk snapshot put
+back, files copied over) is not announced, and the worker [holds]({{ '/silos/control-plane-loss/#a-control-plane-older-than-what-the-worker-last-saw' | relative_url }}):
+it keeps every silo running and deletes nothing, until a restore.
+
+Whatever a worker runs that the restored state **does not know** is **kept, never deleted**: the silo keeps
+running with its disk and volumes. A worker removes a silo's data only when it has seen that silo being
+deleted. It logs each kept silo once:
+
+```text
+keeping … on hv2: the control plane doesn't know it and no delete of it was seen here; it keeps running with its disk and volumes (nothing is removed without a delete)
+```
+
+Find them on a worker with `journalctl -u kevasod | grep keeping`. Nothing lists them in `kvo`, and
+Kevaso never removes them: stopping one is a step you take on that worker.
+
+Not yet connected: the hold. See [what is not built]({{ '/silos/control-plane-loss/#what-is-not-built-and-what-has-not-run-on-real-machines' | relative_url }}).
 
 ---
 

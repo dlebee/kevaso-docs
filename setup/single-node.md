@@ -85,8 +85,11 @@ What it does, in order (each line is printed as it happens):
    (`~/.kevaso/signing.key`, made on first use), pins the public half on the machine
    (`/etc/kevaso/release.pub`) and the machine verifies the signature before installing to
    `/usr/local/bin/kevasod`. A binary changed on the way doesn't get installed.
-5. **Starts the control plane** as `kevasod.service`. On first start it makes the cluster's
-   private CA, its store, and the master key for secrets, all in `/var/lib/kevaso` (root only).
+5. **Creates the cluster** on the machine and **starts the control plane** as `kevasod.service`.
+   Creating is its own step (`→ cluster NAME created on this host`): it leaves a record that this
+   machine belongs to cluster NAME. The first start then makes the cluster's private CA, its store,
+   and the master key for secrets, all in `/var/lib/kevaso` (root only). The service never creates a
+   cluster by itself: [Starting a cluster, and a node that finds its data gone]({{ '/operations/backup/#starting-a-cluster-and-a-node-that-finds-its-data-gone' | relative_url }}).
 6. **Gets you an admin certificate**: the private key is made *on your computer*; only a signing
    request goes to the machine, which signs it through its root-only admin socket.
 7. **Writes your `kvo` context** to `~/.kevaso/config.yaml`: the API address, the cluster CA (so
@@ -158,7 +161,7 @@ bin/kvoadm host enable-worker root@203.0.113.10 \
 
 | Runtime | Needs |
 |---|---|
-| `cloud-hypervisor` | KVM, and a volume group named `kevaso` for silo disks (or `--loop-storage 40G` to use a file, for trying things out) |
+| `cloud-hypervisor` | KVM, and a volume group named `kevaso` for silo disks: name an empty disk with `--storage-device /dev/DISK` at setup, or create it yourself ([Where silo disks live]({{ '/workers/#where-silo-disks-live' | relative_url }})). `--loop-storage 40G` uses a file instead, for trying things out |
 | `openshell`, `openshell-container` | KVM for the first; Docker for the second (installed for you) |
 | `docker`, `podman` | Nothing special (installed for you) |
 
