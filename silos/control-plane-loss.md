@@ -25,7 +25,7 @@ copy from starting while the first host may still be starting it.
 | | The worker | The control plane | You |
 |---|---|---|---|
 | **By default** | Keeps every silo running, with its ports and secrets as they were. Deletes nothing. Keeps trying to reach the control plane. | After 40 seconds without a heartbeat, marks the host `Unknown` and each of its silos `HostUnreachable`. Starts no other copy. Places nothing new on that host. | Wait for the host to come back, or, once you know it is off, [move its silos](#moving-a-silo-off-a-host-you-know-is-off) with `--confirm-fenced`. |
-| **A silo with `onControlPlaneLoss: Stop`** | Stops that silo (a kill, not a graceful stop) once it has had no contact for the silo's `after`. Other silos on the host are not touched. | Starts it elsewhere on its own only when all four conditions [below](#what-it-buys) hold. | Nothing. |
+| **A silo with `onControlPlaneLoss: Stop`** | Stops that silo (a kill, not a graceful stop) once it has had no contact for the silo's `after`. Other silos on the host are not touched. | Starts it elsewhere on its own only when all five conditions [below](#what-it-buys) hold. The fifth is that its host reported the stop. | Nothing. |
 
 What a worker cannot do while it is cut off is change anything: no new silo, no `kvo apply`, no new
 secret. Silos keep what they already have.
@@ -175,7 +175,7 @@ is refused, with the same message, when it is created.
 
 ### What it buys
 
-The silo is started elsewhere **without a person** only when all four hold:
+The silo is started elsewhere **without a person** only when all five hold:
 
 1. The silo has `onControlPlaneLoss: Stop`.
 2. `onHostLoss` is `Recreate`, or `Move` on storage that can move. With `Wait` (and so with
@@ -188,22 +188,25 @@ The silo is started elsewhere **without a person** only when all four hold:
 4. The control plane has heard nothing from that host for `after` plus a margin, counted on its own
    clock. The margin is 15 seconds plus a thousandth of `after`, rounded up to a second: `16s` for
    `2m`, `1m42s` for `24h`.
+5. Its host reported that the fence stopped its copy. The report is the silo condition `FenceStopped`,
+   reason `StoppedByFence`. The host writes it when it can reach the control plane again. It counts
+   only for that host's latest start of the silo. Silence, however long, is never enough.
 
 Then the silo's `HostUnreachable` condition turns `False`, reason `RestartedElsewhere`, with the
-silence, `after`, margin and how it goes on, and the scheduler places it again. Before that, the
-message counts down: `started elsewhere once the control plane has heard nothing from hv1 for
-2m16s (16s margin); 1m3s so far`.
+silence, `after`, margin and how it goes on, and the control plane starts it elsewhere. Without the
+host's report, the condition says the silo waits for its host to confirm the stop, and it names
+`kvo move silo NAME -n NS --to HOST --confirm-fenced`. Add `--recreate` when needed.
 
-The margin exists so the old copy is dead before the new one starts: both sides count from the same
-heartbeat, so the worker's count ends first, and the margin covers the fence's own reaction time and
-the two clocks running at different rates.
+The host's report is what shows the old copy is stopped before a new one starts. A fence kill can
+fail, and then the old copy may still be running.
 
 ### What it costs
 
 - **The silo goes down whenever its worker is cut off for `after`**, even if nothing else is wrong.
   The stop is a kill, not a shutdown: what is on disk is what a crash leaves.
-- **It stays down until contact is back**, or until the control plane starts it elsewhere. When
-  contact returns and the silo is still placed on that host, the host starts it again.
+- **It stays down during a real cut.** Nothing restarts until its host reports the stop, or you run
+  `kvo move silo NAME -n NS --to HOST --confirm-fenced`. Add `--recreate` when needed. When contact
+  returns and the silo is still placed on that host, the host starts it again.
 - **Recreate gives up the silo's own disk**, and `Move` needs every disk and volume on storage that
   can move ([Moves]({{ '/silos/moves/' | relative_url }})).
 - **Every Stop silo needs the fence.** `kevaso-fence.service` is installed on every worker by
@@ -337,9 +340,10 @@ when a restore starts a new history.
 
 ## What is not built, and what has not run on real machines
 
-- **Not run on real machines under this rule:** the opt-in (stopping, `FenceArmed`, the restart elsewhere), a
-  confirmed move after a host went silent, a returning host stopping its old copy, a worker that
-  holds, a worker that reboots while it cannot reach the control plane.
+- **Not run on real machines under this rule:** the opt-in (stopping, `FenceArmed`, the restart
+  elsewhere only after the host reports the stop), a confirmed move after a host went silent, a
+  returning host stopping its old copy, a worker that holds, a worker that reboots while it cannot
+  reach the control plane.
 - **Not built:** a provider powering a host off through its API to give the proof for you. Today the
   proof is you.
 

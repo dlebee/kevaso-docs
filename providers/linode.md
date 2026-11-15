@@ -214,11 +214,11 @@ spec:
 When the worker running it goes down, nothing moves by itself: once you know the Linode is off, `kvo move
 silo NAME --to HOST --confirm-fenced --recreate` starts the silo on another worker and the address
 answers from there ([When the control plane is lost]({{ '/silos/control-plane-loss/' | relative_url }})).
-Add `onControlPlaneLoss: Stop` to the silo and Kevaso restarts it by itself, but only on a cluster whose
-control plane is always reachable. In our test, with an address already in the account, the address
-answered from the other worker 1m13s after its host went down: the address itself moves in seconds, and
-the rest was the time Kevaso waited before restarting the silo. That test restarted the silo
-automatically, and has not been run with the opt-in. Reserving a new address for an `IP` hasn't been
+Add `onControlPlaneLoss: Stop` to the silo and Kevaso restarts it on another worker by itself only
+after the old host reports that its copy stopped. A host that is down can't report, so then a person
+moves the silo with `kvo move silo NAME -n NS --to HOST --confirm-fenced`. In our test, with an address
+already in the account, the address itself moved to the other worker in seconds once the silo started
+there. Reserving a new address for an `IP` hasn't been
 run on a real Linode yet.
 
 **Outgoing traffic can leave from the shared IP too.** Set `network: { egress: { source: sameAsService } }`
