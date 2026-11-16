@@ -210,47 +210,102 @@ NAME". `kvoadm init --restore` makes no new cluster: the restore brings the reco
 
 The service itself, `kevasod control-plane`, never creates one. So a machine that comes back with its
 data gone does not quietly start an empty cluster, with a new CA, that your workers would not trust.
-**It refuses to start**, and the service's log (`journalctl -u kevasod`) says why:
+**It refuses to start**, and the service's log (`journalctl -u kevasod`) says why. The fix in the
+message depends on how the machine was set up.
+
+**One system node** (no peer listener):
 
 | What it found | The refusal |
 |---|---|
-| A record, but no store | `this node belongs to cluster "home" (/var/lib/kevaso/pki/cluster.json), but its store is gone from /var/lib/kevaso: not starting an empty cluster. Either restore a backup onto a fresh machine (kvoadm init --restore BACKUP), or make a new cluster on purpose (kvoadm reset, then kvoadm init)` |
-| A record, and a store of another cluster | `this node belongs to cluster "home" (id …), but its store is another cluster's ("lab", id …): not starting. Either …` |
-| A record, and a store with no cluster in it | `… but its store holds no cluster: not starting an empty one. Either …` |
-| No record and no store | `this node belongs to no cluster (no /var/lib/kevaso/pki/cluster.json, no store in /var/lib/kevaso): kvoadm init creates one, or restore a backup onto a fresh machine (kvoadm init --restore BACKUP)` |
-| A new machine running `kevasod control-plane` by hand | The same: nothing is made until `kvoadm init` says so |
+| A record, but no store | `this node belongs to cluster "home" (/var/lib/kevaso/pki/cluster.json), but its store is gone from /var/lib/kevaso: not starting an empty cluster. Restore a backup onto this machine (kvoadm init --restore BACKUP)` |
+| A record, and a store of another cluster | `this node belongs to cluster "home" (id …, /var/lib/kevaso/pki/cluster.json), but its store is another cluster's ("lab", id …): not starting. Restore a backup onto this machine (kvoadm init --restore BACKUP)` |
+| A record, and a store with no cluster in it | `this node belongs to cluster "home" (/var/lib/kevaso/pki/cluster.json), but its store holds no cluster: not starting an empty one. Restore a backup onto this machine (kvoadm init --restore BACKUP)` |
+| No record and no store | `this node belongs to no cluster (no /var/lib/kevaso/pki/cluster.json, no store in /var/lib/kevaso): restore a backup onto this machine (kvoadm init --restore BACKUP), or make a new cluster on purpose (kvoadm reset, then kvoadm init)` |
+| The cluster CA is missing, and there is a record | `this node belongs to cluster "home", but the cluster CA is missing from /var/lib/kevaso/pki: not making a new one (every certificate would stop working). Put back /var/lib/kevaso/pki from a backup, or restore a backup onto this machine (kvoadm init --restore BACKUP)` |
 
-A lost cluster CA is never made again either.
+**A system node that may have peers** (the etcd store and a peer listener, including one whose
+`--join` token is already gone) is not told to run `kvoadm init`. The log says to take it out and
+add it again. A wiped node that already joined says:
 
-What to do, in order of preference:
+```text
+this node's data is gone from /var/lib/kevaso (no store, and its one-time join token /etc/kevaso/join-token is gone): not starting. If the cluster's other system nodes still run, take this one out and add it again: kvoadm host remove sys2 (from a machine with kvoadm), kvoadm reset (on this machine), then kvoadm host add sys2 --install control-plane (with the options it was added with). Only if it was the cluster's only system node, restore a backup onto this machine (kvoadm init --restore BACKUP). Don't run kvoadm init here: it would make a second cluster
+```
 
-1. **Restore the latest backup** onto a fresh machine, as above. The cluster, its CA and its identity
-   come back, and workers carry on.
-2. **Start over on purpose:** `kvoadm reset` the machine, then `kvoadm init`. This is a **new cluster**
-   with a new CA. Workers of the old cluster don't trust it and ignore it: reset them and add them
-   again.
+The same ending is used when the record is still there and the store is gone, or the store is
+another cluster's, or the cluster CA is missing. A lost cluster CA is never made again.
+
+What to do:
+
+**The cluster's other system nodes still run.** Take this one out and add it again. From a
+machine that has `kvoadm`:
+
+```bash
+kvoadm host remove sys2
+```
+
+On the wiped machine:
+
+```bash
+kvoadm reset root@203.0.113.11 --ssh-key ~/.ssh/kevaso_ed25519
+```
+
+Then `kvoadm host add` with the options it was added with. The log says not to run `kvoadm init`
+on that machine: it would make a second cluster.
+
+**This was the only system node.** Restore the latest backup onto it, or onto a fresh machine, as
+above. The cluster, its CA and its identity come back, and workers carry on.
+
+**Start a new cluster on purpose,** only when the log offers it (no record, and this machine was
+not set up with peers): `kvoadm reset`, then `kvoadm init`. This is a **new cluster** with a new
+CA. Workers of the old cluster don't trust it and ignore it: reset them and add them again.
 
 ### What workers do after a restore
 
 A restore starts a **new history** of the same cluster, and workers accept it as a deliberate
 restore. Anything else that makes a control plane older than what a worker saw (a disk snapshot put
 back, files copied over) is not announced, and the worker [holds]({{ '/silos/control-plane-loss/#a-control-plane-older-than-what-the-worker-last-saw' | relative_url }}):
-it keeps every silo running and deletes nothing. The hold ends when an answer of the same history
-arrives at or above the revision the worker kept. A new history from `kvoadm init --restore` is
-accepted as well.
+it keeps every silo as it is and applies nothing. A hold inside one history ends in two ways: a new
+history from `kvoadm init --restore`, or you run `kvoadm host trust-control-plane` on that worker
+after you have checked that the control plane it can reach is the newest of this cluster, and that
+every silo on the host is placed there in it.
 
-Whatever a worker runs that the restored state **does not know** is **kept, never deleted**: the silo keeps
-running with its disk and volumes. A worker removes a silo's data only when it has seen that silo being
-deleted. It logs each kept silo once:
+```bash
+kvoadm host trust-control-plane root@198.51.100.23 --ssh-key ~/.ssh/kevaso_ed25519
+```
+
+It tells you what it found and asks you to type `yes`. Then it restarts `kevasod` on that host, and
+the worker trusts the control plane it reaches next. While the worker is held, a silo's local
+endpoint answers 503 and asks the control plane for nothing. `kvo describe host` shows
+`ControlPlaneBehind`.
+
+If the worker's record of its control plane cannot be read, it holds the same way. A read that
+starts working again ends that hold by itself. The same command clears it too.
+
+Whatever a worker runs that the restored state **does not know** is **kept**. The copy keeps its
+disk and volumes. It keeps running when the control plane simply doesn't know it. A copy the
+control plane placed somewhere else, with no delete this host saw, is stopped and kept. A worker
+removes that data when it has seen the silo deleted, or when you tell it to. It logs each kept
+silo once:
 
 ```text
 keeping … on hv2: the control plane doesn't know it and no delete of it was seen here; it keeps running with its disk and volumes (nothing is removed without a delete)
 ```
 
-Find them on a worker with `journalctl -u kevasod | grep keeping`. Nothing lists them in `kvo`, and
-Kevaso never removes them: stopping one is a step you take on that worker.
+List them from your computer:
 
-The hold has not been run on a real machine. See [what is not built]({{ '/silos/control-plane-loss/#what-is-not-built-and-what-has-not-run-on-real-machines' | relative_url }}).
+```bash
+kvoadm host kept root@198.51.100.23 --ssh-key ~/.ssh/kevaso_ed25519
+```
+
+`kvo describe host` shows the same copies on the host's `KeptSilos` condition. To remove one, its
+disk and its volumes, pass `--remove` with the namespace, the name, and the uid from that list.
+The first 8 characters of the uid are enough. It asks you to type the silo's name.
+
+```bash
+kvoadm host kept root@198.51.100.23 --ssh-key ~/.ssh/kevaso_ed25519 --remove shop/web/a1b2c3d4
+```
+
+On bare metal a held worker has served its last state, and the hold has ended with `kvoadm host trust-control-plane`. A hold ended by a new history from `kvoadm init --restore` has not. See [what is not built]({{ '/silos/control-plane-loss/#what-is-not-built-and-what-has-not-run-on-real-machines' | relative_url }}).
 
 ---
 

@@ -24,7 +24,7 @@ copy from starting while the first host may still be starting it.
 
 | | The worker | The control plane | You |
 |---|---|---|---|
-| **By default** | Keeps every silo running, with its ports and secrets as they were. Deletes nothing. Keeps trying to reach the control plane. | After 40 seconds without a heartbeat, marks the host `Unknown` and each of its silos `HostUnreachable`. Starts no other copy. Places nothing new on that host. | Wait for the host to come back, or, once you know it is off, [move its silos](#moving-a-silo-off-a-host-you-know-is-off) with `--confirm-fenced`. |
+| **By default** | Keeps every silo running, with its ports as they were. An injected secret keeps going for one hour after the control plane last gave it, then is refused until the control plane answers. Deletes nothing. Keeps trying to reach the control plane. | After 40 seconds without a heartbeat, marks the host `Unknown` and each of its silos `HostUnreachable`. Starts no other copy. Places nothing new on that host. | Wait for the host to come back, or, once you know it is off, [move its silos](#moving-a-silo-off-a-host-you-know-is-off) with `--confirm-fenced`. |
 | **A silo with `onControlPlaneLoss: Stop`** | Stops that silo (a kill, not a graceful stop) once it has had no contact for the silo's `after`. Other silos on the host are not touched. | Starts it elsewhere on its own only when all five conditions [below](#what-it-buys) hold. The fifth is that its host reported the stop. | Nothing. |
 
 What a worker cannot do while it is cut off is change anything: no new silo, no `kvo apply`, no new
@@ -275,14 +275,35 @@ the data directory, a system node serving old data), the worker does not trust i
 | New desired state | None applied from that control plane |
 | Heartbeats | Keeps sending them |
 | Where you see it | The host's `ControlPlaneBehind` condition, status `True`, reason `Held`, in `kvo describe host`. The worker's journal says `HOLD: the control plane is older than what this worker saw (kept: history … revision … epoch …; seen: history … revision … epoch …): keeping everything as it is`. `kvo get hosts` and `kvoadm host list` show nothing for it |
-| The condition's message | `the control plane is older than what this worker saw: kept history … revision … (epoch …), seen history … revision … (epoch …). Every silo keeps running as it is and nothing is applied until a deliberate restore (kvoadm init --restore) starts a new history` |
+| The condition's message | `the control plane is older than what this worker saw: kept history … revision … (epoch …), seen history … revision … (epoch …). Every silo keeps running as it is and nothing is applied until a deliberate restore (kvoadm init --restore) starts a new history, or a person who checked the control plane runs kvoadm host trust-control-plane [USER@]ADDRESS for this host` |
+| The local endpoint (`169.254.42.1`) | Answers 503: `this host is held (its control plane is older than what it saw): nothing is asked of it until that ends` |
+| Injected secrets | A secret this host was given before the hold keeps being injected for one hour. After that, and for a secret it was not given before the hold, injection is refused until the hold ends |
 
-The hold ends by itself when an answer of the same history arrives at or above the revision the
-worker kept. That answer is not an older control plane. A lower answer keeps the hold. The journal
-then says `the control plane is trusted again (Accept): looking at every silo`. A deliberate
-restore, `kvoadm init --restore BACKUP`, starts a new history of the same cluster, and workers
-accept it: [Backup and restore]({{ '/operations/backup/' | relative_url }}). The condition's message
-names only the restore. The healthy answer clears the hold too.
+A hold within one history does not end when a later answer of that same history reaches the revision
+the worker kept. It ends in one of two ways. A deliberate restore, `kvoadm init --restore BACKUP`,
+starts a new history of the same cluster, and workers accept it
+([Backup and restore]({{ '/operations/backup/' | relative_url }})). Or you run
+`kvoadm host trust-control-plane` after you have checked that the control plane this host will reach
+is the newest of this cluster, and that every silo this host runs is placed here in it. The
+condition's message names both. When the hold ends, the journal says
+`the control plane is trusted again (…): looking at every silo`.
+
+A silo this host still has, whose delete was never seen here, keeps running with its disk and
+volumes when a new history doesn't know it. `kvo describe host` lists those under `KeptSilos`.
+The same SSH flags as `trust-control-plane` apply.
+
+```bash
+kvoadm host kept root@baremetal-1 --ssh-key ~/.kevaso/ssh/id_ed25519
+```
+
+```bash
+kvoadm host kept root@baremetal-1 --ssh-key ~/.kevaso/ssh/id_ed25519 --remove demo/web/0123abcd
+```
+
+With no `--remove` it lists them, or prints `baremetal-1 keeps no copy the control plane doesn't know`.
+`--remove` takes `NAMESPACE/NAME/UID` (the first 8 characters of the UID are enough). It asks you to
+type the silo's name (`demo/web`). `--yes` skips that question. Removing it deletes that copy, its
+disk and its volumes. The control plane doesn't know it, so nothing else holds this data.
 
 A worker also ignores a control plane of a **different cluster** completely, with a log line
 (`ignoring a control plane of another cluster`).
@@ -302,6 +323,11 @@ nothing. A healthy answer does not clear this hold.
 
 `WHY` is the read error, `not a watermark: …`, or `it names no cluster`.
 
+If the worker cannot save that record, it holds the same way. `kvo describe host` shows
+`ControlPlaneBehind`, status `True`, reason `WatermarkNotSaved`. The message names the path and the
+error, and says every silo keeps running and nothing is started, removed or applied until the record
+can be saved. Check the disk on that host. The hold ends once a save succeeds.
+
 Check that the control plane this host will reach is the newest of this cluster, then:
 
 ```bash
@@ -320,30 +346,34 @@ kvoadm host trust-control-plane root@baremetal-1 --ssh-key ~/.kevaso/ssh/id_ed25
 | The file | What the command does |
 |---|---|
 | Missing | Prints `→ baremetal-1 has no record of a control plane: nothing to do (it takes the first one it reaches)` and changes nothing |
-| Readable | Refuses, and changes nothing: `/var/lib/kevaso/control-plane-watermark.json on baremetal-1 is readable: nothing to set aside. A worker held by an older control plane is released by a new history (kvoadm init --restore), not by this command` |
+| Readable, and not held | Refuses, and changes nothing: `/var/lib/kevaso/control-plane-watermark.json on baremetal-1 is readable and not held: nothing to set aside (kevasod reads an unreadable record again by itself every second, so that hold ends once the file reads; the Host's ControlPlaneBehind says so)` |
+| Readable, and held | Sets the file aside, the same way as an unreadable one. It says the control plane answered older than the revision this worker saw, and that a hold within one history ends only by a new history (`kvoadm init --restore`) or by this command |
 | Unreadable | Prints the lines below, keeps the file as `PATH.unreadable-TIME`, restarts `kevasod`, and prints `→ set aside; kevasod restarted on baremetal-1: it trusts the control plane it reaches next` |
 
 ```text
 /var/lib/kevaso/control-plane-watermark.json on baremetal-1 is unreadable (it names no cluster).
 kvoadm will keep it as /var/lib/kevaso/control-plane-watermark.json.unreadable-TIME and restart kevasod: the worker then trusts the control plane it reaches next as its own.
-Do this only once you know that control plane is the newest of this cluster (not one restored from an older backup outside kvoadm init --restore).
+Do this only once you know that control plane is the newest of this cluster (not one restored from an older backup outside kvoadm init --restore), and that every silo this host runs is placed here in it.
 Type yes to go on:
 ```
 
 Without `--yes` it asks `Type yes to go on: `. Anything else is `not confirmed: nothing was changed`.
 
-The readable-file message names a new history as the way off a hold. That command does not clear a
-hold whose record can still be read. That hold ends when a healthy answer arrives, as above, or
-when a restore starts a new history.
+A hold whose record can still be read ends when you run this command, or when a restore starts a
+new history. A later answer of the same history does not end it. A record that is readable and not
+held is left alone.
 
 ---
 
 ## What is not built, and what has not run on real machines
 
-- **Not run on real machines under this rule:** the opt-in (stopping, `FenceArmed`, the restart
-  elsewhere only after the host reports the stop), a confirmed move after a host went silent, a
-  returning host stopping its old copy, a worker that holds, a worker that reboots while it cannot
-  reach the control plane.
+- **Run on bare metal (2026-11-15):** the fence; an opted-in Stop silo moved with
+  `kvo move … --confirm-fenced` after its host was cut or shut down; a held worker serving its last
+  state, the hold ended with `kvoadm host trust-control-plane`.
+- **Not run on real machines under this rule:** the opt-in stopping and then restarting a silo
+  elsewhere by itself after the host reports `FenceStopped`; a cut-off worker keeping its silos; a
+  returning host stopping its old copy; a worker that reboots while it cannot reach the control plane;
+  a hold ended by a new history from `kvoadm init --restore`.
 - **Not built:** a provider powering a host off through its API to give the proof for you. Today the
   proof is you.
 

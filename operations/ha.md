@@ -243,7 +243,9 @@ version itself) is not built.
 ## What isn't proven
 
 On real machines this has run on cloud machines in one setup: three system nodes, and two with a light
-node, losing one, removing one, upgrading, and SQLite to etcd. **Not tried:** removing the
+node, losing one, removing one, upgrading, and SQLite to etcd. On Linodes (2026-11-15): two and three
+system nodes, a leader change, a node cut off, rejoin, upgrade, restore, and a wiped system node
+refusing to start. **Not tried:** removing the
 leader's own node, five system nodes, an upgrade with a light node in the cluster, Podman workers.
 See [What's proven where]({{ '/operations/#whats-proven-where' | relative_url }}).
 

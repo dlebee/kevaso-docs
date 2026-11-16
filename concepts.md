@@ -49,7 +49,7 @@ flowchart LR
 | **kevasod** | The one program on every host. It is the API server, the controllers, the worker agent. Nothing of Kevaso's is installed inside a silo. |
 | **Silo** | One isolated machine: a microVM or a container, with its own disk or volumes and its own address (the **silo IP**). It starts from a `container:` or a `vm:` block. Silos live in a namespace. |
 | **Port** | A silo *declares* the ports it has in `spec.ports`. Nothing can reach one that isn't declared. |
-| **Service** | What a silo opens of its declared ports: to which silos (`allowFrom`), on which of the host's addresses (`hostPort`), and for how long (`lease`). A service has a name; a silo with no service has none. A standalone `Service` object puts one stable address and name in front of several silos. |
+| **Service** | What a silo opens of its declared ports: to which silos (`allowFrom`), on which of the host's addresses (`hostPort`), and for how long (`lease`). A service has a name; a silo with no service has none. A standalone `Service` object puts one stable address and name in front of several silos. A load balancer publishes a port only when those silos open it themselves. A port that opens only on a lease stays unpublished. |
 | **Internal IP, external IP** | A host's address on its own network, and its address reachable from outside that network. You set them when you add the host; a host has at least one. |
 | **Mesh IP** | A host's address on the encrypted network between hosts. Kevaso sets it. |
 | **Silo IP** | A silo's own address inside the cluster. It changes when the silo changes host. |
@@ -62,10 +62,10 @@ flowchart LR
 | **Plugin** | A program that adds to Kevaso: a provider on a host, an operator for a kind you define, or a command for `kvo` ([Plugins for kvo]({{ '/extending/kvo-plugins/' | relative_url }})). |
 | **Runtime** | What a silo is made of: `cloud-hypervisor` (microVM), `openshell` / `openshell-container` (OpenShell sandboxes), `docker` / `podman` (containers). See [Runtimes]({{ '/silos/runtimes/' | relative_url }}). |
 | **Namespace** | A folder for silos and the things they use (secrets, grants, roles). Access is given per namespace. |
-| **Init steps** | Optional. Scripts that run inside a new silo before it counts as Ready: install tools, clone a repo. A silo with none is fine. |
-| **Grant** | What a silo may reach outside the cluster and which secrets it gets, and how. Nothing outside is reachable without one. |
+| **Init steps** | Optional. Scripts that run inside a silo before it counts as Ready: install tools, clone a repo. They run on its first boot. With `everyBoot` they also run after a crash restart. `timeout` limits the steps of one start together. A silo with none is fine. |
+| **Grant** | What a silo may reach outside the cluster and which secrets it gets, and how. Nothing outside is reachable without one. A name is not followed to a private, mesh, link-local or loopback address unless the grant names that address. |
 | **Secret** | A value (an API key, a password, a signing key) kept encrypted. Silos get it only through Grants: injected on the way out, written as a file or an environment variable by the host, or asked for from a local endpoint. [Secrets]({{ '/secrets/' | relative_url }}). |
-| **Control-plane loss** | A worker that can't reach the control plane changes nothing: its silos keep running, and no other copy starts elsewhere unless you say the old one is off, or the silo opted in. [When the control plane is lost]({{ '/silos/control-plane-loss/' | relative_url }}) |
+| **Control-plane loss** | A worker that can't reach the control plane changes nothing: its silos keep running. No other copy starts elsewhere until you say the old one is off (`kvo move … --confirm-fenced`, and `--recreate` when the silo must start fresh), or, for a silo that opted in with `onControlPlaneLoss: Stop`, until its host reports `FenceStopped`. [When the control plane is lost]({{ '/silos/control-plane-loss/' | relative_url }}) |
 | **Context** | In `kvo`, a saved combination of cluster, identity and default namespace, like a kubeconfig context. |
 
 ---

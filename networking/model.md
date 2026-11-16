@@ -30,7 +30,7 @@ kind: Host
 metadata: { name: baremetal-1 }
 spec:
   internalIP: 10.0.0.5
-  externalIP: 51.38.10.20
+  externalIP: 203.0.113.20
 ```
 
 `kvoadm init` and `kvoadm host add` take them as `--internal-ip` and `--external-ip`. Give neither and
@@ -128,9 +128,8 @@ packets, so nothing a rule closes is reachable over IPv6. A silo can only send f
 a packet with another source address is dropped at its port, including before its address is
 known.
 
-One thing to know about hosts: the API listens on `0.0.0.0:6443` by default, which also answers on a
-host's IPv6 addresses. It still needs your certificate or sign-in, but a host firewall that only
-covers IPv4 does not cover it. Close the port on IPv6 yourself if the host has a global IPv6 address.
+One thing to know about hosts: the API listens on `0.0.0.0:6443` by default, which is IPv4. It does
+not answer on a host's IPv6 addresses.
 
 ---
 
@@ -191,11 +190,11 @@ For the service above, on host `baremetal-1`:
 |---|---|
 | `api.payments.mesh.kevaso` | `10.64.2.7`, the silo IP |
 | `api.payments.internal.kevaso` | `10.0.0.5`, because `metrics` and `debug` have `hostPort: [internal]` |
-| `api.payments.external.kevaso` | `51.38.10.20`, because `https` has `hostPort: [external]` |
+| `api.payments.external.kevaso` | `203.0.113.20`, because `https` has `hostPort: [external]` |
 | `api.payments.kevaso` | The best of the three for whoever asks |
 | `baremetal-1.mesh.kevaso` | `10.63.0.2` |
 | `baremetal-1.internal.kevaso` | `10.0.0.5` |
-| `baremetal-1.external.kevaso` | `51.38.10.20` |
+| `baremetal-1.external.kevaso` | `203.0.113.20` |
 
 **The plain name is dynamic.** Leave the network out and Kevaso answers with the address that works
 from where you are:
@@ -247,7 +246,7 @@ kind: Host
 metadata: { name: baremetal-1 }
 spec:
   internalIP: 10.0.0.5
-  externalIP: 51.38.10.20
+  externalIP: 203.0.113.20
   network:
     dns: [internal]
 ```
@@ -265,7 +264,7 @@ firewall: that is yours to do. Change it by editing the Host (`kvo get host bare
 
 ```text
 Internal IP:        10.0.0.5
-External IP:        51.38.10.20
+External IP:        203.0.113.20
 Mesh IP:            10.63.0.2
 Names answered on:  its silos and the mesh, its internal IP
 ```
@@ -301,7 +300,7 @@ Service:  api (api.payments.kevaso)
 Ports:
   PORT     NUMBER    SILO IP (MESH)  INTERNAL IP    EXTERNAL IP      LOAD BALANCER  ALLOW FROM                    SOURCES
   http     8080/TCP  10.64.2.7:8080  -              -                -              nginx-public, billing/worker  -
-  https    8443/TCP  10.64.2.7:8443 (no silo allowed)  -  51.38.10.20:443  -        -                             -
+  https    8443/TCP  10.64.2.7:8443 (no silo allowed)  -  203.0.113.20:443  -        -                             -
   metrics  9090/TCP  10.64.2.7:9090 (no silo allowed)  10.0.0.5:9090  -    -        -                             10.0.0.0/24
 ```
 

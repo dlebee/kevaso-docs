@@ -26,7 +26,7 @@ What happens when a host is simply out of reach is on another page:
 | A volume on `local` | Nowhere: pinned |
 | A volume on a region class (`block-storage`) | Another host in the same region |
 | A volume on a global class (`juicefs`: [JuiceFS]({{ '/providers/juicefs/' | relative_url }})) | Any host that runs the class's node side. On a microVM, shared into it over virtiofs ([Volumes]({{ '/silos/volumes/' | relative_url }})) |
-| A container's own files | Not kept: only its volumes count |
+| A container (`docker`, `podman`, `openshell-container`) | Its own files are not kept. A plain `kvo move` is refused. A person's move needs `onHostLoss: Recreate` and `kvo move --recreate` |
 
 The narrowest one wins. See it in the `MOVABLE` column:
 
@@ -58,7 +58,9 @@ stopped and restarted elsewhere.
 
 ```yaml
 spec:
-  runtime: docker
+  runtime: cloud-hypervisor
+  vm: { image: ubuntu-24.04 }
+  disk: { class: juicefs, size: 40Gi }
   volumes:
     - { name: data, class: block-storage, size: 200Gi, mountPath: /data }
   availability: { onHostLoss: Move }
@@ -85,10 +87,11 @@ The old host stops the silo and lets go of its volumes first, then the new host 
 | Flag | Meaning |
 |---|---|
 | `--to HOST` | Where to |
-| `--recreate` | A fresh copy from its image instead of its data (only for `onHostLoss: Recreate` silos) |
+| `--recreate` | A fresh copy from its image instead of its data (only for `onHostLoss: Recreate` silos). A container (`docker`, `podman`, `openshell-container`) needs this: a plain `kvo move` is refused, because its own files are never kept |
 | `--confirm-fenced` | Its host is lost, and you've made sure the old copy is stopped (powered off, or force-stopped at the provider) |
+| `--insist` | With `--confirm-fenced` only. Move even though that host claimed a start of this silo less than 30 seconds ago. Only when you know the old copy is off |
 
-`kvoadm host drain HOST` hands silos off the same way (the old host stops the silo first, and the new host starts it only after that). It does this only for silos with `onHostLoss: Recreate`, as a fresh copy from the image. Silos with `Wait` stay where they are, and drain says so for each. It does not take `--confirm-fenced`: it is for a host that is still up.
+`kvoadm host drain HOST` hands silos off the same way (the old host stops the silo first, and the new host starts it only after that). It does this only for silos with `onHostLoss: Recreate`, as a fresh copy from the image. Silos with `Wait` or `Move` stay where they are, and drain says so for each, naming the policy. It does not take `--confirm-fenced`: it is for a host that is still up.
 
 A move from a **lost** host needs `--confirm-fenced`: nobody is there to stop the old copy, so
 you say it's stopped. Only say it when the old copy really is stopped: if two copies of a silo
@@ -101,13 +104,9 @@ old copy is not provably stopped. That keeps a second copy from starting. The me
 host, how long ago, and how long to wait. For a claim 10 seconds old it is:
 
 ```text
-kvo: Conflict (409): move payments/api: its host just claimed its start of this silo: baremetal-1 claimed its start 10s ago, so it answered then and may be starting it now: it is not provably stopped. Wait 20s, or add --insist if you know the old copy is off
+kvo: Conflict (409): move payments/api: its host just claimed its start of this silo: hv1 claimed its start 10s ago, so it answered then and may be starting it now: it is not provably stopped. Wait 20s, or add --insist if you know the old copy is off
 ```
 
-Wait for the time it names. `kvo move` has no `--insist` flag. Adding one is refused:
-
-```text
-kvo: unknown flag --insist
-```
+Wait for the time it names, or add `--insist` with `--confirm-fenced` when you know the old copy is off.
 
 Moving needs `create` on `silos/move` (the built-in `editor` and `admin` roles have it).

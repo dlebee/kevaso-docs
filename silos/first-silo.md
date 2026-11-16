@@ -66,6 +66,8 @@ spec:
 | `resources` | CPUs and memory it may use. The scheduler only places it where they fit. |
 | `disk` | Its root disk. It lives on the host it was created on. |
 | `init.steps` | Optional. Scripts, run as root inside the silo, in order. If you give any, the silo is Ready only after the last one succeeds. |
+| `init.when` | `firstBoot` (the default) or `everyBoot`. `firstBoot` runs once. `everyBoot` runs on every boot, including after the silo crashes and is started again. |
+| `init.timeout` | Optional. A duration, such as `15m`. The steps of one start must finish within it. |
 
 ---
 
@@ -162,6 +164,8 @@ Conditions:
   TYPE        STATUS  REASON      SINCE  MESSAGE
   InitFailed  True    StepFailed  12s    step python exited 1: …
 ```
+
+If `init.timeout` runs out, the step still running is stopped. `InitFailed` is `True` with reason `StepTimedOut`, and the message names the step and the timeout. The silo's main process is not started.
 
 Fix the step in `hello.yaml` and `apply` again.
 

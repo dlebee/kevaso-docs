@@ -40,7 +40,7 @@ spec:
 | `http.path` | The path of the list | `/panes` |
 | `every` | How often the host asks | `5s`. At least `1s`, at most `5m` |
 | `allow` | Which kinds the silo may report | `status` only |
-| `maxPanes` | How many panes it may have | 4, at most 16 |
+| `maxPanes` | How many panes it may have | 4, at most 16. `0` is the same as leaving it out |
 
 The host asks from the host itself, at the silo's own private address, with nothing from clients in
 the request. It follows no redirect. The silo implements two `GET`s, with any web server:
@@ -74,8 +74,9 @@ For example, with a web server answering `GET /panes`:
 
 If the silo answers wrongly, too much or too slowly, its host stops asking for a minute, then
 longer (up to 15 minutes), and starts again after an answer that's fine. What counts as wrong:
-a redirect, a status other than 200, a content type other than JSON, more than `maxPanes` panes, a
-kind not in `allow`, a report over the [limits](#limits), a bundle whose digest doesn't match.
+a redirect, a status other than 200, a content type other than JSON, more than `maxPanes` panes, the
+same pane named twice, a kind not in `allow`, a report over the [limits](#limits), a bundle whose
+digest doesn't match.
 Meanwhile the panes go stale. The silo's `Panes` condition says why: `CutOff`, or `Unreachable` while
 nothing answers (which isn't held against it).
 
@@ -172,7 +173,7 @@ minute, then longer, and the silo's `Panes` condition says why.
 | Reports per silo | 4 a second sustained, bursts of 8 |
 | The list the host reads | At most `maxPanes` × 81 KiB, within 2 seconds. A bundle: 512 KiB, within 5 seconds |
 | A report's `ttl` | Up to 1 hour |
-| Panes per silo | `spec.panes.maxPanes` (default 4, at most 16) |
+| Panes per silo | `spec.panes.maxPanes` (default 4, at most 16). `0` is the same as leaving it out |
 | A silo's stored bundles | The ones its panes use, plus a few newer ones; older ones are dropped |
 
 Text must be UTF-8. When a silo is deleted, its panes and bundles go with it.

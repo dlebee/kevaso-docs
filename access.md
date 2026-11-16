@@ -44,7 +44,8 @@ bin/kvoadm users invite bob --namespace payments
 ```
 
 It binds bob as `editor` in `payments` (`--role admin` or `viewer` for others) and prints two things
-to send him: the `kvo login …` line and the code.
+to send him: the `kvo login …` line and the code. Only a cluster admin can create an invite. A namespace admin cannot, and giving a role `create`
+on `invites` does not change that: an invite can name any person and any groups.
 
 ---
 
@@ -81,8 +82,8 @@ role to people in a namespace. The built-in roles:
 | Role | Can |
 |---|---|
 | `viewer` | Read silos, silo sets, services, VM images, ingresses, certificates, service accounts and grants; see that secrets exist, which silos wait for an approval, the [panes]({{ '/panes/' | relative_url }}) silos report, the [leases]({{ '/networking/leases/' | relative_url }}) on their ports, and the [IPs]({{ '/networking/ips/' | relative_url }}) |
-| `editor` | Everything `viewer` can, plus create and change those objects, `exec`, terminals and files (`silos/ssh`, `silos/files`), moves, opening and closing leased ports, service-account tokens; create and *use* secrets (never read a value back); *use* an IP an admin made |
-| `admin` | Everything `editor` can, plus roles and bindings in the namespace, opening ports on a host address or behind a load balancer (`services/expose-public`), publishing on a public ingress class (`ingresses/publish-public`), creating and releasing IPs, reading secret values, answering approvals (a secret's, or a leased port's), deleting panes, approvals and leases |
+| `editor` | Everything `viewer` can, plus create and change those objects, `exec`, terminals and files (`silos/ssh`, `silos/files`), moves, opening and closing leased ports; create and *use* secrets (never read a value back); *use* an IP an admin made |
+| `admin` | Everything `editor` can, plus roles and bindings in the namespace, minting service-account tokens, opening ports on a host address or behind a load balancer (`services/expose-public`), publishing on a public ingress class (`ingresses/publish-public`), creating and releasing IPs, reading secret values, answering approvals (a secret's, or a leased port's), deleting panes, approvals and leases |
 | `cluster-admin` | Everything, everywhere (what `kvoadm init` gives you) |
 
 The permissions beyond plain read and write are their own *subresources*:
@@ -94,6 +95,7 @@ The permissions beyond plain read and write are their own *subresources*:
 | `silos/files` | `get` | Read and list a silo's files (`kvo cp` out, `kvo ui` browsing) | | yes | yes |
 | `silos/files` | `create` | Write files into a silo (`kvo cp` in, `kvo ui` upload) | | yes | yes |
 | `silos/move` | `create` | `kvo move` | | yes | yes |
+| `serviceaccounts/token` | `create` | `kvo create token` | | | yes |
 | `panes` | `get`, `list`, `watch` | `kvo get panes`, `kvo pane watch`, `kvo pane bundle` | yes | yes | yes |
 | `panes` | `delete` | Clear a pane | | | yes |
 | `silos/exposure` | `open` | `kvo open silo`, `kvo close silo`: open and close a silo's [leased ports]({{ '/networking/leases/' | relative_url }}) | | yes | yes |
@@ -114,7 +116,9 @@ The permissions beyond plain read and write are their own *subresources*:
 `open` and `approve` on `silos/exposure` can be limited to one silo by name, or to silos by label,
 like `approve` on secrets. Opening a port on a host address or behind a load balancer at all is still
 `create` on `services/expose-public`: a lease only decides when. Naming an IP of your own
-needs `use` on that IP.
+needs `use` on that IP. Minting a service-account token is `create` on `serviceaccounts/token`.
+A token holds whatever its account holds, so `editor` does not have it. In the namespace
+`kevaso-system`, only a cluster admin may create, change or delete an object, a token included.
 
 [Terminals, files and the small UI]({{ '/silos/terminals/' | relative_url }}) are as strong as `exec`: give them the same care.
 
@@ -166,6 +170,15 @@ and nothing else of that kind. A plugin's controller runs as the service account
 `kevaso-system/plugin-NAME`, with exactly the roles in its package, never `cluster-admin`
 ([Plugins]({{ '/extending/plugins/#plugin-operators' | relative_url }})).
 
+The namespace `kevaso-system` is reserved for cluster admins. Only a cluster admin may create,
+change or delete an object in it, whatever a role or binding says. Reading still follows the role.
+
+A cluster secret has no namespace. Creating, changing and deleting one is for a cluster admin, and
+no role can grant that. A plugin reads one value only when a ClusterRole grants `get` on
+`clustersecrets/value` and names that secret, bound to service account `plugin-NAME` in
+`kevaso-system`. A rule with no names grants none. See
+[Plugins]({{ '/extending/plugins/#install-a-provider-plugin' | relative_url }}).
+
 ---
 
 ## Contexts
@@ -209,8 +222,9 @@ Give it a role with a RoleBinding (subject kind `ServiceAccount`), then mint a t
 kvo create token deployer -n payments --duration 1h
 ```
 
-In CI, set `KVO_TOKEN` to it (and `KVO_CA_FILE` to the cluster CA). Deleting the service account
-revokes every token it has.
+In CI, set `KVO_TOKEN` to it (and `KVO_CA_FILE` to the cluster CA). A namespace `admin` can mint
+the token. An `editor` cannot. In `kevaso-system`, only a cluster admin can. Deleting the service
+account revokes every token it has.
 
 ---
 

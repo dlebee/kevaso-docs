@@ -97,6 +97,11 @@ Which address, whether it is shared, and keeping it when the silo goes are on
 [Addresses you keep]({{ '/networking/ips/' | relative_url }}). A class that can't limit clients by address
 can't serve a port that has `sources`: see [leases and sources]({{ '/networking/leases/' | relative_url }}#load-balancers-from-a-plugin-and-sources).
 
+A standalone `Service` of type `LoadBalancer` publishes outside only ports its silos already open
+in their own `spec.service.ports`, and not a port that opens only on a lease. A silo that doesn't
+is held back, not an endpoint, and `kvo describe service` names the port. A `ClusterIP` Service,
+the default, can send to a port the silo declares, leased or not.
+
 ### Only for a while: a lease
 
 Some ports you want closed until you need them: a debug port, an admin page. Put a `lease` on the
@@ -160,13 +165,14 @@ kvo describe silo web -n shop
 ```
 
 ```text
-Egress IP:   172.105.3.63 (sameAsService)
-In and out:  same address in and out: 172.105.3.63
+Egress IP:   203.0.113.63 (sameAsService)
+In and out:  same address in and out: 203.0.113.63
 ```
 
-`Egress IP` is where its outgoing traffic leaves from, with the `source` you chose in brackets. `In
-and out` says in one line whether the address out is the address in, and why not when it isn't. A `-`
-means there is none, for example on a host behind NAT.
+`Egress IP` is where its outgoing traffic leaves from. When you set `source`, that word is in
+brackets after the address. The default, `host`, is not written there. `In and out` says in one
+line whether the address out is the address in, and why not when it isn't. A `-` means there is
+none, for example on a host behind NAT.
 
 ---
 
@@ -196,7 +202,7 @@ spec:
 | `to:` | How it's enforced |
 |---|---|
 | An address or CIDR | The host firewall, by address, port and protocol |
-| A host name | The host's **egress gate**: the silo's TLS is checked against the name it asks for (SNI) and passed through, untouched, only for that name, to the address the gate looks up itself. No name or another name: refused. A name opens TCP only, port 443 unless you list ports. (The gate doesn't look inside a passed-through connection; for hosts it injects a secret for, it does, and refuses a request for another host: see [Secrets]({{ '/secrets/' | relative_url }}).) |
+| A host name | The host's **egress gate**: the silo's TLS is checked against the name it asks for (SNI) and passed through, untouched, only for that name, to the address the gate looks up itself. No name or another name: refused. A name opens TCP only, port 443 unless you list ports. A name that resolves to a private, loopback or link-local address, or to the mesh, a silo, a service or a host in the cluster, is refused, and so is that address written as IPv6. To allow one, a grant has to name that address, or a range no wider than that block that contains it, for that port. A rule for every address does not. (The gate doesn't look inside a passed-through connection; for hosts it injects a secret for, it does, and refuses a request for another host: see [Secrets]({{ '/secrets/' | relative_url }}).) |
 
 A rule opens TCP unless it lists `protocols` (`tcp`, `udp`; a host name is TCP only). `ports` takes
 numbers and ranges such as `"30000-30100"`; with none, an address range opens every port and a host name

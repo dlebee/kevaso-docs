@@ -29,9 +29,10 @@ leases.
 
 ## Store a secret
 
-Values come from a file or from what you type, **never from the command line** (other users of the
-machine and your shell history would see it). With `--from-file -`, `kvo` reads the value from
-your terminal:
+Values come from a file or from what you type. `--from-literal` puts the value on the command
+line, so it is refused unless you add `--i-know` (other users of the machine and your shell history
+would see it). A cluster secret never takes `--from-literal`. With `--from-file -`, `kvo` reads the
+value from your terminal:
 
 ```bash
 kvo create secret api-key -n dev --from-file - --allow inject --write-only
@@ -49,11 +50,15 @@ kvo create secret api-key -n dev \
 | Flag | Meaning |
 |---|---|
 | `--from-file F` / `--from-file -` | The value, from a file or stdin |
-| `--generate` | Kevaso makes it (32 random bytes; or a new private key with `--type`) |
+| `--generate` | Kevaso makes it (32 random bytes, written as hex; or a new private key with `--type`) |
 | `--type ed25519` / `ecdsa-p256` | A signing key: only ever used through `sign`, never readable |
 | `--allow inject,broker` | The only ways grants may deliver it, whatever they ask |
 | `--write-only` | Nobody can read it back, admins included |
 | `-l sensitivity=critical` | Labels: roles can give access by label |
+
+A secret can set `expiresAt`, a time. `kvo describe secret` shows it under `Expires`. Within seven
+days it says to renew the value (`kvo secret set NAME --from-file -`). After that time it says
+`EXPIRED`. Nothing stops the secret being used.
 
 The API never returns a value in `get`, `list` or `watch`. Someone with `read-value` can read a
 readable secret:
@@ -112,6 +117,17 @@ HTTPS to `api.example.com`:
 3. Whatever the silo sent in that header is **removed**, and the secret is set.
 4. The gate connects to the real `api.example.com` itself and checks its certificate.
 
+A name is refused when it resolves to a private, loopback or link-local address, or to the mesh, a
+silo, a service or a host in the cluster, and so is that address written as IPv6. To allow one, a
+grant has to name that address, or a range no wider than that block that contains it, for that
+port. A rule for every address does not. The same rule applies to a name the gate only passes
+through: [Networking]({{ '/networking/' | relative_url }}#what-a-silo-may-reach-outside).
+
+If the host can't reach the control plane, it keeps injecting a secret the control plane already
+gave it, for at most one hour after that, and then refuses until the control plane answers. A host
+that is held, because its control plane is older than what it saw, injects only secrets it was
+given before the hold, for that same hour, and adds none it wasn't given then.
+
 `to.header` defaults to `Authorization` and `to.format` to `Bearer {{value}}`. The program in the silo just calls the API without a key; it works. On **OpenShell** silos the
 same grant gives the program an environment variable holding a *placeholder* (`$API_KEY =
 openshell:resolve:env:…`), which it sends like a key, and OpenShell swaps the real one in. See
@@ -147,8 +163,8 @@ goes over a pipe or a file in memory: never on a command line.
 - A microVM's image needs a POSIX `sh` and `cat`, `mkdir`, `chmod`, `mv` and `rm`. One without them
   gets the silo condition `SecretsDelivered=False` with the reason. A container's image needs
   nothing, so a minimal image with no shell works.
-- Init steps of a container run before the main container starts and don't see `file` or `env`
-  secrets. A microVM's init steps do.
+- Init steps of a container run in their own container before the main one starts, and they see
+  the same `file` and `env` secrets. A microVM's init steps see them too.
 - A program that keeps a `file` secret open must re-read it on its own schedule: nothing tells it
   the secret changed.
 - Values of `env` must be text without a newline. On Podman a value that starts with a quote is
@@ -262,7 +278,7 @@ Errors come back as JSON, `{"error": "…"}`; `curl -f` turns a refusal into a f
 | `413` | Payload over 512 KiB |
 | `428` | Waiting for a person's yes: [approvals](#ask-a-person-first-approvals) |
 | `429` | Too many requests at once from this silo |
-| `503` | The control plane can't be reached: try again |
+| `503` | The host is held, because its control plane is older than what it saw: nothing is asked until that ends. Or the control plane can't be reached: try again |
 
 - Asking for a secret the silo has no grant for answers exactly like a name that doesn't exist.
 - A host gets secrets only for silos placed on it.

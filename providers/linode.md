@@ -252,7 +252,7 @@ silo NAME --to HOST --confirm-fenced --recreate` starts the silo on another work
 answers from there ([When the control plane is lost]({{ '/silos/control-plane-loss/' | relative_url }})).
 Add `onControlPlaneLoss: Stop` to the silo and Kevaso restarts it on another worker by itself only
 after the old host reports that its copy stopped. A host that is down can't report, so then a person
-moves the silo with `kvo move silo NAME -n NS --to HOST --confirm-fenced`. In our test, with an address
+moves the silo with `kvo move silo NAME -n NS --to HOST --confirm-fenced --recreate`. In our test, with an address
 already in the account, the address itself moved to the other worker in seconds once the silo started
 there. Reserving a new address for an `IP` hasn't been
 run on a real Linode yet.
@@ -327,13 +327,13 @@ A silo can mix classes, and the narrowest one decides where it can go. The class
 | Part | State |
 |---|---|
 | Block Storage volumes, moves of a volume, `onHostLoss: Move` | Ran on real Linodes |
-| A shared IP adopted from the account, announced by the silo's host, and answering from the other worker after its host went down | Ran on real Linodes |
+| A shared IP the account already had, announced by the silo's host, moved with `kvo move … --confirm-fenced` | Ran on real Linodes (2026-11-15) |
 | Reserving a new shared IP for an `IP` | Tested against a fake Linode API only |
-| NodeBalancers and Linode DNS | Tested against a fake Linode API and in a control plane. The real run needs a token with NodeBalancers and Domains access |
+| A NodeBalancer, and DNS records on Linode's nameservers | Ran on real Linodes (2026-11-15). The provider token was a cluster secret |
 | Host ports with leases on a Linode worker | Ran on real Linodes |
 
-Those runs predate the layout of ports and services on this page. The layout here is tested in-process
-and against the fake API, and has not been run on real Linodes.
+Volumes and host-port leases in the table above predate the layout of ports and services on this page.
+A NodeBalancer, DNS records on Linode's nameservers, and a shared IP moved with `--confirm-fenced` have run on real Linodes.
 
 ---
 

@@ -87,6 +87,10 @@ kvoadm plugin remove root@203.0.113.10 --name cloud
 
 Removing the last side on a host deletes the service account. The cluster secret and the role stay until you delete them.
 
+```bash
+kvo delete clustersecret token
+```
+
 ### The default is small
 
 Without a manifest, a plugin runs as its own throwaway user, with no privileges, no devices, a

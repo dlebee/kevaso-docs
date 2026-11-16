@@ -41,7 +41,7 @@ And what keeps working on the workers without it:
 |---|---|
 | Any silo (the default) | **Keeps running.** A worker that loses the control plane changes nothing. Its host keeps it up and restarts it if it dies. |
 | `onControlPlaneLoss: Stop` | **Stopped** by its own host once it has been cut off for the silo's `after` (default 2 minutes), on purpose. Don't use it with one system node: the silo stops every time the system node is out of reach ([When the control plane is lost]({{ '/silos/control-plane-loss/#when-not-to-use-it' | relative_url }})). |
-| Injected keys (Kevaso's egress gate) | Keep working for about a minute (cached), then the gate stops adding them |
+| Injected keys (Kevaso's egress gate) | Keep working for one hour, then the gate stops adding them |
 | Injected keys on OpenShell silos | Keep working: OpenShell holds them |
 
 ---
@@ -76,7 +76,7 @@ flowchart LR
 
 | | |
 |---|---|
-| **Fault tolerance** | Losing a **worker**: its silos are marked `HostUnreachable` after 40 s and nothing starts elsewhere until you say the old copy is off (`kvo move … --confirm-fenced`) or a silo opted in ([When the control plane is lost]({{ '/silos/control-plane-loss/' | relative_url }})). Losing the **system node**: running silos keep running, but nothing changes until it's back (see the tables above); [several system nodes](#several-system-nodes) remove that. |
+| **Fault tolerance** | Losing a **worker**: its silos are marked `HostUnreachable` after 40 s and nothing starts elsewhere until its host reports `FenceStopped` for a silo that opted in (`onControlPlaneLoss: Stop`), or you say the old copy is off (`kvo move … --confirm-fenced`, and `--recreate` when the silo must start fresh) ([When the control plane is lost]({{ '/silos/control-plane-loss/' | relative_url }})). Losing the **system node**: running silos keep running, but nothing changes until it's back (see the tables above); [several system nodes](#several-system-nodes) remove that. |
 | **Recovery** | Bring the machine back, and everything resumes. |
 | **Operational risk** | The system node is a single point of control: keep it small, patched, and running nothing else. |
 | **Security** | A silo broken out of its VM lands on a *worker*, which only ever gets the secrets of its own silos, and can't act as another host. |
@@ -99,7 +99,7 @@ them, it's a perfectly good way to run a small cluster.
 | **Security risk** | The biggest one. A silo that escapes its VM or container lands on the machine that holds the cluster CA, the store and the **master key for every secret**. Root on a system node is trusted with everything; on a combined node, a silo is one escape away from it. Prefer it for silos you trust (your own dev boxes), not for untrusted code or agents running other people's input. |
 | **Grows into** | The recommended setup: add workers, then move silos off. |
 
-→ [Single system node]({{ '/setup/single-node/' | relative_url }}#step-2--let-the-machine-run-silos-optional)
+→ [Single system node]({{ '/setup/single-node/' | relative_url }}#step-3--let-the-machine-run-silos-optional)
 
 ---
 

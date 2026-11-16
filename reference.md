@@ -19,7 +19,7 @@ Every command on one page. `kvo` uses your current context (`kvo ctx`); `-n NS` 
 | `kvo apply -f FILE` (or `-f -`) | Create or update every object in a YAML/JSON file. A field the kind doesn't have is an error, never dropped: fix the name and apply again |
 | `kvo get KIND [NAME] [-n NS \| -A] [-o yaml\|json]` | List or show objects |
 | `kvo describe KIND NAME` | Everything about one object, for people |
-| `kvo delete KIND NAME` | Delete it |
+| `kvo delete KIND NAME` | Delete it. A namespace is refused while it still holds anything: delete those first. Deleting a namespace never deletes what is in it |
 | `kvo watch KIND [-n NS \| -A]` | Print the current state, then every change |
 
 Kinds: `namespaces` (`ns`), `hosts`, `silos`, `silosets` (`ss`), `services` (`svc`), `vmimages`
@@ -53,9 +53,9 @@ overrides) from status text that silos and hosts write, so a silo can't change w
 | `kvo ui silo NAME [--no-browser]` | A web page on `127.0.0.1` with the silo's terminal and files. Ctrl-C stops it |
 | `kvo reset silo NAME` | Back onto its image: stopped, a fresh disk or container, volumes kept (a set's instance: onto the set's current image) |
 | `kvo protect silo NAME [--off]` | A set's scale-in never removes it |
-| `kvo move silo NAME --to HOST [--recreate] [--confirm-fenced] [-n NS]` | Move it with its data. `--recreate`: a fresh copy from its image (only `onHostLoss: Recreate` silos). `--confirm-fenced`: its host is lost and you know the old copy is off; without it a move from a lost host is refused. Refused while that host claimed a start of this silo less than 30 seconds ago. [Moves]({{ '/silos/moves/' | relative_url }}), [Moving a silo off a host you know is off]({{ '/silos/control-plane-loss/#moving-a-silo-off-a-host-you-know-is-off' | relative_url }}) |
-| `kvo get silos [-o wide]` | `NAME`, `RUNTIME`, `PHASE`, `READY`, `HOST`, `AGE`. `-o wide` adds `MOVABLE` (where each silo could go) and `ON-CP-LOSS` (`stops after 2m` for a silo with `onControlPlaneLoss: Stop`, `-` for the others). A silo on a silent host has phase `Unknown` |
-| `kvo describe silo NAME` | Its state, [probes]({{ '/silos/probes/' | relative_url }}), what it starts from, what it does when its host loses the control plane (`On control-plane loss`), its conditions (`HostUnreachable`, `FenceArmed`), and each port with its addresses and lease. [Addresses, ports and names]({{ '/networking/model/' | relative_url }}) |
+| `kvo move silo NAME --to HOST [--recreate] [--confirm-fenced [--insist]] [-n NS]` | Move it, with its data when its storage allows. A container's own files are never kept: a plain move is refused, and a fresh copy needs `onHostLoss: Recreate` and `--recreate`. `--recreate` is only for `onHostLoss: Recreate` silos. `--confirm-fenced`: its host is lost and you know the old copy is off; without it a move from a lost host is refused. Refused while that host claimed a start of this silo less than 30 seconds ago; `--insist`, with `--confirm-fenced`, overrides that. [Moves]({{ '/silos/moves/' | relative_url }}), [Moving a silo off a host you know is off]({{ '/silos/control-plane-loss/#moving-a-silo-off-a-host-you-know-is-off' | relative_url }}) |
+| `kvo get silos [-o wide]` | `NAME`, `RUNTIME`, `PHASE`, `READY`, `HOST`, `AGE`. `-o wide` adds `MOVABLE` (where each silo could go) and `ON-CP-LOSS` (`stops after 2m` for a silo with `onControlPlaneLoss: Stop` and no `after` of its own, or `stops after` that `after`; `-` for the others). A silo on a silent host has phase `Unknown` |
+| `kvo describe silo NAME` | Its state, [probes]({{ '/silos/probes/' | relative_url }}), what it starts from, what it does when its host loses the control plane (`On control-plane loss`), its conditions (`HostUnreachable`, `FenceArmed`, `FenceStopped`), and each port with its addresses and lease. [Addresses, ports and names]({{ '/networking/model/' | relative_url }}) |
 | `kvo open silo NAME --port PORT [--port PORT]… [--for D] [--no-wait]` | Open [leased ports]({{ '/networking/leases/' | relative_url }}) for a while. Each port is its own lease, on its own terms. If a lease needs a yes, wait for it (`--no-wait`: don't). A refused port doesn't stop the others, and the command exits non-zero |
 | `kvo close silo NAME --port PORT [--port PORT]…` | Close them early |
 | `kvo get leases [-n NS \| -A]` | The leased ports and their state: `SILO`, `PORT`, `PHASE`, `WHEN`, `BY` |
@@ -82,15 +82,15 @@ See [Panes]({{ '/panes/' | relative_url }}).
 
 | Command | Does |
 |---|---|
-| `kvo create secret NAME --from-file F\|-` | Store a value (never from the command line) |
+| `kvo create secret NAME --from-file F\|-` | Store a value. `--from-literal VALUE` is refused unless you add `--i-know`: the value is on the command line |
 | `kvo create secret NAME --generate [--type ed25519\|ecdsa-p256]` | Let Kevaso make it |
 | …`--allow MODES`, `--write-only`, `-l KEY=VALUE` | Restrict delivery (`broker`, `inject`, `file`, `env`, comma-separated), make write-only, label |
 | `kvo create secret NAME --type registry --server HOST --username U --from-file - [--default-pull]` | A [private registry's]({{ '/secrets/' | relative_url }}) credential: write-only, the password on stdin. `--default-pull`: the one used for that registry when a silo names none |
 | `kvo secret set NAME --from-file F\|-` | A new value (rotation) |
 | `kvo get secret NAME --reveal` | Print the value (needs `read-value`; never for write-only) |
-| `kvo create clustersecret NAME [--description TEXT] --from-file F\|-` | A secret with no namespace, for a plugin. Cluster-admin only. The value comes from a file or from stdin |
+| `kvo create clustersecret NAME [--description TEXT] --from-file F\|-` | A secret with no namespace, for a plugin. Cluster-admin only. The value comes from a file or from stdin. `--from-literal` is refused |
 | `kvo set clustersecret NAME --from-file F\|-` | Replace that value. Each host that has it writes the new copy and restarts the plugin |
-| `kvo get clustersecret [NAME] [--reveal]` | The name and description. `--reveal` prints the value |
+| `kvo get clustersecret [NAME] [--reveal]` | The name and description. `--reveal` prints the value. A value is readable by a cluster admin, or by `get` on `clustersecrets/value` in a ClusterRole whose `resourceNames` lists that name |
 | `kvo delete clustersecret NAME` | Delete it |
 | `kvo get approvals` / `kvo watch approvals` | Silos waiting for a person's yes. The `REQUEST` column is 32 hex digits, the start of the request's 64-digit id |
 | `kvo approve NAME [--request ID]` | Say yes (needs `approve` on that secret; people only). `--request` is that column, a longer prefix, or the full 64 hex digits. At least 32 digits. On a terminal you can omit it: the request is shown and the yes is for what was shown. [Approvals]({{ '/secrets/#ask-a-person-first-approvals' | relative_url }}) |
@@ -138,7 +138,7 @@ A plugin never takes the name of a `kvo` command. See [Plugins for kvo]({{ '/ext
 | `kvo ns [NAME]` | Show or set the default namespace |
 | `kvo auth whoami` | Who you are to the cluster |
 | `kvo auth can-i VERB RESOURCE[/NAME] [-n NS]` | Exits 0 for yes, 1 for no |
-| `kvo create token SA [--duration 1h]` | A service-account token, for CI (`$KVO_TOKEN`) |
+| `kvo create token SA [--duration 1h]` | A service-account token, for CI (`$KVO_TOKEN`). Default one hour, at most 2160h (90 days). A namespace editor can't mint one |
 
 ### Environment
 
@@ -159,7 +159,8 @@ A plugin never takes the name of a `kvo` command. See [Plugins for kvo]({{ '/ext
 | `kvoadm init [USER@]ADDR --ssh-key KEY --host-key SHA256:… --kevasod BIN [--name N] [--cluster C] [--api-server URL] [--store sqlite\|etcd] [--worker] [--storage-device /dev/DISK \| --loop-storage SIZE]` | Create the cluster (the only command that does), install the control plane, write your kvo context, print the recovery key. `--store etcd`: start on etcd, ready for [more system nodes]({{ '/operations/ha/' | relative_url }}). `--worker`: the machine runs silos too. [Starting a cluster]({{ '/operations/backup/#starting-a-cluster-and-a-node-that-finds-its-data-gone' | relative_url }}) |
 | `kvoadm host enable-worker [USER@]ADDR --ssh-key KEY [--runtime R]… [--loop-storage SIZE \| --storage-device /dev/DISK]` | The control-plane host runs silos too |
 | `kvoadm host reconnect [USER@]ADDR --ssh-key KEY [--server URL]` | Point a worker at the control plane again (after a restore onto another address) |
-| `kvoadm host trust-control-plane [USER@]ADDR --ssh-key PATH [--host-key SHA256:…] [--ssh-port N] [--data DIR] [--yes]` | Set aside a worker's unreadable record of its control plane and restart `kevasod`. A readable record is left alone. [An unreadable record]({{ '/silos/control-plane-loss/#an-unreadable-record' | relative_url }}) |
+| `kvoadm host trust-control-plane [USER@]ADDR --ssh-key PATH [--host-key SHA256:…] [--ssh-port N] [--data DIR] [--yes]` | Set aside a worker's record of its control plane and restart `kevasod`, so it trusts the control plane it reaches next. It does this for an unreadable record, or for a hold on an older control plane. A readable record that is not a hold is left alone. A hold on an older control plane ends only this way, or when `kvoadm init --restore` starts a new history. [An unreadable record]({{ '/silos/control-plane-loss/#an-unreadable-record' | relative_url }}) |
+| `kvoadm host kept [USER@]ADDR --ssh-key PATH [--host-key SHA256:…] [--ssh-port N] [--data DIR] [--remove NAMESPACE/NAME/UID [--yes]]` | Silo copies this worker still has though the control plane doesn't know them (a delete it never saw, or a restore that forgot them). `--remove` deletes that copy, its disk and its volumes, after you type `NAMESPACE/NAME` (`--yes`: don't ask). At least the UID's first 8 characters |
 | `kvoadm host add [USER@]ADDR --ssh-key KEY --kevasod BIN --install worker [--name N] [--region R] [--zone Z] [--label K=V] [--runtime R] [--behind-nat] [--internal-ip IP] [--external-ip IP] [--storage-device /dev/DISK \| --loop-storage SIZE]` | Add a worker. `--storage-device`: a whole, empty disk for the silos' volume group, when the host has none. `--loop-storage`: development only, a sparse file instead. With neither and no `kevaso` volume group, the microVM runtime stops with a message. [Where silo disks live]({{ '/workers/#where-silo-disks-live' | relative_url }}) |
 | `kvoadm host add [USER@]ADDR … --install control-plane [--state-only] [--cluster-dns NAME] [--internal-ip IP] [--external-ip IP]` | A second or third [system node]({{ '/operations/ha/#add-a-system-node' | relative_url }}); `--state-only`: a light node (a vote only) |
 | `kvoadm host install HOST control-plane [--state-only] [--ssh-key KEY]` | Make an existing worker a system node too |
@@ -170,18 +171,20 @@ A plugin never takes the name of a `kvo` command. See [Plugins for kvo]({{ '/ext
 | `kvoadm host list` | Hosts, both of their IPs, and their state |
 | `kvoadm host addresses HOST add\|remove CIDR…` | The extra addresses routed to a host, which the built-in `ip-pool` class hands out ([Addresses you keep]({{ '/networking/ips/' | relative_url }})). `remove` is refused for an address an IP holds |
 | `kvoadm host addresses HOST list` | Each range, and which IP holds each address |
-| `kvoadm host drain NAME` | Stop new silos landing on the host, and hand off the silos that can move, the way `kvo move` does. Silos that must stay with their local disk are listed. [Draining a host]({{ '/workers/host-loss/' | relative_url }}) |
+| `kvoadm host drain NAME` | Stop new silos landing on the host, and start a fresh copy elsewhere of each silo with `onHostLoss: Recreate`. The others are listed and stay. [Draining a host]({{ '/workers/host-loss/' | relative_url }}) |
 | `kvoadm host uncordon NAME` | The host takes new silos again |
-| `kvoadm reset [USER@]ADDR --ssh-key KEY [--host-key SHA256:…] [--ssh-port N] [--dry-run] [--yes] [--force] [--wipe-storage]` | Take Kevaso off a machine again. Shows what it will remove and keep, and asks first (`--yes`: don't ask). After that it stops `kevasod` and the fence and looks again before removing anything. Refused while silos are on it (`--force`: go ahead, their data is lost). `--wipe-storage`: also remove the silo storage on a real disk. Nothing under Kevaso's paths is removed while something is mounted there. [Reset a machine]({{ '/workers/#reset-a-machine' | relative_url }}) |
+| `kvoadm reset [USER@]ADDR --ssh-key KEY [--host-key SHA256:…] [--ssh-port N] [--dry-run] [--yes] [--force] [--wipe-storage]` | Take Kevaso off a machine again. Shows what it will remove and keep, and asks first (`--yes`: don't ask). After that it stops `kevasod` and the fence and looks again before removing anything. Refused while silos are on it (`--force`: go ahead, their data is lost). Volumes on Kevaso's loop file with no silo on the host are refused unless `--wipe-storage`. `--wipe-storage` also removes the silo storage on a real disk. When Docker was already on the machine and resetting changes its daemon.json, Docker is restarted, and containers that were running and are not Kevaso's are started again. A failed step fails the reset and keeps the install record. Nothing under Kevaso's paths is removed while something is mounted there. [Reset a machine]({{ '/workers/#reset-a-machine' | relative_url }}) |
 
 Every command that logs in takes `--ssh-key PATH` (a key with a passphrase is taken from `ssh-agent`
 or asked for) or `--password` (typed once, read from stdin when there's no terminal; kvoadm then adds
 a key of its own), `--ssh-port N`, and `--host-key SHA256:…` (without it, you're asked to confirm
 the fingerprint).
 
-`init` and `host add` also take `--user NAME` (the account to log in as, when not in `USER@`),
-`--worker` on `init` (the control-plane host runs silos too), `--egress-extra-ca FILE` (a PEM file
-the egress gate also trusts, for a company TLS proxy) and `--openshell-gateway-scope host|namespace|silo`.
+`init` takes `--user NAME` (your name in Kevaso; default your login name on this computer) and
+`--worker` (the control-plane host runs silos too). `init` and `host add` also take
+`--egress-extra-ca FILE` (a PEM file the egress gate also trusts, for a company TLS proxy) and
+`--openshell-gateway-scope host|namespace|silo`. `init --worker`, `host enable-worker` and `host add`
+write those into the worker they install.
 
 `init` and `host add` also take the extra hardening, each only when asked for:
 `--disable-password-login` (SSH keys only) and `--change-root-password` (a random one nobody
@@ -201,7 +204,7 @@ Both look at the machine first and stop, changing nothing, if something won't wo
 
 | Command | Does |
 |---|---|
-| `kvoadm users invite NAME [--namespace NS [--role editor\|admin\|viewer]] [--group G]… [--ttl D]` | A one-time sign-in code |
+| `kvoadm users invite NAME [--namespace NS [--role editor\|admin\|viewer]] [--group G]… [--ttl D]` | A one-time sign-in code. Cluster-admin only. With `--namespace` and no `--role`, the role is `editor`. `--ttl` defaults to 15m |
 | `kvoadm users list` | Everyone who can sign in |
 | `kvoadm users disable NAME` | Cut someone off now |
 
@@ -218,11 +221,11 @@ Both look at the machine first and stop, changing nothing, if something won't wo
 |---|---|
 | `kvoadm backup [USER@]ADDR --ssh-key KEY --output FILE` | A backup of the control plane, sealed to the recovery key |
 | `kvoadm init [USER@]ADDR … --restore FILE` | A fresh machine from a backup; asks for the recovery key (or reads it from stdin), then reconnects the workers. It starts a new history of the same cluster, which workers accept as a deliberate restore. Silos on workers that the restored state does not know are kept, never deleted. [Backup and restore]({{ '/operations/backup/' | relative_url }}) |
-| `kvoadm plugin install [USER@]ADDR --name N --binary FILE [--cluster-secret NAME]… [--config FILE] [--side controller\|node] [--manifest FILE [--yes]]` | A provider plugin as a hardened service. Each `--cluster-secret` names a cluster secret. Install creates service account `plugin-NAME` in namespace `kevaso-system` and prints the account to bind; you pin those names in a ClusterRole and bind that account. The host fetches each value and keeps it root-only, and the plugin reads that name from its credential directory. Repeat the flag for each name. A manifest's privileges are shown and need `--yes`. A folder the plugin asks to write is one of those, and only its own folders are allowed. [Plugins]({{ '/extending/plugins/#install-a-provider-plugin' | relative_url }}) |
+| `kvoadm plugin install [USER@]ADDR --name N --binary FILE [--cluster-secret NAME]… [--config FILE] [--side controller\|node] [--manifest FILE [--yes]]` | A provider plugin as a hardened service. Each `--cluster-secret` names a cluster secret. Install creates service account `plugin-NAME` in namespace `kevaso-system` (only a cluster admin may change objects there) and prints the account to bind. A ClusterRole reads a value only with `get` on `clustersecrets/value` and `resourceNames` listing that name; bind that role to the account. The host fetches each value and keeps it root-only, and the plugin reads that name from its credential directory. Repeat the flag for each name. A manifest's privileges are shown and need `--yes`. A folder the plugin asks to write is one of those, and only its own folders are allowed. [Plugins]({{ '/extending/plugins/#install-a-provider-plugin' | relative_url }}) |
 | `kvoadm plugin install [USER@]ADDR --package DIR [--binary FILE] [--api-server URL] [--adopt] [--yes]` | A [plugin operator]({{ '/extending/plugins/#plugin-operators' | relative_url }}): shows every rule its controller gets, installs on `yes` |
 | `kvoadm plugin uninstall NAME [--force]` | Remove an operator and what it owns; refused while objects of its kinds exist unless `--force` |
 | `kvoadm plugin list` | Operators: version, kinds, whether the controller runs, host |
-| `kvoadm plugin remove [USER@]ADDR --name N` | Removes one side: its unit, and the program, cached secrets and service account once no side is left |
+| `kvoadm plugin remove [USER@]ADDR --name N [--side controller\|node]` | Removes one side (default `controller`): its unit, and the program, cached secrets and service account once no side is left |
 
 ---
 

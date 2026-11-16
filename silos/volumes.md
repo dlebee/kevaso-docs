@@ -72,6 +72,13 @@ so it does not choose a host with room: pick one with `placement`. It covers mic
 containers' `local` volumes and volumes on provider classes are not checked this way. Running out of
 space *inside* a volume is the silo's own problem.
 
+**A device path outside `/dev/disk/by-id/`.** The host mounts a device-class volume only from a name
+under `/dev/disk/by-id/`. Anything else is refused, and the silo does not start:
+
+```text
+not mounting /dev/sdb: a volume's device is under /dev/disk/by-id/
+```
+
 ---
 
 ## On containers (`docker`, `podman`)

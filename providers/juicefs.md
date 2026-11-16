@@ -30,9 +30,9 @@ flowchart LR
 
 | | |
 |---|---|
-| **Container silos** (`docker`, `podman`) | Run on real cloud machines with `docker`: the volume formatted once, mounted with `--subdir` so the silo sees only its folder, sized, moved with its data, moved again after its host was powered off (running elsewhere with its data after about 1 m 20 s), and deleted. Not run with `podman`. |
+| **Container silos** (`docker`, `podman`) | Run on real cloud machines with `docker`: the volume formatted once, mounted with `--subdir` so the silo sees only its folder, sized, and deleted. A plain `kvo move` of the container is refused. Not run with `podman`. |
 | **MicroVM silos** (`cloud-hypervisor`) | In code and tested with fakes: a volume is shared into the VM over virtiofs, and a root disk can be an image file on a volume, so the VM moves ([Volumes]({{ '/silos/volumes/' | relative_url }})). **Not run on a real machine.** |
-| **Volume sizes** | `size` is a directory quota on the volume's folder (whole GiB, rounded up): writes past it fail, and growing `size` in the spec raises it with the silo running. A volume with no `size` has no quota. |
+| **Volume sizes** | `size` is required. It is a directory quota on the volume's folder (whole GiB, rounded up): writes past it fail, and growing `size` in the spec raises it with the silo running. A volume with no `size` is refused: `volume … needs a size: give it one in the silo's volumes[].size (e.g. 10Gi)`. |
 | **The metadata database** | Bring your own. Kevaso doesn't run it for you yet. |
 | **Silos that don't run as root** | Not handled: a volume's folder is owned by root with mode `0700`, so a program running as another user can't write to it. |
 | **Volumes shared by several silos** | Not possible: the API has no such field. |
@@ -50,9 +50,9 @@ flowchart LR
 - Container workers (`--runtime docker` or `podman`).
 
 **The metadata database is the part to look after.** Every host using the class talks to it all the
-time. While it's down, reads and writes on the volumes **wait**, up to about 40 seconds, and carry
-on by themselves if it comes back in that time. After that they fail with an I/O error until it's
-back. The silo isn't marked failed: its `VolumesResponding` condition says `NotAnswering` while
+time. While it's down, reads and writes on the volumes **wait**, and carry on by themselves if it
+comes back before JuiceFS gives up on its own retries. Kevaso does not set that wait. After JuiceFS
+gives up they fail with an I/O error until it's back. The silo isn't marked failed: its `VolumesResponding` condition says `NotAnswering` while
 calls wait and `Failing` once they fail. A silo whose program doesn't expect a stalled disk can look
 frozen. Run the database somewhere that stays up, and back it up.
 
@@ -85,7 +85,8 @@ A JSON file naming the classes. It holds no secrets: credentials are only *named
 | `bucket` | The bucket's URL | required |
 | `storage` | The object store's type | `s3` |
 | `fileSystem` | The JuiceFS file system's name | `kevaso` |
-| `cacheDir`, `cacheSizeMiB` | The local cache on each host | `/var/cache/kevaso-juicefs/CLASS` |
+| `cacheDir` | The local cache on each host | `/var/cache/kevaso-juicefs/CLASS` |
+| `cacheSizeMiB` | That cache's size, in MiB | JuiceFS's own size, when you leave it out |
 | `credentials` | The names of the cluster secrets holding the bucket's keys and the metadata password. Each is optional. | none |
 | `description` | Text shown for the class | A standard line |
 | `stateDir` | The controller side's folder, where it mounts each class's root | `/var/lib/kevaso-provider-juicefs` |
@@ -219,7 +220,7 @@ spec:
     image: ghcr.io/example/db:5.2
   volumes:
     - { name: data, class: juicefs, size: 200Gi, mountPath: /data }
-  availability: { onHostLoss: Move }
+  availability: { onHostLoss: Recreate }
 ```
 
 ```bash
@@ -231,8 +232,19 @@ NAME   RUNTIME  PHASE    READY  HOST  MOVABLE   ON-CP-LOSS  AGE
 db-1   docker   Running  yes    hv2   Anywhere  -           3m
 ```
 
-`kvo move silo db-1 --to hv3` now works with the data: the old host stops the silo and unmounts the
-volume, then the new host mounts it and starts it. Two hosts never have it mounted at once.
+A container's own files are never kept, so a plain `kvo move` of this silo is refused. Move it as a
+fresh container. The JuiceFS folder is mounted again on the new host, so the files in the volume
+come with it.
+
+```bash
+kvo move silo db-1 --to hv3 --recreate
+```
+
+When the host is lost, add `--confirm-fenced` once you know the old copy is off. Two hosts never
+have the volume mounted at once. `onHostLoss: Move` is still allowed when every volume can attach
+elsewhere. Kevaso starts that silo on another host by itself only when the silo also has
+`onControlPlaneLoss: Stop` and the old host has reported that its copy stopped. A host that is
+down cannot report that.
 
 ---
 

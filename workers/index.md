@@ -53,6 +53,8 @@ bin/kvoadm host add root@198.51.100.20 \
 | `--runtime` | Which runtimes to install (repeatable) |
 | `--behind-nat` | Nothing can reach it from outside: it'll use the relay |
 | `--server URL` | The API address *as this host reaches it*, if not the one in your context |
+| `--egress-extra-ca PATH` | A PEM file on the machine. The egress gate also trusts it for the servers silos connect to. Written into the worker's unit |
+| `--openshell-gateway-scope host\|namespace\|silo` | How many OpenShell gateways this worker runs. Written into the worker's unit. If you leave it out, the worker uses `namespace` (one gateway per namespace) |
 
 `kvoadm` makes a one-time join token through the API (as you, a cluster admin), installs the signed
 `kevasod` like `init` does, and starts it as a worker. It joins, and appears in:
@@ -158,7 +160,7 @@ If the second look itself fails, the message is `looking at the host again befor
 | `--dry-run` | Look and print the plan, then stop: it prints `Dry run: nothing was changed.` |
 | `--yes`, `-y` | Don't ask for `yes`. For scripts. |
 | `--force` | Go ahead although silos are on the machine. Their data is lost. Without it, `reset` stops and names the silos. |
-| `--wipe-storage` | Also remove the `kevaso` volume group where it sits on a real disk, or where it was there before Kevaso. See below. |
+| `--wipe-storage` | Also remove the `kevaso` volume group where it sits on a real disk, or where it was there before Kevaso, and loop-file volumes that no silo on the host is using. See below. |
 
 The flags that set a machine up (`--kevasod`, `--runtime`, `--worker`, `--password` and the like)
 are refused: `--kevasod isn't a reset flag`.
@@ -180,16 +182,21 @@ are refused: `--kevasod isn't a reset flag`.
   container, volume and image goes, then Docker, `/var/lib/docker`, `/var/lib/containerd` and
   `/etc/docker`. If it installed podman, the same for podman and `/var/lib/containers`. If Docker was
   already there, it stays and its `daemon.json` is put back as it was (or removed, if there was none).
+  Putting that file back restarts Docker, which stops containers that were running. Containers that
+  are not Kevaso's are started again. `reset` prints `started foreign container NAME again` for each.
+  One that does not start fails that step.
 
 Nothing under Kevaso's paths is removed while something is still mounted there: `reset` unmounts
-first, and if a mount stays it stops that step and says `still mounted, so nothing under Kevaso's paths is
-removed: …`, so a volume mounted inside them is never reached. Files are removed without crossing into
+first, and if a mount stays it stops that step and says `something is still mounted under Kevaso's paths: not removing them`, so a volume mounted inside them is never reached. Files are removed without crossing into
 another file system.
 
-A step that fails does not stop the others. When all steps are done, `reset` runs a checklist
-(no Kevaso unit, process, file, mount, link, address, nftables table, container, loop device, user or
-volume group left; nothing listening on 2379, 2380 or 6443) and names anything it finds. Then it ends
-with `<ADDRESS> is clean`. If something is left, it prints what and exits with an error.
+A step that fails does not stop the later removal steps. The install record is kept when any step
+failed, so the next `kvoadm reset` still knows what to undo. When the steps are done, `reset` runs a
+checklist (no Kevaso unit, process, file, mount, link, address, nftables table, container, loop
+device, user or volume group left; nothing listening on 2379, 2380 or 6443) and names anything it
+finds. If a step failed, the command fails, even when the checklist is clean, and prints
+`Steps that failed`. When every step and the checklist pass, it prints
+`→ ADDRESS is clean: every checklist item passed. kvoadm init or host add can set it up again.`
 
 ### What it never removes
 
@@ -205,13 +212,14 @@ Silo disks of the microVM runtime live in a volume group named `kevaso`.
 
 | Where the volume group is | What `reset` does | With `--wipe-storage` |
 |---|---|---|
-| None | Removes only a leftover `/var/lib/kevaso-storage.img` | Same |
-| On `/var/lib/kevaso-storage.img`, the loop file `--loop-storage` made, and it did not exist before Kevaso. If the file is there but its volume group can't be read, it is removed too, and the plan says so | Removes the volume group with every volume on it, detaches the loop device and deletes the file. The volumes are listed, and are lost. | Same |
+| None, and no `/var/lib/kevaso-storage.img` | Nothing of the volume group to remove | Same |
+| On `/var/lib/kevaso-storage.img`, the loop file `--loop-storage` made, and it did not exist before Kevaso, and it has volumes or its volume group can't be read, and no silo is on the host | **Refuses**. It names the volumes, or the storage file if the volume group can't be read. Look at them first (`lvs kevaso`), then reset with `--wipe-storage` | Removes the volume group with every volume on it, detaches the loop device and deletes the file. The volumes are listed, and are lost |
+| On that same loop file, with no volumes, or with a silo on the host and `--force` | Removes the volume group with every volume on it, detaches the loop device and deletes the file. The volumes are listed, and are lost | Same |
 | On a real disk (named with `--storage-device`), or it existed before Kevaso (the record says so) | **Keeps** the volume group and its volumes, and says so | Removes the volume group with every volume on it, then the physical volumes' LVM labels (`lvremove`, `vgremove`, `pvremove`) |
 
 `--wipe-storage` removes only the volume group named `kevaso`, and only LVM's records of it: it does
 not repartition the disk or overwrite its data, and it touches no other volume group. It removes
-the loop file too. The silos' data on those volumes is gone either way.
+the loop file too. Where the table removes volumes, the silos' data on them is gone.
 
 ### The install record
 
@@ -230,5 +238,6 @@ else, and deletes it with the rest.
 ### What has run
 
 The plan `reset` runs is the one the bare-metal test suite uses to clean its machine; the 13
-one-machine tests passed and the machine came back clean. The command itself has been tested only
-against a stand-in for the machine. It has not been run on a machine holding a real cluster.
+one-machine tests passed and the machine came back clean. On bare metal it has also reset a named
+disk, with and without `--wipe-storage`. Beside a Docker that was already installed, containers that
+are not Kevaso's come back, and a failed step fails the reset and keeps the install record.

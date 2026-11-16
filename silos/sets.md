@@ -248,6 +248,7 @@ spec:
 ```
 
 - It gets a virtual IP (its cluster IP) and the name `api.payments.kevaso`.
+- A port is sent only to a silo that declares it (`targetPort`, or the port's own name) with the same protocol. A LoadBalancer also holds that silo unless the silo opens the port in its own service, and not only on a lease. `kvo describe service` shows the reason.
 - Every worker sends that address to one of its endpoints: the Ready silos its selector picks.
   Standby instances are never endpoints.
 - The connection keeps the caller's address, so **each endpoint's `allowFrom` still decides**.

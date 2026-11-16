@@ -213,7 +213,9 @@ kvo apply -f api.yaml
 
 The Ingress opens exactly one path through the firewall: from the class's controller to the silo's
 `http` port. Nothing else can reach it. The service can be a silo's own (its `service.name`, or the
-silo's name) or a standalone `Service`, which sends to every silo it selects. If the silo is held
+silo's name) or a standalone `Service`, which sends to every silo it selects. A `LoadBalancer`
+Service publishes outside only ports those silos already open, and not a port that opens only on
+a lease: a silo that doesn't is left out of it. If the silo is held
 back by [`routeWhen`]({{ '/silos/probes/' | relative_url }}), or isn't running, its route is left out until it is
 routed again.
 

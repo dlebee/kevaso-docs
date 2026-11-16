@@ -31,10 +31,12 @@ has no other flags. It does two things:
    The silo loses its host and is placed again by the scheduler, with `movingFrom: hv2` set. The new
    host starts it only after `hv2`'s agent has stopped it and let go. So two copies never run.
 
-Silos with `Wait` or `Move` stay where they are: `drain` prints
-`NAMESPACE/NAME stays: onHostLoss Wait pins it to hv2 (its disk is local)`. Delete them, change their
+Silos with `Wait` or `Move` stay where they are. `drain` names the policy:
+`NAMESPACE/NAME stays: onHostLoss Move pins it to hv2 (its disk is local)`. Delete them, change their
 policy, or move them yourself with `kvo move silo NAME --to HOST`
-([Moves]({{ '/silos/moves/' | relative_url }})). When none stay, it prints that the
+([Moves]({{ '/silos/moves/' | relative_url }})). A container (`docker`, `podman`,
+`openshell-container`) is not moved that way: a plain `kvo move` is refused. It needs
+`onHostLoss: Recreate` and `kvo move … --recreate`. When none stay, it prints that the
 host is empty of silos once the moved ones are gone.
 
 `drain` does not wait. It returns once it has written the new state. Watch the silo with
@@ -68,5 +70,5 @@ it is up. [Moving a silo off a host you know is off]({{ '/silos/control-plane-lo
 
 ### What has run
 
-`drain` has been tested in-process, with stand-ins for the machines. It has not been run on real
-machines.
+`drain` has run on two bare-metal machines. Ending a hand-off whose old host is lost has not run
+on real machines.

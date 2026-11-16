@@ -15,9 +15,9 @@ entering it.
 > **Built from source.** Kevaso has no packaged releases yet: the [quick start]({{ '/quickstart/' | relative_url }})
 > shows how to build `kvo`, `kvoadm` and `kevasod`.
 
-> **Not proven everywhere.** On bare metal, 13 tests have passed on one machine. Nothing has been
-> run across two bare-metal machines, with failures injected, or for a long time, and OpenShell has
-> not run on bare metal. [What's proven where]({{ '/operations/#whats-proven-where' | relative_url }})
+> **Not proven everywhere.** Bare metal has run on one machine and on two. OpenShell stop, delete
+> and reboot have run on bare metal. A long soak and the failure cases have not.
+> [What's proven where]({{ '/operations/#whats-proven-where' | relative_url }})
 > lists what has run on which machines.
 
 ---
