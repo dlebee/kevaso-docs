@@ -200,6 +200,69 @@ publishes them, and every worker picks them up.
 
 ---
 
+## Keep the data on a disk you can move
+
+A backup brings the cluster back as it was when the backup was taken. If the system node's
+`/var/lib/kevaso` lives on a disk you can move to another machine (a cloud provider's block storage
+volume, for example), losing the machine loses nothing: you attach the disk to a new machine and
+the cluster carries on from its last write. Keep taking backups anyway. The disk lives in one place,
+and a mistake on it is kept as faithfully as anything else.
+
+### Set it up once
+
+Before `kvoadm init`, on the machine: format the disk (this erases it, so do it this first time
+only), and mount it at `/var/lib/kevaso` at every boot.
+
+```bash
+mkfs.ext4 -L kevaso-data /dev/disk/by-id/DISK
+```
+
+```bash
+echo "/dev/disk/by-id/DISK /var/lib/kevaso ext4 defaults,noatime,nofail 0 2" >> /etc/fstab
+```
+
+```bash
+mkdir -p /var/lib/kevaso && mount /var/lib/kevaso
+```
+
+Use the disk's `/dev/disk/by-id/` name: it stays the same on every machine you attach it to, unlike
+`/dev/sdc`. `nofail` lets the machine boot without the disk. Then `kevasod` finds no data and
+[refuses to start](#starting-a-cluster-and-a-node-that-finds-its-data-gone), rather than starting
+an empty cluster. Then run `kvoadm init` as usual.
+
+### Move it to a new machine
+
+[Prepare the new machine]({{ '/setup/prepare/' | relative_url }}), attach the disk to it, and mount it
+with the `fstab` line and `mount` above. **Don't format it**: the cluster is on it. Then run
+`kvoadm init` with the same `--name` and `--cluster` as the first time:
+
+```bash
+bin/kvoadm init root@198.51.100.7 \
+    --ssh-key ~/.ssh/kevaso_ed25519 \
+    --host-key SHA256:pD6y1yfXq0b3m9GWkqk1n0x5S8yGe7mT1UuJb2cNqXE \
+    --kevasod bin/kevasod-linux-amd64 \
+    --name hv1 \
+    --cluster home
+```
+
+`init` finds the cluster on the disk and starts it as it is:
+
+```
+→ cluster home found on this host (its data in /var/lib/kevaso): starting it as it is, no new cluster
+→ control plane started (kevasod.service)
+→ kvo context "home" written to /Users/you/.kevaso/config.yaml (server https://198.51.100.7:6443)
+→ host hv1 is Ready. Try: kvo get hosts
+→ the recovery key is still this cluster's: no new one is made
+→ worker hv2 reconnected (https://198.51.100.7:6443)
+```
+
+Its certificate is made again at every start, for the machine's addresses, so a new address is
+fine. As after a restore, `kvoadm` points every worker at the new address over SSH, and lists
+any worker it can't reach with the [`kvoadm host reconnect`](#4--workers) command to run. Silos on
+workers keep running throughout: a worker that loses its control plane keeps what it runs.
+
+---
+
 ## Starting a cluster, and a node that finds its data gone
 
 **Only `kvoadm init` creates a cluster.** It runs `kevasod admin create-cluster --cluster NAME` on the
