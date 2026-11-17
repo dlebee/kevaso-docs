@@ -199,6 +199,10 @@ spec:
   grants: [build-tools]
 ```
 
+An OpenShell sandbox (`openshell`, `openshell-container`) has no network card. A grant opens a host
+and a port. An [OpenShellPolicy]({{ '/silos/runtimes/#openshell-policies' | relative_url }}) adds a
+path, read-only or read-write access, REST, and which programs may use a rule.
+
 | `to:` | How it's enforced |
 |---|---|
 | An address or CIDR | The host firewall, by address, port and protocol |

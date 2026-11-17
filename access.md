@@ -81,7 +81,7 @@ role to people in a namespace. The built-in roles:
 
 | Role | Can |
 |---|---|
-| `viewer` | Read silos, silo sets, services, VM images, ingresses, certificates, service accounts and grants; see that secrets exist, which silos wait for an approval, the [panes]({{ '/panes/' | relative_url }}) silos report, the [leases]({{ '/networking/leases/' | relative_url }}) on their ports, and the [IPs]({{ '/networking/ips/' | relative_url }}) |
+| `viewer` | Read silos, silo sets, services, VM images, ingresses, certificates, service accounts, grants and OpenShell policies; see that secrets exist, which silos wait for an approval, the [panes]({{ '/panes/' | relative_url }}) silos report, the [leases]({{ '/networking/leases/' | relative_url }}) on their ports, and the [IPs]({{ '/networking/ips/' | relative_url }}) |
 | `editor` | Everything `viewer` can, plus create and change those objects, `exec`, terminals and files (`silos/ssh`, `silos/files`), moves, opening and closing leased ports; create and *use* secrets (never read a value back); *use* an IP an admin made |
 | `admin` | Everything `editor` can, plus roles and bindings in the namespace, minting service-account tokens, opening ports on a host address or behind a load balancer (`services/expose-public`), publishing on a public ingress class (`ingresses/publish-public`), creating and releasing IPs, reading secret values, answering approvals (a secret's, or a leased port's), deleting panes, approvals and leases |
 | `cluster-admin` | Everything, everywhere (what `kvoadm init` gives you) |

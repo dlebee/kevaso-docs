@@ -23,7 +23,7 @@ Every command on one page. `kvo` uses your current context (`kvo ctx`); `-n NS` 
 | `kvo watch KIND [-n NS \| -A]` | Print the current state, then every change |
 
 Kinds: `namespaces` (`ns`), `hosts`, `silos`, `silosets` (`ss`), `services` (`svc`), `vmimages`
-(`vmi`), `secrets`, `grants`, `ips`, `ingresses` (`ing`), `ingressclasses`, `certificates`
+(`vmi`), `secrets`, `grants`, `openshellpolicies`, `ips`, `ingresses` (`ing`), `ingressclasses`, `certificates`
 (`cert`), `issuers`, `roles`, `rolebindings`, `clusterroles`, `clusterrolebindings`, `clustersecrets`,
 `serviceaccounts` (`sa`), `approvals`, `panes`, `kinddefinitions` (`kd`), `validationpolicies`,
 `mutationpolicies`, `leases`, `plugins`, and any [kind you define]({{ '/extending/kinds/' | relative_url }}) (by its plural,

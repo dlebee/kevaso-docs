@@ -51,7 +51,9 @@ The default choice: a real Linux machine, booted from `ubuntu-24.04`, with its o
 
 A silo as an [NVIDIA OpenShell](https://github.com/NVIDIA/OpenShell) sandbox: a microVM with **no
 network card at all**. Programs inside reach only what OpenShell's policy allows, and keys are
-swapped in by OpenShell's proxy.
+swapped in by OpenShell's proxy. A grant opens a host and a port. An
+[OpenShell policy](#openshell-policies) adds a path, read-only or read-write access, REST, and which
+programs may use a rule.
 
 ```yaml
 apiVersion: kevaso/v1
@@ -81,6 +83,7 @@ with the real one.
 | Good to know | |
 |---|---|
 | Grants | Names and single addresses, TCP only, each port listed (at most 16 per rule) |
+| Policies | [OpenShell policies](#openshell-policies), listed in `openshellPolicies` |
 | Secrets | `inject` only. `file`, `env`, `broker`, `sign` and approval are refused for these runtimes, with the reason |
 | Injection format | `Bearer {{value}}` in `Authorization`, or `{{value}}` in any header |
 | Init steps | Run as the sandbox's user, not root |
@@ -91,7 +94,130 @@ with the real one.
 ## openshell-container
 
 The same as `openshell`, on OpenShell's Docker driver: for hosts without KVM. The workload has no
-network; a supervisor container makes the allowed calls.
+network; a supervisor container makes the allowed calls. It lists [OpenShell policies](#openshell-policies)
+the same way.
+
+---
+
+## OpenShell policies
+
+An **OpenShellPolicy** is a namespaced object for an OpenShell sandbox's own network rules. A grant
+opens a host and a port. A policy adds a path, read-only or read-write access, the REST protocol,
+and which programs may use a rule.
+
+A silo on `openshell` or `openshell-container` lists policies by name in `spec.openshellPolicies`,
+beside `grants`. The names are policies in that silo's namespace. A silo set lists them on
+`spec.template.openshellPolicies`. An editor creates, changes and deletes policies in their own
+namespace. A viewer can read them.
+
+Kevaso writes the silo's grants and the policies it lists into one policy for the sandbox. The
+sandbox is created with that policy. After a restart, Kevaso pushes it again. After a gateway
+outage, Kevaso applies it when the sandbox next starts, including a change you applied while the
+gateway was down. A path, read-only or read-write access, or REST is always enforced. A request
+that breaks the limit is refused.
+
+Change a policy, or the list on the silo, and apply. Kevaso pushes the new policy to the running
+sandbox.
+
+### Allow a read-only GET
+
+This policy allows a GET of `https://example.com/`. The silo lists it. Save it as `example.yaml`.
+
+```yaml
+apiVersion: kevaso/v1
+kind: OpenShellPolicy
+metadata: { name: example, namespace: dev }
+spec:
+  networkPolicies:
+    - name: web
+      endpoints:
+        - host: example.com
+          port: 443
+          protocol: rest
+          path: /
+          access: read-only
+---
+apiVersion: kevaso/v1
+kind: Silo
+metadata: { name: worker, namespace: dev }
+spec:
+  runtime: openshell
+  container: { image: ubuntu-24.04 }
+  openshellPolicies: [example]
+```
+
+```bash
+kvo apply -f example.yaml
+```
+
+`protocol: rest` and `access: read-only` allow that GET. A POST to the same URL is refused. Another
+path is refused. Leave `binaries` out and every program in the sandbox may use the rule. List
+absolute paths under `binaries`, such as `/usr/bin/curl`, and only those programs may use it.
+`access: read-write` allows writing as well as reading.
+
+On a host without KVM, set `runtime: openshell-container`.
+
+A rule has a lower-case name (letters, digits, `-`) and 1 to 16 endpoints. An endpoint has a host
+and a port from 1 to 65535. A host is a name or one public IPv4 address. A host name is stored in
+lower case. One public address written as a `/32` is stored as that address. `path` is an absolute
+path glob. A policy holds 1 to 32 rules. A silo names at most 32 policies.
+
+### With grants
+
+Kevaso puts the grants and the policies in the sandbox's one policy. A grant opens its host and
+port. A policy adds its path, its access, its protocol and its programs. Name a grant in `grants`
+and a policy in `openshellPolicies` on the same silo. Both stay in force. A grant for
+`example.com` opens that host and port, POST included. The policy's rule allows the GET as well.
+To allow only that GET, list the policy and leave `example.com` out of `grants`.
+
+The policies follow the order of `openshellPolicies`. Each policy's rules and endpoints stay in the
+order you wrote them.
+
+A silo that lists neither a grant nor a policy can reach nothing outside.
+
+A name you add has to exist in the namespace. Apply is refused otherwise:
+`silo worker: openshell policy "missing" doesn't exist in namespace dev`. A silo set says `siloset`
+where that message says `silo`. Delete a policy the silo still lists, and the next push leaves that
+policy out. The name may stay on the silo. `kvo describe silo worker` shows `PolicyApplied`: what
+is in force, and what could not be enforced.
+
+### What is refused
+
+- A runtime other than `openshell` or `openshell-container` that sets `openshellPolicies`. The
+  message is `openshellPolicies is only for runtime openshell or openshell-container; docker can't use one`
+  (it names the runtime). On a silo set the message starts with `template:`.
+- A host inside the cluster (a silo address, a service address, or the mesh), or loopback,
+  link-local, or a private address. The message names the range:
+  `endpoint host "127.0.0.1" is inside 127.0.0.0/8 (loopback), which a policy never opens`.
+  A private address is refused with `hosts are names or public addresses`.
+- A range, or anything other than a name or one public IPv4 address. Hosts are IPv4 for now.
+- A policy with no rules, or more than 32: `an OpenShellPolicy needs 1 to 32 network policies`.
+- A rule with no endpoints, or more than 16. More than 16 programs on one rule.
+- Two rules with the same name, or a rule name other than a lower-case name (letters, digits, `-`).
+- A silo that names more than 32 policies, the same name twice, or a name other than a lower-case
+  name (letters, digits, `-`).
+- `protocol` other than `rest`. `access` other than `read-only` or `read-write`.
+- A path that does not start with `/`, that has a `..` segment or a control character, or that is
+  longer than 200 characters:
+  `path "../x": an absolute path glob (starts with /), no control character or .. segment, at most 200 characters`.
+  A program path has the same limit.
+- `binaries` set to an empty list. Leave the field out for every program, or list 1 to 16 paths.
+- A field the kind doesn't have.
+- A policy name that is not in the namespace, when you add it to a silo or a silo set.
+
+### Remove a policy
+
+Take the name out of `openshellPolicies` and apply the silo again. Kevaso pushes the sandbox policy
+without that rule.
+
+To delete the object:
+
+```bash
+kvo delete openshellpolicy example -n dev
+```
+
+A silo that still lists the name loses that rule on the next push. Its grants and its other
+policies stay. With no grant and no policy left, the sandbox can reach nothing outside.
 
 ---
 

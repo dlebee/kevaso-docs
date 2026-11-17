@@ -211,7 +211,7 @@ in the table as proven, assume it isn't.
 | A host is `Unknown` | It hasn't reported for 40 s: is `kevasod` running on it, can it reach the control plane? Its silos keep running if it is only cut off, and Kevaso moves none of them: [When the control plane is lost]({{ '/silos/control-plane-loss/' | relative_url }}) |
 | A silo is `Degraded` | `kvo describe silo NAME`: an upkeep task's fix didn't help, and its message is there ([Daemons and upkeep]({{ '/silos/daemons/' | relative_url }})) |
 | A silo is `Running` but gets no traffic | `kvo describe silo NAME`: the probes table and `Route when`. A silo that isn't ready is held out of its service ([Probes]({{ '/silos/probes/' | relative_url }})). Then each port's state: a [leased port]({{ '/networking/leases/' | relative_url }}) is closed until it's opened |
-| A silo can't reach something | Is there a Grant for it, listed in the silo's `grants`? On OpenShell, `describe` shows a `PolicyApplied` condition with what couldn't be enforced |
+| A silo can't reach something | Is there a Grant for it, listed in the silo's `grants`? On OpenShell, also an OpenShellPolicy listed in `openshellPolicies`. `describe` shows a `PolicyApplied` condition with what couldn't be enforced |
 | `kvo` says `x509: certificate signed by unknown authority` | You're talking to another cluster than your context's (another machine on the same address or port?) |
 
 On a host, everything kevasod does is in its journal:
