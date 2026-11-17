@@ -26,7 +26,7 @@ sections:
   - title: Workers
     pages:
       - { title: Adding workers, url: /workers/ }
-      - { title: Draining a host, url: /workers/host-loss/ }
+      - { title: Draining and removing a host, url: /workers/host-loss/ }
   - title: Silos
     pages:
       - { title: Your first silo, url: /silos/first-silo/ }

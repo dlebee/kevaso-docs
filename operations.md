@@ -69,6 +69,7 @@ sudo tail -f /var/lib/kevaso/audit.log | jq -c 'select(.allowed == false)'
 |---|---|
 | See them, with runtimes and leases | `kvo get hosts`, `kvo describe host hv2` |
 | Take one out for maintenance | `kvoadm host drain hv2`: [Draining a host]({{ '/workers/host-loss/' | relative_url }}) |
+| Take one out for good | `kvoadm host remove hv2`: [Removing a host]({{ '/workers/host-loss/#removing-a-host' | relative_url }}) |
 | Roll a new `kevasod` over all of them | `kvoadm upgrade --kevasod ./kevasod`: [High availability]({{ '/operations/ha/' | relative_url }}#upgrade) |
 | Put it back | `kvoadm host uncordon hv2` |
 | The control-plane host runs silos too | `kvoadm host enable-worker root@HOST --ssh-key … --runtime …` |

@@ -1,9 +1,9 @@
 ---
-title: Draining a host
+title: Draining and removing a host
 permalink: /workers/host-loss/
 ---
 
-# Draining a host
+# Draining and removing a host
 
 Machines fail and need maintenance. This page is about taking one out on purpose.
 
@@ -72,3 +72,86 @@ it is up. [Moving a silo off a host you know is off]({{ '/silos/control-plane-lo
 
 `drain` has run on two bare-metal machines. Ending a hand-off whose old host is lost has not run
 on real machines.
+
+## Removing a host
+
+Removing a host takes it out of the cluster for good. A host with no silos is removed at once:
+
+```bash
+bin/kvoadm host remove hv2
+```
+
+A host that still has silos placed on it, or moving from it, is removed only once you confirm that
+the machine is **off or wiped**. Kevaso can't stop those copies itself, so your confirmation is what
+lets their silos start somewhere else, the same as `kvo move … --confirm-fenced`.
+
+`kvoadm host remove` lists what will happen to each silo, then asks:
+
+```text
+→ Is hv2 off or wiped? [y/N]
+```
+
+To answer yes from a script, add `--confirm-off`:
+
+```bash
+bin/kvoadm host remove hv2 --confirm-off
+```
+
+`kvo delete host` asks for the same confirmation. Without `--confirm-off`, it is refused and names
+how many silos are still there:
+
+```bash
+kvo delete host hv2 --confirm-off
+```
+
+### What happens to its silos
+
+| The silo | After the host is removed |
+|---|---|
+| `onHostLoss: Recreate` | A fresh copy starts on another host, from its image |
+| `onHostLoss: Move`, and every disk and volume can attach elsewhere | It starts on another host with its data |
+| Anything else, for example a microVM with a local root disk | It stays in the cluster, not running anywhere, with the condition `Unschedulable`, reason `HostDeleted` |
+| Moving from the removed host | The hand-off ends, and the silo starts on its new host |
+
+Removing a host never deletes a volume. A local disk or volume on the removed machine is simply out
+of reach, and the `HostDeleted` message says so. A silo marked `HostDeleted` stays that way, even if
+a machine joins again under the same name. To get it running again, start a fresh copy on another host:
+
+```bash
+kvo move silo NAME -n NAMESPACE --to HOST --recreate
+```
+
+Or delete it with `kvo delete silo NAME -n NAMESPACE`.
+
+### The removed machine
+
+The removed host's certificate is no longer accepted. If the machine comes back, its `kevasod` is
+refused with `host hv2 was removed from the cluster; join it again with kvoadm host add`, so it can
+neither start silos nor report on them. To use the machine again, reset it and add it again:
+
+```bash
+bin/kvoadm reset root@198.51.100.20 \
+    --ssh-key ~/.ssh/kevaso_ed25519 \
+    --host-key SHA256:…
+```
+
+```bash
+bin/kvoadm host add root@198.51.100.20 \
+    --ssh-key ~/.ssh/kevaso_ed25519 \
+    --host-key SHA256:… \
+    --kevasod bin/kevasod-linux-amd64 \
+    --install worker \
+    --name hv2
+```
+
+The new certificate it gets works. [Adding workers]({{ '/workers/' | relative_url }}#add-it). Removing a host is for cluster admins only.
+
+System nodes keep their own rules: removing one is refused if the store would lose its majority
+([High availability]({{ '/operations/ha/' | relative_url }})).
+
+### What has run
+
+Removing a stopped worker that still had a recreatable silo and a silo with a local volume has run
+on two nested-VM machines. The first silo started on the other worker, the second was marked
+`HostDeleted`, and the machine's old certificate was refused when its `kevasod` started again.
+Then it was added again.

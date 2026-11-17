@@ -20,6 +20,7 @@ Every command on one page. `kvo` uses your current context (`kvo ctx`); `-n NS` 
 | `kvo get KIND [NAME] [-n NS \| -A] [-o yaml\|json]` | List or show objects |
 | `kvo describe KIND NAME` | Everything about one object, for people |
 | `kvo delete KIND NAME` | Delete it. A namespace is refused while it still holds anything: delete those first. Deleting a namespace never deletes what is in it |
+| `kvo delete host NAME --confirm-off` | Delete a Host that still has silos, confirming the machine is off or wiped. Refused without the flag. [Removing a host]({{ '/workers/host-loss/#removing-a-host' | relative_url }}) |
 | `kvo watch KIND [-n NS \| -A]` | Print the current state, then every change |
 
 Kinds: `namespaces` (`ns`), `hosts`, `silos`, `silosets` (`ss`), `services` (`svc`), `vmimages`
@@ -165,7 +166,7 @@ A plugin never takes the name of a `kvo` command. See [Plugins for kvo]({{ '/ext
 | `kvoadm host add [USER@]ADDR … --install control-plane [--state-only] [--cluster-dns NAME] [--internal-ip IP] [--external-ip IP]` | A second or third [system node]({{ '/operations/ha/#add-a-system-node' | relative_url }}); `--state-only`: a light node (a vote only) |
 | `kvoadm host install HOST control-plane [--state-only] [--ssh-key KEY]` | Make an existing worker a system node too |
 | `kvoadm host uninstall HOST control-plane` | Take the control plane off a host that is a worker too (refused if it would lose the store's majority) |
-| `kvoadm host remove HOST` | Remove a system node (or a worker's Host): out of the store first; refused if it would lose the majority |
+| `kvoadm host remove HOST [--confirm-off]` | Remove a host from the cluster. With silos still on it, it lists which start elsewhere and which stay `HostDeleted`, then asks whether the machine is off or wiped (`--confirm-off`: yes). Its old certificate is refused afterwards. A system node: out of the store first; refused if it would lose the majority. [Removing a host]({{ '/workers/host-loss/#removing-a-host' | relative_url }}) |
 | `kvoadm store migrate [USER@]ADDR --ssh-key KEY` | Move a SQLite control plane onto etcd with a peer listener |
 | `kvoadm upgrade --kevasod BIN [--ssh-key KEY] [--batch N] [--version V] [--dry-run]` | Roll a new `kevasod` over the cluster: system nodes (light first, leader last), then workers. [Rules]({{ '/operations/ha/#upgrade' | relative_url }}) |
 | `kvoadm host list` | Hosts, both of their IPs, and their state |
