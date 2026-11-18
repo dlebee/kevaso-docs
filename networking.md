@@ -212,4 +212,18 @@ A rule opens TCP unless it lists `protocols` (`tcp`, `udp`; a host name is TCP o
 numbers and ranges such as `"30000-30100"`; with none, an address range opens every port and a host name
 opens 443. Addresses are IPv4 only for now.
 
+**What a grant never opens.** Whatever the rule, even `0.0.0.0/0`, a silo never reaches:
+- the host's loopback (`127.0.0.0/8`), `0.0.0.0/8`, link-local (`169.254.0.0/16`, the cloud
+  metadata address `169.254.169.254` included), multicast or reserved addresses;
+- the cluster's own ranges (the mesh, silo and service ranges) except as its silos allow;
+- its own host's internal and external addresses.
+
+A grant naming an address in the first two is refused when you write it. So `0.0.0.0/0` means "the internet and
+your private networks", nothing more. A silo still reaches the ports its host publishes for other
+silos, and its own host's address at `169.254.42.1` for [secrets]({{ '/secrets/' | relative_url }}).
+
+On a port where the same silo also has a host-name rule, its connections go through the egress
+gate, which also refuses every host of the cluster by address. To reach one there, such as an
+Ingress or a load balancer on another host, the grant has to name that address itself (a `/32`).
+
 DNS always works, so a silo can resolve anything; it just can't connect where no grant says.
