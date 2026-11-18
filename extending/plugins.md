@@ -20,7 +20,7 @@ Either way, a plugin never gets more than it shows you first.
 
 A plugin reads each secret by name from its credential directory. You store the value as a cluster secret, then allow that plugin's service account to read that name and no other.
 
-The service account is `plugin-NAME` in the namespace `kevaso-system`. A host fetches a value for a plugin only when that account may read the name.
+Each side of a plugin has its own service account in the namespace `kevaso-system`: `plugin-NAME` for the controller side, on the control plane, and `plugin-NAME-node` for the node side, on the workers. A host fetches a value for a plugin's side only when that side's account may read the name, and a worker only ever fetches for the node side. So bind a secret to the side that uses it: a cloud API token only the controller needs goes to `plugin-NAME` and never reaches a worker. A secret both sides need is bound to both accounts.
 
 Save the value in a file only you can read:
 

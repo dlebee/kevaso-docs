@@ -125,15 +125,17 @@ Or delete it with `kvo delete silo NAME -n NAMESPACE`.
 
 ### The removed machine
 
-The removed host's certificate is no longer accepted. If the machine comes back, its `kevasod` is
-refused with `host hv2 was removed from the cluster; join it again with kvoadm host add`, so it can
-neither start silos nor report on them. To use the machine again, reset it and add it again:
+The removed host's certificate is no longer accepted, from the moment its removal is recorded: its
+open connections to the cluster are closed, and new ones are refused with
+`host hv2 was removed from the cluster; join it again with kvoadm host add`.
 
-```bash
-bin/kvoadm reset root@198.51.100.20 \
-    --ssh-key ~/.ssh/kevaso_ed25519 \
-    --host-key SHA256:…
-```
+If the machine is still on, its `kevasod` takes that refusal as final. It stops every silo it runs
+(a normal stop, then a kill if that doesn't finish), keeps every disk and volume, and does nothing
+more until it joins again. So a "yes, it's off" that was wrong ends with the old copies stopped,
+not running next to the new ones.
+
+To use the machine again, add it again. `kvoadm host add` moves the old certificate folder aside
+(`/var/lib/kevaso/pki` gets a dated name; nothing is deleted) and joins with a new one:
 
 ```bash
 bin/kvoadm host add root@198.51.100.20 \
@@ -142,6 +144,14 @@ bin/kvoadm host add root@198.51.100.20 \
     --kevasod bin/kevasod-linux-amd64 \
     --install worker \
     --name hv2
+```
+
+To start it clean instead, with the old silos' disks gone, reset it first:
+
+```bash
+bin/kvoadm reset root@198.51.100.20 \
+    --ssh-key ~/.ssh/kevaso_ed25519 \
+    --host-key SHA256:…
 ```
 
 The new certificate it gets works. [Adding workers]({{ '/workers/' | relative_url }}#add-it). Removing a host is for cluster admins only.

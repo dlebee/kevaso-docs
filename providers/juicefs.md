@@ -133,7 +133,7 @@ kvo create clustersecret bucket-secret-key --from-file ~/bucket-secret-key.txt
 kvo create clustersecret metadata-password --from-file ~/metadata-password.txt
 ```
 
-Save this as `juicefs-secrets.yaml`. `resourceNames` lists exactly these three. The binding names service account `plugin-juicefs` in the namespace `kevaso-system`. A host fetches a value for this plugin only when that account may read the name.
+Save this as `juicefs-secrets.yaml`. `resourceNames` lists exactly these three. Both sides of JuiceFS need all three, so the binding names both service accounts in the namespace `kevaso-system`: `plugin-juicefs` for the controller side and `plugin-juicefs-node` for the node side. A host fetches a value for a side only when that side's account may read the name.
 
 ```yaml
 apiVersion: kevaso/v1
@@ -150,6 +150,7 @@ metadata: { name: juicefs-secrets }
 roleRef: { kind: ClusterRole, name: juicefs-secrets }
 subjects:
   - { kind: ServiceAccount, name: plugin-juicefs, namespace: kevaso-system }
+  - { kind: ServiceAccount, name: plugin-juicefs-node, namespace: kevaso-system }
 ```
 
 ```bash
@@ -185,7 +186,7 @@ bin/kvoadm plugin install root@203.0.113.20 \
     --cluster-secret metadata-password
 ```
 
-Install creates the service account `plugin-juicefs` in the namespace `kevaso-system` and prints the account to bind. It records the names. It does not copy the files. Each host fetches the values and keeps copies only root can read. The plugin reads each name from its credential directory. See [Plugins]({{ '/extending/plugins/' | relative_url }}).
+Install creates the service account of the side it installs (`plugin-juicefs`, or `plugin-juicefs-node` with `--side node`) in the namespace `kevaso-system` and prints the account to bind. It records the names. It does not copy the files. Each host fetches the values and keeps copies only root can read. The plugin reads each name from its credential directory. See [Plugins]({{ '/extending/plugins/' | relative_url }}).
 
 `--manifest` shows you what each side asks of the host (root, `/dev/fuse`, and on the node side the host's own mount namespace) and `--yes` grants it. See [Plugins]({{ '/extending/plugins/' | relative_url }}#what-a-manifest-asks-for).
 

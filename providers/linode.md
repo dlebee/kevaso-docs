@@ -59,7 +59,7 @@ git clone https://github.com/dlebee/kevaso-provider-linode
 make -C kevaso-provider-linode build
 ```
 
-Store the token as a cluster secret. The binding below names service account `plugin-linode` in the namespace `kevaso-system`. A host fetches the token for this plugin only when that account may read it.
+Store the token as a cluster secret. The binding below names service account `plugin-linode` in the namespace `kevaso-system`, the controller side's account. A host fetches the token only when that account may read it, so it reaches the control plane and never a worker: the node side's account, `plugin-linode-node`, is not bound to it.
 
 ```bash
 kvo create clustersecret token --from-file ~/linode-token.txt

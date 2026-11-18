@@ -175,8 +175,9 @@ change or delete an object in it, whatever a role or binding says. Reading still
 
 A cluster secret has no namespace. Creating, changing and deleting one is for a cluster admin, and
 no role can grant that. A plugin reads one value only when a ClusterRole grants `get` on
-`clustersecrets/value` and names that secret, bound to service account `plugin-NAME` in
-`kevaso-system`. A rule with no names grants none. See
+`clustersecrets/value` and names that secret, bound to the service account of the side that
+uses it in `kevaso-system`: `plugin-NAME` for the controller side, `plugin-NAME-node` for the node
+side. A worker only ever reads for the node side. A rule with no names grants none. See
 [Plugins]({{ '/extending/plugins/#install-a-provider-plugin' | relative_url }}).
 
 ---
