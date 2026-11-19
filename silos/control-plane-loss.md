@@ -24,7 +24,7 @@ copy from starting while the first host may still be starting it.
 
 | | The worker | The control plane | You |
 |---|---|---|---|
-| **By default** | Keeps every silo running, with its ports as they were. An injected secret keeps going for one hour after the control plane last gave it, then is refused until the control plane answers. Deletes nothing. Keeps trying to reach the control plane. | After 40 seconds without a heartbeat, marks the host `Unknown` and each of its silos `HostUnreachable`. Starts no other copy. Places nothing new on that host. | Wait for the host to come back, or, once you know it is off, [move its silos](#moving-a-silo-off-a-host-you-know-is-off) with `--confirm-fenced`. |
+| **By default** | Keeps every silo running, with its ports as they were. An injected secret keeps going for up to one hour after the control plane last gave it, then is refused until the control plane answers. A revoked grant or a rotated secret is still injected for that hour. A file or env value already in the silo stays. Grants have no lifetime of their own yet, so the window is always one hour. Deletes nothing. Keeps trying to reach the control plane. | After 40 seconds without a heartbeat, marks the host `Unknown` and each of its silos `HostUnreachable`. Starts no other copy. Places nothing new on that host. | Wait for the host to come back, or, once you know it is off, [move its silos](#moving-a-silo-off-a-host-you-know-is-off) with `--confirm-fenced`. |
 | **A silo with `onControlPlaneLoss: Stop`** | Stops that silo (a kill, not a graceful stop) once it has had no contact for the silo's `after`. Other silos on the host are not touched. | Starts it elsewhere on its own only when all five conditions [below](#what-it-buys) hold. The fifth is that its host reported the stop. | Nothing. |
 
 What a worker cannot do while it is cut off is change anything: no new silo, no `kvo apply`, no new
@@ -78,6 +78,19 @@ column.
 When the host reports again, `HostUnreachable` turns `False`, reason `HostBack`, and nothing was
 stopped or moved.
 
+### Deleting a silo while its host is unreachable
+
+`kvo delete silo` removes the object at once when nothing is holding it. The name can be used
+again. The copy on the unreachable host keeps running until that host sees the delete. Creating
+the same name before the host is back can run a second copy under that name. Wait for the host,
+or confirm the machine is off
+([below](#moving-a-silo-off-a-host-you-know-is-off), or
+[remove the host]({{ '/workers/host-loss/#removing-a-host' | relative_url }}) with `--confirm-off`),
+before you create it again.
+
+A silo with a plugin volume keeps the object until that volume's finalizer is gone
+(`kevaso.com/volumes`). The name stays taken for that time. A local disk has no such finalizer.
+
 ---
 
 ## Moving a silo off a host you know is off
@@ -99,6 +112,9 @@ kvo move silo runner -n payments --to hv2 --confirm-fenced --recreate
 |---|---|
 | The refusal | `its host is lost: move it only once the old copy is provably stopped (host powered off, or force-stopped through the provider), then add --confirm-fenced` |
 
+- **Who may say it.** `--confirm-fenced` and `--insist` need `create` on `hosts/confirm-off`.
+  That is cluster-scoped, and only `cluster-admin` has it by default. A plain move does not need
+  it. The 403, and how to grant it, are on [Moves]({{ '/silos/moves/#moving-one-yourself' | relative_url }}).
 - **Only say it when it is true.** `--confirm-fenced` is the one place where Kevaso takes your word. If
   the old copy is still running, you now have two.
 - **`onHostLoss` says how.** `Move` starts it elsewhere with its data (the volumes are detached from
@@ -123,6 +139,21 @@ It takes the current desired state, like any worker. A silo that was moved away 
 there, so the host stops its old copy then, because it has now been told to. If the old copy has
 volumes on the host's own disk, the stopped copy is **kept** with them, never deleted. A silo that was
 not moved simply carries on.
+
+A worker that was down still sees a silo deleted while it was away, when it comes back. It resumes
+its delete watch from the last revision it stored, so that delete is in the log and the copy is
+removed, disk included. If the store's log no longer goes back that far, or the stored revision
+cannot be read, the watch starts at the list it has now. The copy deleted in the gap is **kept**,
+running, with its disk and volumes. It is listed for `kvoadm host kept`
+([below](#a-control-plane-older-than-what-the-worker-last-saw), and on
+[Backup and restore]({{ '/operations/backup/#what-workers-do-after-a-restore' | relative_url }})).
+The journal says:
+
+```text
+delete watch: revision 1200 was compacted; a delete since then was not seen, and that copy is kept
+```
+
+An unreadable record says `starting at the list's revision, so a delete while this host was away is not seen and that copy is kept`.
 
 ---
 
@@ -277,7 +308,7 @@ the data directory, a system node serving old data), the worker does not trust i
 | Where you see it | The host's `ControlPlaneBehind` condition, status `True`, reason `Held`, in `kvo describe host`. The worker's journal says `HOLD: the control plane is older than what this worker saw (kept: history … revision … epoch …; seen: history … revision … epoch …): keeping everything as it is`. `kvo get hosts` and `kvoadm host list` show nothing for it |
 | The condition's message | `the control plane is older than what this worker saw: kept history … revision … (epoch …), seen history … revision … (epoch …). Every silo keeps running as it is and nothing is applied until a deliberate restore (kvoadm init --restore) starts a new history, or a person who checked the control plane runs kvoadm host trust-control-plane [USER@]ADDRESS for this host` |
 | The local endpoint (`169.254.42.1`) | Answers 503: `this host is held (its control plane is older than what it saw): nothing is asked of it until that ends` |
-| Injected secrets | A secret this host was given before the hold keeps being injected for one hour. After that, and for a secret it was not given before the hold, injection is refused until the hold ends |
+| Injected secrets | A secret this host was given before the hold keeps being injected for up to one hour, including a grant revoked or a secret rotated while the host is cut off. After that, and for a secret it was not given before the hold, injection is refused until the hold ends. A file or env value already in the silo stays |
 
 A hold within one history does not end when a later answer of that same history reaches the revision
 the worker kept. It ends in one of two ways. A deliberate restore,

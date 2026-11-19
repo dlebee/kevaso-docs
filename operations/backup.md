@@ -86,6 +86,18 @@ fingerprint written down.
 It can have the old machine's address (a reserved or floating IP you move over) or a new one. Each
 worker remembers the address it reports to; with a new one, the restore points them at it (step 5).
 
+The token issuer is this node's reach address: its external IP, or its internal IP when it has no
+external IP, as `https://203.0.113.10:6443`. A token's issuer has to match the node that checks it.
+`kvoadm init`, a restore included, writes a unit without `--cluster-dns`, so a restore onto a new
+address makes the issuer that new address. Sign-in tokens and service-account tokens from before
+then no longer verify. People sign in again, and CI tokens are minted again.
+
+Set `--cluster-dns` when the issuer should be a name, not an address. It is a flag of
+`kevasod control-plane` and of `kvoadm host add --install control-plane`
+([High availability]({{ '/operations/ha/#add-a-system-node' | relative_url }})). The name has one
+record per system node. After a restore, the new unit does not set it: add `--cluster-dns` on the
+control plane before you rely on tokens surviving the next new address.
+
 ### 2 · Restore onto it
 
 `kvoadm init` with `--restore`, and exactly one statement of which hosts joined since the backup.
@@ -468,8 +480,15 @@ starts working again ends that hold by itself. The same command clears it too.
 Whatever a worker runs that the restored state **does not know** is **kept**. The copy keeps its
 disk and volumes. It keeps running when the control plane simply doesn't know it. A copy the
 control plane placed somewhere else, with no delete this host saw, is stopped and kept. A worker
-removes that data when it has seen the silo deleted, or when you tell it to. It logs each kept
-silo once:
+removes that data when it has seen the silo deleted, or when you tell it to.
+
+A worker that was down and comes back still sees a delete made while it was away, when the store's
+log still has that revision. When the log no longer goes back that far, the copy is kept the same
+way, running, with its disk, and listed here. The journal says
+`delete watch: revision … was compacted; a delete since then was not seen, and that copy is kept`.
+[When that host comes back]({{ '/silos/control-plane-loss/#when-that-host-comes-back' | relative_url }}).
+
+It logs each kept silo once:
 
 ```text
 keeping … on hv2: the control plane doesn't know it and no delete of it was seen here; it keeps running with its disk and volumes (nothing is removed without a delete)

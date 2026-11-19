@@ -85,7 +85,7 @@ One at a time: a second join waits for the first. What happens:
 |---|---|
 | `--install control-plane` | A system node, not a worker |
 | `--state-only` | A light node: a vote only |
-| `--cluster-dns NAME` | A DNS name with one record per system node. It goes in every node's certificate and is the one sign-in address, so tokens work at any node |
+| `--cluster-dns NAME` | A DNS name with one record per system node. It goes in every node's certificate, and it is the token issuer (`https://NAME:6443`). Without it the issuer is this node's reach address (its external IP, or its internal IP). A token has to match the issuer of the node that checks it, so a restore onto a new address invalidates tokens unless this is set. [Backup and restore]({{ '/operations/backup/#1--a-new-machine' | relative_url }}) |
 | `--internal-ip IP`, `--external-ip IP` | The node's [addresses]({{ '/networking/model/' | relative_url }}). Give neither and the SSH address is its internal IP |
 
 Open **TCP 2380 between the system nodes only**. The members talk over the node's external IP if it
