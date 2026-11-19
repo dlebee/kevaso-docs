@@ -109,4 +109,15 @@ kvo: Conflict (409): move payments/api: its host just claimed its start of this 
 
 Wait for the time it names, or add `--insist` with `--confirm-fenced` when you know the old copy is off.
 
-Moving needs `create` on `silos/move` (the built-in `editor` and `admin` roles have it).
+A plain move needs `create` on `silos/move`. The built-in `editor` and `admin` roles have that.
+`--confirm-fenced` and `--insist` also need `create` on `hosts/confirm-off`. That permission is
+cluster-scoped, and only `cluster-admin` has it by default. An editor or an admin who sends either
+flag gets `403 Forbidden`:
+
+```text
+kvo: Forbidden (403): saying the old copy is off (--confirm-fenced, and --insist with it) needs create on hosts/confirm-off. That permission is cluster-scoped and only cluster-admin has it by default. editor and admin keep plain moves (create on silos/move)
+
+saying the old copy is off (--confirm-fenced, and --insist with it) needs create on hosts/confirm-off. That permission is cluster-scoped and only cluster-admin has it by default. editor and admin keep plain moves (create on silos/move)
+```
+
+How a cluster admin grants it is on [People and access]({{ '/access/#roles' | relative_url }}).

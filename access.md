@@ -33,7 +33,9 @@ sequenceDiagram
 |---|---|---|
 | Invite code | 15 minutes, used once | Sent to the person |
 | Access token | 15 minutes | Memory, sent with each request |
-| Refresh token | Rotates on every use | macOS Keychain (or a 0600 file on Linux) |
+| Refresh token | Rotates on every use. Idle limit 30 days | macOS Keychain (or a 0600 file on Linux) |
+
+A refresh token is used once. Two `kvo` commands that refresh at the same moment can both present the token that was just replaced. Within **60 seconds** that is a race: the session stays, and the answer is `refresh raced with another; try again`. The client reads its token again. After 60 seconds the same token ends the session for everyone: `refresh token was already used; session revoked`. The audit log records `refresh-token-reuse` only then. Sign in again.
 
 ---
 
@@ -82,7 +84,7 @@ role to people in a namespace. The built-in roles:
 | Role | Can |
 |---|---|
 | `viewer` | Read silos, silo sets, services, VM images, ingresses, certificates, service accounts, grants and OpenShell policies; see that secrets exist, which silos wait for an approval, the [panes]({{ '/panes/' | relative_url }}) silos report, the [leases]({{ '/networking/leases/' | relative_url }}) on their ports, and the [IPs]({{ '/networking/ips/' | relative_url }}) |
-| `editor` | Everything `viewer` can, plus create and change those objects, `exec`, terminals and files (`silos/ssh`, `silos/files`), moves, opening and closing leased ports; create and *use* secrets (never read a value back); *use* an IP an admin made |
+| `editor` | Everything `viewer` can, plus create and change those objects, `exec`, terminals and files (`silos/ssh`, `silos/files`), plain moves (`create` on `silos/move`), opening and closing leased ports; create and *use* secrets (never read a value back); *use* an IP an admin made |
 | `admin` | Everything `editor` can, plus roles and bindings in the namespace, minting service-account tokens, opening ports on a host address or behind a load balancer (`services/expose-public`), publishing on a public ingress class (`ingresses/publish-public`), creating and releasing IPs, reading secret values, answering approvals (a secret's, or a leased port's), deleting panes, approvals and leases |
 | `cluster-admin` | Everything, everywhere (what `kvoadm init` gives you) |
 
@@ -94,7 +96,8 @@ The permissions beyond plain read and write are their own *subresources*:
 | `silos/ssh` | `create` | `kvo ssh`, the terminal in `kvo ui` | | yes | yes |
 | `silos/files` | `get` | Read and list a silo's files (`kvo cp` out, `kvo ui` browsing) | | yes | yes |
 | `silos/files` | `create` | Write files into a silo (`kvo cp` in, `kvo ui` upload) | | yes | yes |
-| `silos/move` | `create` | `kvo move` | | yes | yes |
+| `silos/move` | `create` | `kvo move`, a plain move | | yes | yes |
+| `hosts/confirm-off` | `create` | `kvo move --confirm-fenced`, and `--insist` with it: say the old copy is off. Cluster-scoped. A RoleBinding cannot grant it | | | |
 | `serviceaccounts/token` | `create` | `kvo create token` | | | yes |
 | `panes` | `get`, `list`, `watch` | `kvo get panes`, `kvo pane watch`, `kvo pane bundle` | yes | yes | yes |
 | `panes` | `delete` | Clear a pane | | | yes |
@@ -112,6 +115,44 @@ The permissions beyond plain read and write are their own *subresources*:
 | `ips` | `create`, `update`, `patch`, `delete` | `kvo create ip`, `kvo ip keep`, `kvo ip release` | | | yes |
 | `services/expose-public` | `create` | Open a port on a host address (`hostPort`) or behind a load balancer, on a silo, a silo set or a `LoadBalancer` service. Also an edit that widens that reach (below) | | | yes |
 | `ingresses/publish-public` | `create` | Publish an `Ingress` on a public class | | | yes |
+
+`cluster-admin` holds `create` on `hosts/confirm-off` (it holds every resource). `editor` and `admin`
+do not. A plain move stays `create` on `silos/move`. `--confirm-fenced` and `--insist` are a fact
+about a machine, so the check is cluster-scoped: a RoleBinding in the silo's namespace does not
+grant it. An editor who sends either flag gets `403 Forbidden`:
+
+```text
+saying the old copy is off (--confirm-fenced, and --insist with it) needs create on hosts/confirm-off. That permission is cluster-scoped and only cluster-admin has it by default. editor and admin keep plain moves (create on silos/move)
+```
+
+`kvo` prints that sentence as the 403, then prints it again after a blank line.
+
+To give it to someone, write a ClusterRole and a ClusterRoleBinding. `USER` is the name `kvo auth whoami` prints after the type (`user USER`).
+
+Save this as `confirm-off.yaml`:
+
+```yaml
+apiVersion: kevaso/v1
+kind: ClusterRole
+metadata: { name: confirm-off }
+rules:
+  - verbs: [create]
+    resources: [hosts/confirm-off]
+---
+apiVersion: kevaso/v1
+kind: ClusterRoleBinding
+metadata: { name: confirm-off }
+roleRef: { kind: ClusterRole, name: confirm-off }
+subjects:
+  - { kind: User, name: USER }
+```
+
+```bash
+kvo apply -f confirm-off.yaml
+```
+
+Only someone who already holds the permission can grant it
+([below](#you-cant-give-more-than-you-hold)).
 
 `open` and `approve` on `silos/exposure` can be limited to one silo by name, or to silos by label,
 like `approve` on secrets. Opening a port on a host address or behind a load balancer is

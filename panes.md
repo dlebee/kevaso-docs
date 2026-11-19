@@ -247,7 +247,7 @@ sign out or remove it. Only one cluster's panes float at a time.
 | **Cluster list** | `contexts.json` in Application Support: server, CA and namespace. Never a token |
 | **The CA is pinned** | Every request (API, watch, bundle, token, the sign-in pages) trusts **only that cluster's CA**, checks the host name or address, follows no redirect, and fetches no extra certificate data. Without a pinned CA the app refuses to connect: it never uses the system's roots |
 | **Sign out** | Tells the control plane to end the session (`POST /oidc/revoke`), then deletes the keychain item. If the cluster can't be reached, you're signed out locally and the session ends when idle |
-| **A copy of your token got out** | If the control plane sees an old refresh token used again, it ends the session for everyone. The app deletes its keychain item, closes that cluster's panes and shows that it's signed out |
+| **A copy of your token got out** | An old refresh token used again within 60 seconds is a race: the session stays (`refresh raced with another; try again`). After 60 seconds the control plane ends the session for everyone (`refresh token was already used; session revoked`). The app deletes its keychain item, closes that cluster's panes and shows that it's signed out |
 
 For CI and scripts, the app also reads these environment variables. When they are set, they win
 over the clusters you added:

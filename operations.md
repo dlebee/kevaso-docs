@@ -50,7 +50,7 @@ The day-two tasks, and where to look when something isn't right.
 | What's in it | |
 |---|---|
 | Every decision about a person or service account | Allowed and refused |
-| Sign-ins, refresh-token reuse (a stolen token), disabled users | `"event"` says which |
+| Sign-ins, a refresh token used again after 60 seconds (`refresh-token-reuse`: the session ends), disabled users | `"event"` says which. A reuse within 60 seconds is a race: the session stays, and this log does not record it |
 | Every secret value read | `"verb":"read-value"` |
 | Every request a silo's local endpoint passes on (a secret, a signature, a leased port) | `"event":"broker"`, as `system:silo:NS:NAME`, via its host |
 | Hosts and kevasod itself | Only when refused (they're busy) |
