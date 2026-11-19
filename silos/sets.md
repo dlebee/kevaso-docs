@@ -39,7 +39,7 @@ spec:
 
 | Field | Means |
 |---|---|
-| `image` | A registry reference, or the built-in `ubuntu-24.04` (which is `docker.io/library/ubuntu:24.04`). It can't be the name of a VMImage |
+| `image` | A registry reference, or the built-in `ubuntu-24.04` (which is `docker.io/library/ubuntu:24.04`). It can't be the name of a VMImage. On `openshell` and `openshell-container` a rootfs archive (`.tar`, `.tar.gz`, `.tgz`) is refused |
 | `command` | The main process. Default: the image's own |
 | `pull.secretRef` | A `registry` secret in the silo's namespace. Default: the namespace's default pull secret for the image's registry, if there is one. Docker and podman only: the OpenShell runtimes refuse it |
 
@@ -71,6 +71,7 @@ spec:
 | `image` | `NAME[:VERSION]` of a VMImage in the silo's namespace, or the built-in `ubuntu-24.04`. It can't be a registry reference |
 | `disk.url` | An `https://` address |
 | `disk.sha256` | The disk's hash. Hosts refuse a disk that doesn't match |
+| the file itself | Raw, or a plain qcow2 with no backing file, no external data file and no encryption. Another format is refused. [Runtimes]({{ '/silos/runtimes/#cloud-hypervisor' | relative_url }}) |
 
 ### VMImage: a named disk with versions
 
@@ -274,7 +275,8 @@ spec:
 - Each host sends the traffic only to its own endpoints, so they see the load balancer's address,
   not the client's.
 - The instances themselves stay private.
-- It needs `create` on `services/expose-public` (namespace admins have it).
+- It needs `create` on `services/expose-public` (namespace admins have it), including an edit that
+  widens who can reach it ([People and access]({{ '/access/#roles' | relative_url }})).
 - `routeWhen` says whether an endpoint gets traffic only while ready (`ready`) or as soon as it runs
   (`running`). It is required when the silos it selects have a readiness probe; an endpoint that is held
   shows in `kvo describe service`. See [probes and routing]({{ '/silos/probes/' | relative_url }}).

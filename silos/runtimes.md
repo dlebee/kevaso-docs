@@ -38,6 +38,15 @@ the rest ([what a silo starts from]({{ '/silos/sets/#what-a-silo-starts-from' | 
 The default choice: a real Linux machine, booted from `ubuntu-24.04`, with its own disk.
 
 - It boots from `vm: { image: … }` (a built-in OS image or a VMImage) or `vm: { disk: { url, sha256 } }`.
+  A disk image is accepted only when it is raw, or a plain qcow2: version 2 or 3, no backing file,
+  no external data file and no encryption. Anything else is refused, and the silo does not start:
+
+```text
+/var/lib/kevaso/images/…: the image names a backing file: only a raw disk, or a qcow2 with no backing file, no external data file and no encryption, can be a silo's disk
+```
+
+  The same sentence names an external data file, encryption, a truncated header, or another format
+  (`VMDK is not a silo disk`, and the same for VHD, VHDX, VDI, QED and a Parallels disk).
 - The hypervisor process runs as its own unprivileged user, with no capabilities, a system-call
   filter and only its own disk and network device.
 - Init steps run as root inside, through SSH from the host only (a key the host holds; nothing else
@@ -72,7 +81,7 @@ kind: Silo
 metadata: { name: worker-1, namespace: ops }
 spec:
   runtime: openshell
-  container: { image: ubuntu-24.04 }      # OpenShell's base image
+  container: { image: ubuntu-24.04 }      # a registry reference; a rootfs tar name is refused
   resources: { cpu: 2, memory: 4Gi }
   grants: [api-access]
 ```
@@ -248,7 +257,7 @@ spec:
 
 | Good to know | |
 |---|---|
-| `container.image` | Any registry reference; `ubuntu-24.04` means `docker.io/library/ubuntu:24.04`. A private registry takes `container.pull` ([Secrets]({{ '/secrets/' | relative_url }})) |
+| `container.image` | A registry reference; `ubuntu-24.04` means `docker.io/library/ubuntu:24.04`. A private registry takes `container.pull` ([Secrets]({{ '/secrets/' | relative_url }})). On `openshell` and `openshell-container` a rootfs archive name (`.tar`, `.tar.gz`, `.tgz`) is refused: `container.image is a registry reference, not a rootfs archive (.tar, .tar.gz, .tgz)` |
 | `container.command` | The main process. Without it, the image's own (for `ubuntu-24.04`, one that sleeps, so it's a machine to `exec` into) |
 | Init steps | **Init containers**: each step runs in a container of its own from the silo's image, on its network and volumes, **before** the main container starts |
 | Persistence | Volumes survive restarts; the container's own files stay on its host |

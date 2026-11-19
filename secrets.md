@@ -418,6 +418,17 @@ spec:
     pull: { secretRef: registry-pull }
 ```
 
+- **Changing `server` or `username` needs a new value in the same write.** The stored password is
+  for that registry and that user. An update that changes either and does not include a new
+  `spec.value` is refused:
+
+```text
+Secret registry-pull: spec.valueReadable, spec.allowedDelivery, and a registry secret's spec.server or spec.username can't be changed without a new spec.value in the same write (a value made write-only, or kept to one registry, stays so)
+```
+
+  `kvo secret set` replaces the password and leaves `server` and `username` as they are. To point
+  the secret at another registry or another user, delete it and create it again with the new
+  `--server`, `--username` and password. The sealed value opens only for the registry it was stored for.
 - **A registry credential never reaches a silo.** It can't be delivered any way, and it's
   write-only unless you say otherwise. Only the agent of the host the silo is placed on gets it, for
   one pull. It hands it to the container engine in a throwaway file in memory and deletes it after.
