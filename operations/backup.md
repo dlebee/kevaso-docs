@@ -194,7 +194,7 @@ is not already running until that silo is **settled** for the new history.
 A silo is settled once every host the restored store had, and every host you named with
 `--host-added`, has reported the copies it holds (running or kept stopped) in the new history, or
 you have confirmed it off. A host with no worker counts as reported and holds nothing. A silo
-created after the history started is settled at once. A silo that is being deleted is not held.
+created after the history started is settled at once.
 
 Until then the silo stays pending. Controllers do not schedule it, and they do not attach or
 detach its volumes. `kvoadm restore status` shows what is still waiting.
