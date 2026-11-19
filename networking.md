@@ -8,6 +8,16 @@ permalink: /networking/
 Kevaso owns the firewall on its hosts, and starts from **deny**. This page goes through every way
 traffic is opened, one rule at a time.
 
+If nft refuses a new ruleset, the last one it took stays in force. `kvo describe host` shows
+`SiloFirewall` false, reason `Rejected`:
+
+```text
+nft refused the silo firewall; the last one it took stays in force and the load is retried: …
+```
+
+The load is tried again. With the worker process down, nothing reloads, so the kernel keeps that
+last ruleset.
+
 ---
 
 ## The words used on this page
@@ -25,10 +35,11 @@ Internal IP, external IP, mesh IP, silo IP and cluster IP each mean one thing in
 | A silo → another silo | Denied | The receiving port's `allowFrom` |
 | Outside → a silo | Denied | A service port with `hostPort` or `loadBalancer: true` |
 | A silo → outside | Denied | A `Grant` naming the destination ([below](#what-a-silo-may-reach-outside)) |
-| A silo → its host | DNS and ping only, on this host's gateway | Never more, except the [local endpoint]({{ '/secrets/' | relative_url }}) for a silo that has something to ask it, and the egress gate for a silo whose grants name hosts |
+| A silo → its host | DNS, and ping from a microVM, on this host's gateway | Never more, except the [local endpoint]({{ '/secrets/' | relative_url }}) for a silo that has something to ask it, and the egress gate for a silo whose grants name hosts. A container silo cannot ping: it has no raw socket ([Runtimes]({{ '/silos/runtimes/#docker-and-podman' | relative_url }})) |
 | A silo → another host's own listeners, over the mesh | Denied | Never. A packet from a silo that arrives on the mesh is dropped |
-| A silo → any host's `10.64.N.1` | Denied | Never, except this host's own DNS (port 53) and ping |
-| A silo → names (DNS) | Allowed | Its host answers on the silo network's gateway |
+| A silo → any host's `10.64.N.1` | Denied | Never, except this host's own DNS (port 53) and ping from a microVM |
+| A silo → names in the cluster | Allowed | `.kevaso` names, and short service names (`api`, `api.payments`) |
+| A silo → a name outside the cluster | Only when the silo lists a Grant that exists | With no Grant, the name is refused |
 
 Each silo also can't send packets with an address other than its own (anti-spoofing), so a rule
 "from silo X" really means silo X.
@@ -62,6 +73,10 @@ reachable: it can still call out.
 same namespace, `NAMESPACE/NAME` for another. It works across hosts too, over the mesh. A silo named
 here that isn't running opens nothing. `allowFrom` takes silos only: a network range there is
 refused, and ranges go in `sources`.
+
+Removing an `allowFrom` entry also cuts the open connections that entry allowed. TCP is reset.
+UDP is dropped. The cut stays in later rulesets, so that connection does not resume on the next
+reload.
 
 ### On the host's address: `hostPort`
 
@@ -262,4 +277,12 @@ On a port where the same silo also has a host-name rule, its connections go thro
 gate, which also refuses every host of the cluster by address. To reach one there, such as an
 Ingress or a load balancer on another host, the grant has to name that address itself (a `/32`).
 
-DNS always works, so a silo can resolve anything; it just can't connect where no grant says.
+Removing a Grant, or narrowing one, does not cut connections that are already open. It applies to
+new connections. (An `allowFrom` entry is different: removing one cuts the connections it allowed,
+[above](#letting-another-silo-in-allowfrom).)
+
+A silo that lists no Grant, or only names that are not there, cannot resolve a name outside the
+cluster. The answer is refused, and the host's resolvers are not asked. Names in the cluster still
+work: `api.payments.kevaso`, and the short names `api` (same namespace) and `api.payments`. A silo
+that lists a Grant that exists is forwarded to the host's resolvers for other names. Resolving a
+name is not permission to connect: the grant still decides that.

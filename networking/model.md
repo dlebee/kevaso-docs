@@ -232,9 +232,10 @@ Two more rules:
   there ([next section](#letting-machines-outside-the-cluster-ask)). Your public hostnames stay in
   your own DNS, pointing at a host's external IP or at whatever you put in front.
 
-A name that isn't Kevaso's (`example.com`) is forwarded upstream for a silo and never for anyone
-else: a Kevaso host is not an open resolver. A refused question says nothing about whether the name
-exists.
+A name that isn't Kevaso's (`example.com`) is forwarded upstream for a silo that lists a Grant
+that exists, and never for anyone else: a Kevaso host is not an open resolver. A silo with no
+Grant is refused that name. In-zone names, and a silo's short service names, are answered either
+way. A refused question says nothing about whether the name exists.
 
 ### Letting machines outside the cluster ask
 
