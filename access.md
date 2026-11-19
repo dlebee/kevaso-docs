@@ -110,12 +110,22 @@ The permissions beyond plain read and write are their own *subresources*:
 | `ips` | `get`, `list`, `watch` | `kvo get ips`, `kvo describe ip` | yes | yes | yes |
 | `ips` | `use` | Name an IP: a silo's `service.loadBalancer.ip` or `network.egress.ip`, a service's `loadBalancerIP` | | yes | yes |
 | `ips` | `create`, `update`, `patch`, `delete` | `kvo create ip`, `kvo ip keep`, `kvo ip release` | | | yes |
-| `services/expose-public` | `create` | Open a port on a host address (`hostPort`) or behind a load balancer, on a silo, a silo set or a `LoadBalancer` service | | | yes |
+| `services/expose-public` | `create` | Open a port on a host address (`hostPort`) or behind a load balancer, on a silo, a silo set or a `LoadBalancer` service. Also an edit that widens that reach (below) | | | yes |
 | `ingresses/publish-public` | `create` | Publish an `Ingress` on a public class | | | yes |
 
 `open` and `approve` on `silos/exposure` can be limited to one silo by name, or to silos by label,
-like `approve` on secrets. Opening a port on a host address or behind a load balancer at all is still
-`create` on `services/expose-public`: a lease only decides when. Naming an IP of your own
+like `approve` on secrets. Opening a port on a host address or behind a load balancer is
+`create` on `services/expose-public`. The same permission is required when an edit widens that
+reach. Removing or tightening does not need it. A `ClusterIP` service never does. Widening is any of these:
+
+- a new port, or a new network on a port (`internal` or `external` where it was not open);
+- a changed protocol, host number, or load-balancer class, or a load balancer set where there was none;
+- wider sources: a source removed, a wider one added, or sources cleared (empty, and `0.0.0.0/0`, are the world);
+- a lease removed, or a lease that needed a yes made automatic;
+- labels, or a selector, that newly match a load balancer, including a service that becomes one and a new port on one;
+- an Ingress backend the stored Ingress did not already name, on a port that opens only on a lease.
+
+A lease only decides when. Naming an IP of your own
 needs `use` on that IP. Minting a service-account token is `create` on `serviceaccounts/token`.
 A token holds whatever its account holds, so `editor` does not have it. In the namespace
 `kevaso-system`, only a cluster admin may create, change or delete an object, a token included.
@@ -198,6 +208,36 @@ The file is `~/.kevaso/config.yaml` (or `$KVO_CONFIG`). It holds addresses, CA f
 certificate paths, never tokens. With [more than one system node]({{ '/operations/ha/' | relative_url }}),
 a context's `server` can list them, comma-separated: `kvo` sticks to the last one that answered
 and moves on only when it can't connect.
+
+The certificate `kvoadm init` writes lasts 30 days. `kvo` renews it by itself at two thirds of that
+life, or inside the last ten days if that comes sooner, and stores the new certificate as the same
+person. You do nothing while it can still connect.
+
+Once it has expired, `kvo` stops:
+
+```text
+context home certificate for ops expired on 2026-12-18T15:04:05Z. On a control-plane host, run: kevasod admin sign-user --name ops
+```
+
+That command reads a certificate request on stdin and prints JSON with `certificate` and `ca`. It
+does not write the context. Run `kvoadm init` again against the same machine, with the same
+`--name` and `--cluster`:
+
+```bash
+bin/kvoadm init root@203.0.113.10 \
+    --ssh-key ~/.ssh/kevaso_ed25519 \
+    --host-key SHA256:kVvp5Yv9fNU4r4yX2P7+O99SU45jwdxC60ylimGFta4 \
+    --kevasod bin/kevasod-linux-amd64 \
+    --name hv1 \
+    --cluster home
+```
+
+It keeps the installed unit (see
+[Running init again]({{ '/setup/single-node/#running-init-again' | relative_url }})), makes a new
+key on your computer, and writes a new context.
+
+Inside the last ten days, a renewal that fails is a warning and the current certificate is still
+used. The warning names the same command.
 
 ---
 

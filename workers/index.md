@@ -21,6 +21,31 @@ your router. They don't need to be on the same network.
 - A worker **behind NAT** reaches the others through a relay (a host that can be reached directly),
   end to end encrypted inside it: the relay only ever sees encrypted UDP.
 
+The certificate lasts 30 days. The worker renews it by itself at two thirds of that life (or inside
+the last ten days, if that comes sooner) and presents the new one on the next connection. A renewal
+is the same host. A failure is tried again, from 10 seconds, doubling up to 5 minutes.
+
+An expired certificate is not used again. If a join token is still on the machine, the worker sets
+the old folder aside (`/var/lib/kevaso/pki.expired-DATE`) and enrolls again. With no token it stops:
+
+```text
+host hv2 certificate in /var/lib/kevaso/pki has expired. Join again with kvoadm host add
+```
+
+Add it again, the same way as [after a removal]({{ '/workers/host-loss/#the-removed-machine' | relative_url }}):
+
+```bash
+bin/kvoadm host add root@198.51.100.20 \
+    --ssh-key ~/.ssh/kevaso_ed25519 \
+    --host-key SHA256:kVvp5Yv9fNU4r4yX2P7+O99SU45jwdxC60ylimGFta4 \
+    --kevasod bin/kevasod-linux-amd64 \
+    --install worker \
+    --name hv2
+```
+
+Your own `kvo` certificate renews the same way. When it has expired, see
+[Contexts]({{ '/access/#contexts' | relative_url }}).
+
 ---
 
 ## Prepare the machine
