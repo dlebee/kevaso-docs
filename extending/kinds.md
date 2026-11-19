@@ -146,6 +146,7 @@ With `subresources: { status: {} }`:
 
 - People write the main object, and its `status` is ignored: it stays as stored.
 - Controllers write `…/status`, which changes **only** `status`.
+- `DELETE` on a `/status` path is refused (405). The object stays.
 
 Without it, `status` is an ordinary field and there's no `/status` to write.
 

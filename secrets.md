@@ -128,6 +128,8 @@ gave it, for at most one hour after that, and then refuses until the control pla
 that is held, because its control plane is older than what it saw, injects only secrets it was
 given before the hold, for that same hour, and adds none it wasn't given then.
 
+Several injected headers for one host are all kept.
+
 `to.header` defaults to `Authorization` and `to.format` to `Bearer {{value}}`. The program in the silo just calls the API without a key; it works. On **OpenShell** silos the
 same grant gives the program an environment variable holding a *placeholder* (`$API_KEY =
 openshell:resolve:env:…`), which it sends like a key, and OpenShell swaps the real one in. See
@@ -318,6 +320,8 @@ spec:
     sign: { keyRef: deploy-key, approval: { required: true } }
 ```
 
+An approval is tied to the secret it was granted for. A secret created again under the same name needs a new approval.
+
 A grant without `approval` works as before, and works for broker, inject and sign. File and env
 are refused: once the value sits in the silo, nothing can ask again. OpenShell silos inject by
 themselves, so an injection that needs approval works only on `cloud-hypervisor`, `docker` and
@@ -433,6 +437,9 @@ Secret registry-pull: spec.valueReadable, spec.allowedDelivery, and a registry s
   `kvo secret set` replaces the password and leaves `server` and `username` as they are. To point
   the secret at another registry or another user, delete it and create it again with the new
   `--server`, `--username` and password. The sealed value opens only for the registry it was stored for.
+  A loosening write that does not commit keeps the previous value.
+- **The namespace's pull secret is used only for the silo's spec image**, or for a status reference
+  on that same registry. A status reference on another registry is refused.
 - **A registry credential never reaches a silo.** It can't be delivered any way, and it's
   write-only unless you say otherwise. Only the agent of the host the silo is placed on gets it, for
   one pull. It hands it to the container engine in a throwaway file in memory and deletes it after.

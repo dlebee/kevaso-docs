@@ -209,7 +209,8 @@ you have confirmed it off. A host with no worker counts as reported and holds no
 created after the history started is settled at once.
 
 Until then the silo stays pending. Controllers do not schedule it, and they do not attach or
-detach its volumes. `kvoadm restore status` shows what is still waiting.
+detach its volumes. A volume removal recorded under another restore history is dropped, and the
+provider volume is kept. A removal recorded under the open history is still done. `kvoadm restore status` shows what is still waiting.
 
 One reported copy on the stored host leaves the placement there. One reported copy on the other
 end of a stored handoff, or on a host a volume is already attached to, moves the placement there

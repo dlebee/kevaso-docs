@@ -340,7 +340,8 @@ kvoadm plugin uninstall sessions --force
 `--force` deletes the objects (waiting up to 30 seconds for a running controller to clean up),
 stops and removes the controller's service, program and credentials, and deletes everything the
 plugin owns. Run again, it finishes an uninstall that stopped half-way. While a plugin is
-installed, its kinds can't be deleted on their own.
+installed, its kinds can't be deleted on their own. The person who uninstalls can remove the
+finalizer `kevaso.com/plugin-uninstall`.
 
 ### The example: sessions
 

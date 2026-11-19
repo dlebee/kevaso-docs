@@ -24,7 +24,8 @@ The day-two tasks, and where to look when something isn't right.
 
 | Path | What |
 |---|---|
-| `/var/lib/kevaso-silos/` | VM silos: one directory each (state, cloud-init seed, serial log) |
+| `/var/lib/kevaso-silos/` | VM silos: one directory each (state, cloud-init seed, serial log). The serial log is capped at about 10 MiB, plus one older file, `serial.log.1` |
+| `/run/kevaso/` | Host commands run in a directory here. If that directory is removed, it is made again |
 | `/var/lib/kevaso-containers/` | Container silos |
 | `/var/lib/kevaso-openshell/` | OpenShell gateways and sandbox state |
 | `/etc/kevaso-silos.nft` | The silo firewall Kevaso last applied |
@@ -124,7 +125,8 @@ restart anything.
 
 Members of several machines, the light node, losing and removing one, and upgrades are on the
 [High availability]({{ '/operations/ha/' | relative_url }}) page. A member's certificate is renewed
-by itself, 30 days before it ends. Backups are logical (every object, not etcd's own snapshot).
+by itself, 30 days before it ends. The API's serving certificate is renewed by itself at two thirds
+of its life. Backups are logical (every object, not etcd's own snapshot).
 etcd's own clean-up (defragmenting) isn't scheduled.
 
 ---

@@ -51,7 +51,11 @@ The default choice: a real Linux machine, booted from `ubuntu-24.04`, with its o
   The same sentence names an external data file, encryption, a truncated header, or another format
   (`VMDK is not a silo disk`, and the same for VHD, VHDX, VDI, QED and a Parallels disk).
 - The hypervisor process runs as its own unprivileged user, with no capabilities, a system-call
-  filter and only its own disk and network device.
+  filter and only its own disk and network device. It sees only its own runtime directory under
+  `/run`.
+- Its serial log is capped at about 10 MiB, plus one older file, `serial.log.1`.
+- A finished create or reset whose unit file disappears is not created again over its disk. Delete
+  the silo to start over. A create that was killed before its unit was written is still retried.
 - Init steps run as root inside, through SSH from the host only (a key the host holds; nothing else
   can log in).
 - Nothing of Kevaso's is installed in it. The host adds its egress CA to the silo's trust store and
@@ -267,6 +271,7 @@ spec:
 | Secrets | `inject`, `broker`, `file` and `env`. `broker` secrets come from the [local endpoint]({{ '/secrets/' | relative_url }}), so the image needs `curl` or any HTTP client. `file` secrets are a read-only bind mount of a host tmpfs under `/run/secrets/…`. `env` secrets are set by Kevaso's own container runtime on Docker, so `docker inspect` and Docker's disk don't hold them; where that isn't available (podman, rootless Docker) they go through `--env-file` and admission warns. Nothing of Kevaso's is put in your image |
 | Volume `size` | Not enforced on containers |
 | Capabilities | `MKNOD`, `NET_RAW` and `SYS_CHROOT` are dropped. The container's root is the host's uid 0. There is no way to add those three back yet |
+| Logs | Three files of 10 MB (`json-file`, `max-size=10m`, `max-file=3`) |
 
 A container silo cannot ping. Ping opens a raw socket, and `NET_RAW` is dropped, so the kernel
 refuses it. The firewall would allow ping to this host's gateway from a microVM; a container

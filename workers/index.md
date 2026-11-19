@@ -12,8 +12,10 @@ your router. They don't need to be on the same network.
 
 ## How workers connect
 
-- A new worker **joins with a one-time token** and gets a certificate for exactly its own name and
-  role. It can't act as another host, and it can't touch silos placed elsewhere.
+- A new worker **joins with a one-time token** at `/enroll` and gets a certificate for exactly its
+  own name and the role `worker`. `/enroll` issues only a worker certificate. A system node joins
+  on its own path ([High availability]({{ '/operations/ha/' | relative_url }}#add-a-system-node)).
+  It can't act as another host, and it can't touch silos placed elsewhere.
 - It **dials out** to the control plane and keeps that connection open; `kvo exec` and everything
   else come back through it. Nothing needs to listen on the worker.
 - Hosts are on a **WireGuard mesh** run by the control plane. Each host gets its own silo subnet
@@ -23,7 +25,8 @@ your router. They don't need to be on the same network.
 
 The certificate lasts 30 days. The worker renews it by itself at two thirds of that life (or inside
 the last ten days, if that comes sooner) and presents the new one on the next connection. A renewal
-is the same host. A failure is tried again, from 10 seconds, doubling up to 5 minutes.
+is the same host. A renewal that is interrupted keeps the key that matches the certificate. A
+failure is tried again, from 10 seconds, doubling up to 5 minutes.
 
 An expired certificate is not used again. If a join token is still on the machine, the worker sets
 the old folder aside (`/var/lib/kevaso/pki.expired-DATE`) and enrolls again. With no token it stops:

@@ -84,6 +84,8 @@ bin/kvoadm host remove hv2
 A host that still has silos placed on it, or moving from it, is removed only once you confirm that
 the machine is **off or wiped**. Kevaso can't stop those copies itself, so your confirmation is what
 lets their silos start somewhere else, the same as `kvo move … --confirm-fenced`.
+Deleting the Host a silo is placed on confirms that host only. A handoff whose source is lost
+still needs `kvo move … --confirm-fenced`.
 
 `kvoadm host remove` lists what will happen to each silo, then asks:
 
@@ -118,8 +120,12 @@ same way. The account and `kvoadm host confirm-off` are on
 | Moving from the removed host | The hand-off ends, and the silo starts on its new host |
 
 Removing a host never deletes a volume. A local disk or volume on the removed machine is simply out
-of reach, and the `HostDeleted` message says so. A silo marked `HostDeleted` stays that way, even if
-a machine joins again under the same name. To get it running again, start a fresh copy on another host:
+of reach, and the `HostDeleted` message says so. `Unschedulable`/`HostDeleted` is set only when a
+fresh read says the Host is gone. A silo marked `HostDeleted` stays that way, even if
+a machine joins again under the same name. The host that runs a silo cannot change `status.service`,
+or the `Unschedulable`/`HostDeleted` condition. The control plane writes them.
+
+To get it running again, start a fresh copy on another host:
 
 ```bash
 kvo move silo NAME -n NAMESPACE --to HOST --recreate

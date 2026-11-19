@@ -63,6 +63,9 @@ His browser opens a "Sign in to Kevaso" page; he pastes the code. The `--ca` fin
 `kvo` knows it's talking to *your* cluster: it refuses any other certificate, so no warning to click
 through.
 
+`kvo login` accepts only `https://` servers. An invite with several control planes prints them
+comma-separated. `kvo login` tries each one for the CA and keeps the whole list in the context.
+
 ```bash
 kvo auth whoami
 ```
@@ -164,7 +167,8 @@ reach. Removing or tightening does not need it. A `ClusterIP` service never does
 - wider sources: a source removed, a wider one added, or sources cleared (empty, and `0.0.0.0/0`, are the world);
 - a lease removed, or a lease that needed a yes made automatic;
 - labels, or a selector, that newly match a load balancer, including a service that becomes one and a new port on one;
-- an Ingress backend the stored Ingress did not already name, on a port that opens only on a lease.
+- an Ingress backend the stored Ingress did not already name, on a port that opens only on a lease;
+- a SiloSet's template labels, a selector on the set's label, or a silo's labels, that newly bring silos behind a load balancer, or behind a Service that an Ingress already names onto a leased port.
 
 A lease only decides when. Naming an IP of your own
 needs `use` on that IP. Minting a service-account token is `create` on `serviceaccounts/token`.
@@ -211,7 +215,8 @@ Ask the cluster what you may do:
 kvo auth can-i create silos/exec -n payments
 ```
 
-It exits 0 for yes and 1 for no, so it fits in scripts.
+It exits 0 for yes and 1 for no, so it fits in scripts. `ssh`, `files`, `open`, `close` and `move`
+are read as silo subresources, so `silos/ssh` is the terminal on a silo and not a silo named `ssh`.
 
 ---
 
@@ -223,6 +228,9 @@ and nothing else of that kind. A plugin's controller runs as the service account
 
 The namespace `kevaso-system` is reserved for cluster admins. Only a cluster admin may create,
 change or delete an object in it, whatever a role or binding says. Reading still follows the role.
+
+A binding for the group `system:serviceaccounts:NS` counts as naming namespace NS. That namespace
+cannot be deleted while the binding exists.
 
 A cluster secret has no namespace. Creating, changing and deleting one is for a cluster admin, and
 no role can grant that. A plugin reads one value only when a ClusterRole grants `get` on
@@ -254,28 +262,19 @@ The certificate `kvoadm init` writes lasts 30 days. `kvo` renews it by itself at
 life, or inside the last ten days if that comes sooner, and stores the new certificate as the same
 person. You do nothing while it can still connect.
 
-Once it has expired, `kvo` stops:
+Once it has expired, `kvo` stops and names the recovery:
 
 ```text
-context home certificate for ops expired on 2026-12-18T15:04:05Z. On a control-plane host, run: kevasod admin sign-user --name ops
+context NAME certificate for USER expired on DATE. Run: kvoadm users resign root@HOST --name USER
 ```
-
-That command reads a certificate request on stdin and prints JSON with `certificate` and `ca`. It
-does not write the context. Run `kvoadm init` again against the same machine, with the same
-`--name` and `--cluster`:
 
 ```bash
-bin/kvoadm init root@203.0.113.10 \
-    --ssh-key ~/.ssh/kevaso_ed25519 \
-    --host-key SHA256:kVvp5Yv9fNU4r4yX2P7+O99SU45jwdxC60ylimGFta4 \
-    --kevasod bin/kevasod-linux-amd64 \
-    --name hv1 \
-    --cluster home
+kvoadm users resign root@HOST --name USER
 ```
 
-It keeps the installed unit (see
-[Running init again]({{ '/setup/single-node/#running-init-again' | relative_url }})), makes a new
-key on your computer, and writes a new context.
+That command signs a new client certificate over SSH and writes it into the context. The key is
+made on your computer. The control plane only sees the request. Use it when the certificate has
+expired, or when a renewal inside the last ten days fails.
 
 Inside the last ten days, a renewal that fails is a warning and the current certificate is still
 used. The warning names the same command.

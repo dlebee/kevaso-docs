@@ -68,7 +68,7 @@ go build -o bin/kvoadm ./cmd/kvoadm
 `arm64` for ARM; `uname -m` on the machine says `x86_64` or `aarch64`):
 
 ```bash
-GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o bin/kevasod-linux-amd64 ./cmd/kevasod
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X kevaso.com/core/internal/version.Version=vX.Y.Z" -o bin/kevasod-linux-amd64 ./cmd/kevasod
 ```
 
 > **Why `CGO_ENABLED=0`?** It makes a static binary that runs on any Linux, with nothing to install

@@ -28,7 +28,7 @@ go build -o bin/kvoadm ./cmd/kvoadm
 `kevasod` runs inside the Linux VM, so build it for Linux on ARM:
 
 ```bash
-GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o bin/kevasod-linux-arm64 ./cmd/kevasod
+GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags "-X kevaso.com/core/internal/version.Version=vX.Y.Z" -o bin/kevasod-linux-arm64 ./cmd/kevasod
 ```
 
 ## 2 · Make a Linux VM

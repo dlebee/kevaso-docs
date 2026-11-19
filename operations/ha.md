@@ -75,7 +75,8 @@ One at a time: a second join waits for the first. What happens:
 
 1. The host is declared and a one-time join token is made. It's good for the role `system-node`
    only, and it's spent when the join succeeds.
-2. The new node starts `kevasod control-plane --join …`, and asks to join with the token.
+2. The new node starts `kevasod control-plane --join …`, and asks to join with the token. That path
+   is not `/enroll`. `/enroll` issues only a worker certificate.
 3. The cluster adds it to the store as a **learner**, and sends it the cluster's CA and the master key,
    sealed so that only that node can open them. `kvoadm` never sees them.
 4. When it has caught up, the leader promotes it to a voter. `kvoadm` waits for that (up to five
@@ -88,9 +89,11 @@ One at a time: a second join waits for the first. What happens:
 | `--cluster-dns NAME` | A DNS name with one record per system node. It goes in every node's certificate, and it is the token issuer (`https://NAME:6443`). Without it the issuer is this node's reach address (its external IP, or its internal IP). A token has to match the issuer of the node that checks it, so a restore onto a new address invalidates tokens unless this is set. [Backup and restore]({{ '/operations/backup/#1--a-new-machine' | relative_url }}) |
 | `--internal-ip IP`, `--external-ip IP` | The node's [addresses]({{ '/networking/model/' | relative_url }}). Give neither and the SSH address is its internal IP |
 
-Open **TCP 2380 between the system nodes only**. The members talk over the node's external IP if it
-has one, otherwise its internal IP, not the mesh, with mutual TLS: only a member's certificate is
-let in.
+Open **TCP 2380 between the system nodes only**. A system node's etcd member listens on its internal
+address. It also listens on the reach address when that address is on one of its own interfaces, and
+it advertises the reach address (the external IP if the node has one, otherwise the internal IP).
+Under 1:1 NAT it listens on the internal address only. The members talk over that reach address, not
+the mesh, with mutual TLS: only a member's certificate is let in.
 
 ### An existing worker becomes a system node too
 
@@ -200,7 +203,7 @@ kvoadm upgrade --kevasod ./kevasod
 | Flag | Meaning |
 |---|---|
 | `--kevasod PATH` | The new `kevasod`, for the hosts' CPU |
-| `--version V` | Its version, if the build doesn't carry one |
+| `--version V` | Must be the version the binary reports. A binary that reports none, or a different one, is refused |
 | `--batch N` | How many workers restart at once (default 2) |
 | `--ssh-key PATH` | The key for the hosts |
 | `--context NAME` | The `kvo` context to act as |
@@ -220,6 +223,8 @@ restarts (`live-restore`), and Kevaso restarts Docker only when its own settings
 
 - Restarting one more system node would lose the store's majority (`2 of 3 system nodes are
   Ready`…). With two system nodes and no third vote it tells you to add a light node first.
+- The `kevasod` binary does not report its own version, or `--version` names a different one.
+  Build it with the version stamped in: `-ldflags "-X kevaso.com/core/internal/version.Version=vX.Y.Z"`.
 - A host reports no version, or the move breaks the rule below.
 
 With one system node it goes ahead and says the API is away while it restarts.

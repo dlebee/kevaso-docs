@@ -46,6 +46,9 @@ reports a private address uses it as the internal IP when you set none.
 All three are ordinary hosts. Kevaso has no word for "public", "internet" or "LAN": it can't know
 which is which, so you say.
 
+A silo address is in its host's subnet, or on the default network `10.64.0.0/24`. A host with no
+subnet accepts an address only on that default network.
+
 ![A cloud VM, two bare-metal hosts and three hosts on a LAN, all on one mesh]({{ '/assets/addresses-mixed-cluster.svg' | relative_url }})
 
 ---

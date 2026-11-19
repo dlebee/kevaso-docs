@@ -19,7 +19,7 @@ Every command on one page. `kvo` uses your current context (`kvo ctx`); `-n NS` 
 | `kvo apply -f FILE` (or `-f -`) | Create or update every object in a YAML/JSON file. A field the kind doesn't have is an error, never dropped: fix the name and apply again |
 | `kvo get KIND [NAME] [-n NS \| -A] [-o yaml\|json]` | List or show objects |
 | `kvo describe KIND NAME` | Everything about one object, for people |
-| `kvo delete KIND NAME` | Delete it. A namespace is refused while it still holds anything: delete those first. Deleting a namespace never deletes what is in it |
+| `kvo delete KIND NAME` | Delete it. A namespace is refused while it still holds anything, and while a binding names the group `system:serviceaccounts:NS`: delete those first. Deleting a namespace never deletes what is in it. `DELETE` on a `/status` path is refused (405) |
 | `kvo delete host NAME --confirm-off` | Delete a Host that still has silos, confirming the machine is off or wiped. Refused without the flag. [Removing a host]({{ '/workers/host-loss/#removing-a-host' | relative_url }}) |
 | `kvo watch KIND [-n NS \| -A]` | Print the current state, then every change |
 
@@ -135,12 +135,12 @@ A plugin never takes the name of a `kvo` command. See [Plugins for kvo]({{ '/ext
 
 | Command | Does |
 |---|---|
-| `kvo login SERVER --ca sha256:…` | Sign in (browser + invite code) |
+| `kvo login SERVER --ca sha256:…` | Sign in (browser + invite code). `SERVER` is `https://` only. Several control planes from an invite are comma-separated: each is tried for the CA, and the whole list is kept in the context |
 | `kvo logout` | Forget this context's session |
 | `kvo ctx [NAME]` | List contexts, or switch |
 | `kvo ns [NAME]` | Show or set the default namespace |
 | `kvo auth whoami` | Who you are to the cluster |
-| `kvo auth can-i VERB RESOURCE[/NAME] [-n NS]` | Exits 0 for yes, 1 for no |
+| `kvo auth can-i VERB RESOURCE[/NAME] [-n NS]` | Exits 0 for yes, 1 for no. `ssh`, `files`, `open`, `close` and `move` are silo subresources (`silos/ssh` is the terminal, not a silo named `ssh`) |
 | `kvo create token SA [--duration 1h]` | A service-account token, for CI (`$KVO_TOKEN`). Default one hour, at most 2160h (90 days). A namespace editor can't mint one |
 
 ### Environment
@@ -171,7 +171,7 @@ A plugin never takes the name of a `kvo` command. See [Plugins for kvo]({{ '/ext
 | `kvoadm host remove HOST [--confirm-off]` | Remove a host from the cluster. With silos still on it, it lists which start elsewhere and which stay `HostDeleted`, then asks whether the machine is off or wiped (`--confirm-off`: yes). A host an open restore still needs cannot be removed without that confirmation. Its old certificate is refused afterwards. A system node: out of the store first; refused if it would lose the majority. [Removing a host]({{ '/workers/host-loss/#removing-a-host' | relative_url }}) |
 | `kvoadm host confirm-off NAME [--yes\|--confirm-off]` | Say a host the restored history is waiting on is off or wiped. Asks `Is NAME off or wiped? [y/N]` unless `--yes` or `--confirm-off`. The name does not have to be a Host object. [Backup and restore]({{ '/operations/backup/#3--wait-until-each-silo-is-settled' | relative_url }}) |
 | `kvoadm store migrate [USER@]ADDR --ssh-key KEY` | Move a SQLite control plane onto etcd with a peer listener |
-| `kvoadm upgrade --kevasod BIN [--ssh-key KEY] [--batch N] [--version V] [--dry-run]` | Roll a new `kevasod` over the cluster: system nodes (light first, leader last), then workers. [Rules]({{ '/operations/ha/#upgrade' | relative_url }}) |
+| `kvoadm upgrade --kevasod BIN [--ssh-key KEY] [--batch N] [--version V] [--dry-run]` | Roll a new `kevasod` over the cluster: system nodes (light first, leader last), then workers. A binary that does not report its own version, or reports a different one from `--version`, is refused. Build it with `-ldflags "-X kevaso.com/core/internal/version.Version=vX.Y.Z"`. [Rules]({{ '/operations/ha/#upgrade' | relative_url }}) |
 | `kvoadm host list` | Hosts, both of their IPs, and their state |
 | `kvoadm host addresses HOST add\|remove CIDR…` | The extra addresses routed to a host, which the built-in `ip-pool` class hands out ([Addresses you keep]({{ '/networking/ips/' | relative_url }})). `remove` is refused for an address an IP holds |
 | `kvoadm host addresses HOST list` | Each range, and which IP holds each address |
@@ -212,6 +212,7 @@ Both look at the machine first and stop, changing nothing, if something won't wo
 | `kvoadm users invite NAME [--namespace NS [--role editor\|admin\|viewer]] [--group G]… [--ttl D]` | A one-time sign-in code. Cluster-admin only. With `--namespace` and no `--role`, the role is `editor`. `--ttl` defaults to 15m |
 | `kvoadm users list` | Everyone who can sign in |
 | `kvoadm users disable NAME` | Cut someone off now |
+| `kvoadm users resign [USER@]ADDRESS --name USER` | Sign a new client certificate over SSH and write it into the context. The key is made on this computer. Use it when `kvo` says the client certificate has expired, or is nearly expired and could not be renewed. [Contexts]({{ '/access/#contexts' | relative_url }}) |
 
 ### Keys
 
@@ -250,11 +251,11 @@ You rarely run it yourself; `kvoadm` installs it as a service.
 | `kevasod admin recovery-key` / `kms-rotate [--new-recovery-key]` / `backup` | Through the admin socket, as root |
 | `kevasod admin create-cluster --cluster NAME [--data DIR]` | Make this machine belong to cluster NAME: writes its record and nothing else (`kvoadm init` runs it). Does nothing if the record already names NAME; refused if it names another cluster. `kevasod control-plane` never creates a cluster |
 | `kevasod admin restore [--data DIR]` | Put a backup into a fresh data directory and mark it a deliberate restore (`kvoadm init --restore` runs it). With no host statement it still opens a new history; no silo from before that history settles until a statement exists |
-| `kevasod admin sign-user --name NAME` | On a control-plane host, as root: sign a user's certificate request from stdin. Prints JSON `{certificate, ca}`. [When a certificate expires]({{ '/access/#contexts' | relative_url }}) |
+| `kevasod admin sign-user --name NAME` | On a control-plane host, as root: sign a user's certificate request from stdin. Prints JSON `{certificate, ca}`. `kvoadm users resign` runs this over SSH and writes the certificate into the context. [Contexts]({{ '/access/#contexts' | relative_url }}) |
 | `kevasod control-plane --dns-suffix SUFFIX` | The last label of the cluster's names (default `kevaso`): `SERVICE.NAMESPACE.SUFFIX`. [Addresses, ports and names]({{ '/networking/model/' | relative_url }}) |
 | `kevasod control-plane --store sqlite\|etcd` | Where objects live: SQLite (default) or an embedded etcd member. The first `etcd` start moves `store.db` into it. [Operations]({{ '/operations/#the-store' | relative_url }}) |
 | `kevasod control-plane --etcd-client-listen ADDR` | With `--store etcd`: the member's client address (default `127.0.0.1:2379`; keep it on loopback) |
-| `kevasod control-plane --etcd-peer-listen ADDR` / `--etcd-advertise-peer ADDR` | With `--store etcd`: where other members connect, and what they dial. Without the first, no peer port is opened |
+| `kevasod control-plane --etcd-peer-listen ADDR` / `--etcd-advertise-peer ADDR` | With `--store etcd`: the member listens on its internal address. It also listens on the reach address when that address is on one of its own interfaces, and it advertises the reach address. Under 1:1 NAT it listens on the internal address only. Without `--etcd-peer-listen`, no peer port is opened |
 | `kevasod control-plane --join URL[,URL…] [--join-token-file F] [--ca-file F]` | First start of a new system node: join the cluster through one of these. `kvoadm host add --install control-plane` writes this |
 | `kevasod control-plane --state-only` | A light system node: the etcd member only. Needs `--store etcd` |
 | `kevasod control-plane --cluster-dns NAME` | A name with one record per system node: in the certificate, and the token issuer. Without it the issuer is this node's reach address (external IP, or internal IP). A restore onto a new address then invalidates tokens. [Backup and restore]({{ '/operations/backup/#1--a-new-machine' | relative_url }}) |

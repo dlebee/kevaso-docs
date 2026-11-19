@@ -42,7 +42,8 @@ Internal IP, external IP, mesh IP, silo IP and cluster IP each mean one thing in
 | A silo → a name outside the cluster | Only when the silo lists a Grant that exists | With no Grant, the name is refused |
 
 Each silo also can't send packets with an address other than its own (anti-spoofing), so a rule
-"from silo X" really means silo X.
+"from silo X" really means silo X. A packet with a source in the silo range is dropped unless it
+arrives on the bridge or the mesh.
 
 ---
 
@@ -87,7 +88,7 @@ It is plain layer-4 forwarding: no proxy, and **the silo sees the client's real 
 never answers a host port on Kevaso's own networks (the mesh, the silos, the Services' virtual IPs).
 
 One silo holds a host port on a host: one address, protocol and number. The store records the
-holder. A second silo does not get that port opened. On the firewall the port opens only for the
+holder. A conflicting write of the silo keeps the host ports that silo already holds. A second silo does not get that port opened. On the firewall the port opens only for the
 silo that holds it; two askers, and it opens for nobody. A silo that was placed without claiming,
 while another silo holds the port, has `HostPorts` false, reason `HeldByAnother`:
 

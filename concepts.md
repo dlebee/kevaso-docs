@@ -86,6 +86,10 @@ Everything in Kevaso is an object with a **spec** (what you want) and a **status
 
 `kvo watch silos` shows these steps as they happen.
 
+A `kevaso.com/` finalizer is removed only by Kevaso's own controllers, or through the admin socket
+for a stuck one. A second `kvo apply` of a manifest keeps those finalizers. The exception is
+`kevaso.com/plugin-uninstall`, which the person who uninstalls can remove.
+
 ---
 
 ## Two CLIs, on purpose

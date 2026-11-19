@@ -41,7 +41,7 @@ spec:
 |---|---|
 | `image` | A registry reference, or the built-in `ubuntu-24.04` (which is `docker.io/library/ubuntu:24.04`). It can't be the name of a VMImage. On `openshell` and `openshell-container` a rootfs archive (`.tar`, `.tar.gz`, `.tgz`) is refused |
 | `command` | The main process. Default: the image's own |
-| `pull.secretRef` | A `registry` secret in the silo's namespace. Default: the namespace's default pull secret for the image's registry, if there is one. Docker and podman only: the OpenShell runtimes refuse it |
+| `pull.secretRef` | A `registry` secret in the silo's namespace. Default: the namespace's default pull secret for the image's registry, if there is one. That default is used only for the spec image, or a status reference on the same registry. Docker and podman only: the OpenShell runtimes refuse it |
 
 Pin the image by digest (`…@sha256:…`) if it must never change under you: a tag can move.
 `kvo describe silo` flags an image that isn't pinned, and shows the digest that was actually pulled.

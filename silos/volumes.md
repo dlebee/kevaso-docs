@@ -33,8 +33,14 @@ A volume has no retention flag: it is always **kept data**. Disposable data (a c
 space) belongs on the silo's own disk, not on a volume.
 
 A provider volume taken out of the spec is detached once the host has unmounted it, and kept until
-the silo is deleted. Put the name back and the same volume is there. Changing a volume's class in
-place is refused, and so is `disk.class` on a microVM. Empty and `local` are the same class.
+the silo is deleted. Put the name back and the same volume is there. Put it back while it is still
+mounted and it stays attached as it is. Changing a volume's class in place is refused, and so is a
+kept name coming back under another class, and so is `disk.class` on a microVM. Empty and `local`
+are the same class. Delete the silo to drop the volume.
+
+A volume is formatted only when it holds nothing: no filesystem and no partition table. A disk
+with a partition table is refused, not formatted. When the host mounts a volume, the mount uses
+`noatime,nosuid,nodev`.
 
 ```text
 volume data: class can't change in place (local to juicefs); delete the silo to drop the volume
@@ -105,7 +111,7 @@ A microVM can have volumes too. How one reaches the guest depends on where it li
 
 | The volume is… | It reaches the guest as… |
 |---|---|
-| `local` | A disk of its own (a thin logical volume on the host). The guest formats it once, with ext4, **only if nothing at all is on it**, and mounts it |
+| `local` | A disk of its own (a thin logical volume on the host). The guest formats it once, with ext4, only when it holds nothing. A partition table is refused, not formatted |
 | On a class whose storage is a **folder on the host** (a mount class such as `juicefs`, or a device class such as `block-storage` that the host has mounted) | A **virtiofs** share of that folder. The guest never sees a cloud block device |
 
 - **The guest mounts them by itself**, before your init steps run, and again
