@@ -199,17 +199,18 @@ created after the history started is settled at once.
 Until then the silo stays pending. Controllers do not schedule it, and they do not attach or
 detach its volumes. `kvoadm restore status` shows what is still waiting.
 
-One reported copy on the stored host leaves the placement there. One reported copy on another host
-the restored records already allow moves the placement there: the host conditions are dropped, the
-silo IP is cleared, and the phase is `Scheduled`. No reported copy leaves the stored placement.
-The host that still has the copy keeps it. The control plane does not start a second one. The silo
-may then start.
+One reported copy on the stored host leaves the placement there. One reported copy on the other
+end of a stored handoff, or on a host a volume is already attached to, moves the placement there
+when that handoff is not left in place. The host conditions are dropped, the silo IP is cleared,
+and the phase is `Scheduled`. When the old host is still live and a volume is attached there, that
+host is left to unmount and let go. No reported copy leaves the stored placement. The host that
+still has the copy keeps it. The control plane does not start a second one. The silo may then start.
 
-**Frozen** is two or more copies, or a move since the backup: the only copy is on a live host the
-restored records do not already name. A stored handoff whose only copy is on neither end is frozen
-too. Placement stays, every disk stays, and the condition `Frozen` is true with reason
-`RestoreConflict`. The message names each holder and the command that picks it. Settle is for a
-cluster admin:
+**Frozen** is two or more copies, or a move since the backup. A move is the only copy on a host the
+restored records do not already name, while the stored host is live and holds nothing. A stored
+handoff whose only copy is on neither end is frozen too. Placement stays, every disk stays, and
+the condition `Frozen` is true with reason `RestoreConflict`. The message names each holder and
+the command that picks it. Settle is for a cluster admin:
 
 ```bash
 kvoadm restore settle web -n shop --to hv2
