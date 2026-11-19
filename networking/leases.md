@@ -238,8 +238,9 @@ resource `silos/exposure`: `lease-asked`, `lease-replaced`, `lease-opened`, `lea
 `open` and `approve` can be given for one silo, by its name or by label, like any other rule:
 see [People and access]({{ '/access/' | relative_url }}#roles).
 
-Opening a port to the outside in the first place is still its own permission, `services/expose-public`:
-a lease only decides *when*.
+Opening a port to the outside, or widening one that is already open, is still its own permission,
+`services/expose-public`: a lease only decides *when*.
+[What counts as widening]({{ '/access/#roles' | relative_url }}).
 
 ---
 

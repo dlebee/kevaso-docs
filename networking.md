@@ -25,8 +25,9 @@ Internal IP, external IP, mesh IP, silo IP and cluster IP each mean one thing in
 | A silo → another silo | Denied | The receiving port's `allowFrom` |
 | Outside → a silo | Denied | A service port with `hostPort` or `loadBalancer: true` |
 | A silo → outside | Denied | A `Grant` naming the destination ([below](#what-a-silo-may-reach-outside)) |
-| A silo → its host | DNS and ping only | Never more, except the [local endpoint]({{ '/secrets/' | relative_url }}) for a silo that has something to ask it, and the egress gate for a silo whose grants name hosts |
-| A silo → the mesh's host addresses | Denied | Never |
+| A silo → its host | DNS and ping only, on this host's gateway | Never more, except the [local endpoint]({{ '/secrets/' | relative_url }}) for a silo that has something to ask it, and the egress gate for a silo whose grants name hosts |
+| A silo → another host's own listeners, over the mesh | Denied | Never. A packet from a silo that arrives on the mesh is dropped |
+| A silo → any host's `10.64.N.1` | Denied | Never, except this host's own DNS (port 53) and ping |
 | A silo → names (DNS) | Allowed | Its host answers on the silo network's gateway |
 
 Each silo also can't send packets with an address other than its own (anti-spoofing), so a rule
@@ -69,6 +70,37 @@ the number there when it differs from the silo's. `sources` limits who may conne
 
 It is plain layer-4 forwarding: no proxy, and **the silo sees the client's real address**. The host
 never answers a host port on Kevaso's own networks (the mesh, the silos, the Services' virtual IPs).
+
+One silo holds a host port on a host: one address, protocol and number. The store records the
+holder. A second silo does not get that port opened. On the firewall the port opens only for the
+silo that holds it; two askers, and it opens for nobody. A silo that was placed without claiming,
+while another silo holds the port, has `HostPorts` false, reason `HeldByAnother`:
+
+```text
+host ports external-tcp-80 on hv1 are held by another silo (it was put there without claiming them); move one of the two
+```
+
+A silo may not take a port the platform listens on, on TCP or UDP. 80 and 443 are not in this list.
+
+| Port | Why |
+|---|---|
+| 22 | the SSH port |
+| 53 | DNS |
+| 2379, 2380 | etcd |
+| 6443 | the API |
+| 51820, 51821 | the mesh |
+| 15001 | the egress gate |
+
+A host that listens elsewhere adds its own: its SSH port when that is not 22, its mesh listen port,
+and the API and etcd ports it publishes. The refusal names the reason:
+
+```text
+service.ports[web]: 6443 is the API, which a silo may not take
+```
+
+```text
+Silo web: port 2222 is the SSH port, which a silo may not take
+```
 
 A port with `hostPort: [external]` needs a host with an external IP. See
 [where a silo can run]({{ '/networking/model/' | relative_url }}#ports-declare-then-open).
@@ -115,8 +147,9 @@ The silos behind it stay private.
 
 > **Opening a port to the outside is its own permission:** `create` on `services/expose-public` in
 > the namespace. It is needed for a silo with `hostPort` or `loadBalancer: true` ports, for a SiloSet
-> whose instances would have them, and for a standalone Service of type `LoadBalancer`
-> ([Sets, images and updates]({{ '/silos/sets/' | relative_url }})). Namespace `admin`s have it,
+> whose instances would have them, and for a standalone Service of type `LoadBalancer`. An edit that
+> widens that reach needs it too
+> ([People and access]({{ '/access/#roles' | relative_url }})). Namespace `admin`s have it,
 > `editor`s don't.
 
 ---
@@ -216,7 +249,10 @@ opens 443. Addresses are IPv4 only for now.
 - the host's loopback (`127.0.0.0/8`), `0.0.0.0/8`, link-local (`169.254.0.0/16`, the cloud
   metadata address `169.254.169.254` included), multicast or reserved addresses;
 - the cluster's own ranges (the mesh, silo and service ranges) except as its silos allow;
-- its own host's internal and external addresses.
+- its own host's internal and external addresses;
+- every host's address on the silo network, `10.64.N.1`, except this host's own DNS and ping;
+- another host's own listeners, reached over the mesh. A silo on one host reaches nothing of another
+  host itself. It still reaches that host's silos, as those silos allow.
 
 A grant naming an address in the first two is refused when you write it. So `0.0.0.0/0` means "the internet and
 your private networks", nothing more. A silo still reaches the ports its host publishes for other
