@@ -217,12 +217,22 @@ kvoadm restore settle web -n shop --to hv2
 ```
 
 ```text
+waiting for hv3 to stop its copy
 silo/web settled on hv2; the other copies stay stopped with their disks
 ```
 
 The same write is `kvo restore settle web --to hv2 -n shop`. It places the silo on that host with
-no handoff, so every other copy stays stopped with its disk. The host has to have reported a copy
-of that silo under this history. A host you confirmed off starts nothing.
+no handoff, so every other copy stops and keeps its disk. The host has to have reported a copy of
+that silo under this history. A host you confirmed off starts nothing.
+
+Settling waits for the other copies. Until every other holder reports its copy stopped, or you
+confirm that host off, the silo stays frozen as `settling to hv2` and nothing starts it, on hv2
+or anywhere else. `kvoadm restore status` shows `shop/web (settling to hv2)` meanwhile. If a holder
+does not answer, settle stops waiting and says so:
+
+```text
+shop/web: waiting for hv3 to stop its copy: bring hv3 back, or run kvoadm host confirm-off hv3
+```
 
 A host the account is still waiting on, that is off or wiped:
 
