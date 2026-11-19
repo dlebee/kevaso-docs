@@ -104,6 +104,10 @@ how many silos are still there:
 kvo delete host hv2 --confirm-off
 ```
 
+While a restore is still waiting on a host, removing it is refused until you confirm it off the
+same way. The account and `kvoadm host confirm-off` are on
+[Backup and restore]({{ '/operations/backup/#3--wait-until-each-silo-is-settled' | relative_url }}).
+
 ### What happens to its silos
 
 | The silo | After the host is removed |

@@ -280,8 +280,10 @@ the data directory, a system node serving old data), the worker does not trust i
 | Injected secrets | A secret this host was given before the hold keeps being injected for one hour. After that, and for a secret it was not given before the hold, injection is refused until the hold ends |
 
 A hold within one history does not end when a later answer of that same history reaches the revision
-the worker kept. It ends in one of two ways. A deliberate restore, `kvoadm init --restore BACKUP`,
-starts a new history of the same cluster, and workers accept it
+the worker kept. It ends in one of two ways. A deliberate restore,
+`kvoadm init --restore BACKUP --no-hosts-added` (or `--host-added NAME` for each host joined since
+the backup), starts a new history of the same cluster, and workers accept it. They do not start a
+copy that is not already running until that silo is settled
 ([Backup and restore]({{ '/operations/backup/' | relative_url }})). Or you run
 `kvoadm host trust-control-plane` after you have checked that the control plane this host will reach
 is the newest of this cluster, and that every silo this host runs is placed here in it. The
