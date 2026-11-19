@@ -32,6 +32,18 @@ spec:
 A volume has no retention flag: it is always **kept data**. Disposable data (a cache, scratch
 space) belongs on the silo's own disk, not on a volume.
 
+A provider volume taken out of the spec is detached once the host has unmounted it, and kept until
+the silo is deleted. Put the name back and the same volume is there. Changing a volume's class in
+place is refused, and so is `disk.class` on a microVM. Empty and `local` are the same class.
+
+```text
+volume data: class can't change in place (local to juicefs); delete the silo to drop the volume
+```
+
+```text
+disk.class can't change in place (local to juicefs); delete the silo to drop the disk
+```
+
 - A silo whose volumes are on a host-local class can't be recreated elsewhere. `onHostLoss:
   Recreate` and `kvo move --recreate` are refused while the silo has such a volume, naming it:
   a fresh copy elsewhere would leave the volume's data behind. Put the volume on a class that
@@ -106,7 +118,8 @@ A microVM can have volumes too. How one reaches the guest depends on where it li
   `virtiofsd` package.
 - **Changing the volume list restarts the microVM.** There is no adding a disk to a running one.
 - **A volume taken out of the spec keeps its data** until the silo is deleted: put it back and the
-  same data is there.
+  same data is there. A provider volume is detached only after this host has unmounted it, and the
+  volume itself stays until the silo is deleted.
 - A **reset** keeps volumes and makes the root disk again.
 - `mountPath: /` is refused: a volume can't replace the guest's own disk.
 - `size` on a `local` volume of a microVM sets the disk's size when it's made, and **doesn't grow**
@@ -139,7 +152,11 @@ spec:
 
 The root disk is then an **image file in a volume of that class** (named `disk.root`), sized
 `disk.size`. It is made once, reused when the silo starts on another host, and made again only
-by a reset. A silo whose root disk and volumes are all on global classes is movable to
+by a reset. That volume stays mounted for the life of the placement: while the silo is placed
+here, the host does not unmount `disk.root`, including while the copy looks absent. A move
+unmounts it only after the old host has stopped the VM.
+
+A silo whose root disk and volumes are all on global classes is movable to
 `Anywhere`, and `onHostLoss: Move` and `kvo move` work on it ([Moves]({{ '/silos/moves/' | relative_url }})).
 
 - **One host at a time.** The control plane points the volume at a single host, and a move waits

@@ -107,6 +107,29 @@ NAME   INTERNAL IP    EXTERNAL IP   REGION   COMPONENTS      RUNTIMES   AGE
 hv1    203.0.113.10   -             -        control-plane   -          1m
 ```
 
+### Running init again
+
+A second `kvoadm init` on a machine that already has `kevasod.service` keeps what the unit already
+runs: the worker, its runtimes, its storage (`--storage-device` or `--loop-storage`), the store
+(`sqlite` or `etcd`), the host name, the internal and external addresses, and the etcd peer listen
+and join flags. A flag you leave out stays as the unit has it.
+
+A value you pass that differs is refused, and nothing is written:
+
+```text
+kvoadm: kevasod.service on this machine has --name hv1 (the installed unit) and --name hv9 (this init): pass the same value, or --replace-unit to write the unit from this run only
+```
+
+A run that would drop a worker, a runtime, the storage mode, or an etcd store is refused the same
+way:
+
+```text
+kvoadm: kevasod.service on this machine has --worker, --runtime cloud-hypervisor, and this init would drop them: repeat those flags, or pass --replace-unit to write the unit from this run only
+```
+
+`--replace-unit` writes the unit from this run's flags only. The same keep applies when
+`kvoadm init --restore` finds a unit already installed.
+
 ---
 
 ## Step 2 · Save the recovery key
