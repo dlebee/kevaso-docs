@@ -291,6 +291,8 @@ metadata: { name: public }
 spec:
   controller: { driver: nginx, silo: ingress-public, namespace: kevaso-system }
   public: true
+  hosts:
+    - { host: "*.example.com", namespaces: [payments] }
   dns: { provider: linode }
 ```
 

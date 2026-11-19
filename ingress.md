@@ -26,7 +26,7 @@ TCP or UDP to **one** silo; an ingress reads HTTP and routes to **many**.
 | Object | What it is |
 |---|---|
 | **Ingress controller** | An ordinary silo running a stock proxy as its vendor ships it, with its ports 80 and 443 open on its host or a load balancer |
-| **IngressClass** | Which silo serves a class of Ingresses, with which proxy driver, and whether the class is public |
+| **IngressClass** | Which silo serves a class of Ingresses, with which proxy driver, whether the class is public, and which host names each namespace may publish |
 | **Ingress** | Host names and paths → a service's port, and where its certificate comes from |
 | **Issuer** | Where certificates come from: an ACME server (Let's Encrypt) or the cluster's own CA |
 | **Certificate** | Made for each Ingress with TLS; issued into a Secret and renewed by Kevaso |
@@ -45,7 +45,7 @@ with the proxy's own test, and reloads the proxy.
 One command makes a controller silo and its class:
 
 ```bash
-kvoadm ingress install --public
+kvoadm ingress install --public --host api.example.com=payments
 ```
 
 ```text
@@ -55,6 +55,10 @@ kvoadm ingress install --public
 Ingress class public: nginx (docker.io/library/nginx:1.27) in silo kevaso-system/ingress-public, on its host's external IP. Kevaso writes its config from outside;
 see it with: kvo get ingressclass public -o yaml
 ```
+
+A host name is published only when the class assigns it to the Ingress's namespace. Without
+`--host`, the command still makes the class and then says no host is assigned yet. An Ingress is
+refused until one is.
 
 It runs as an admin of your current `kvo` context. Anything that already exists is left as it is.
 The silo is in the namespace `kevaso-system`, named `ingress-CLASS`, with 1 CPU and 256Mi.
@@ -69,6 +73,7 @@ The silo is in the namespace `kevaso-system`, named `ingress-CLASS`, with 1 CPU 
 | `--image REF` | The proxy's image | The driver's vendor image |
 | `--runtime NAME` | The silo's runtime | `docker` |
 | `--option KEY=VALUE` | A driver option, repeatable (see below) | |
+| `--host NAME=NAMESPACE[,NAMESPACE]` | Assign that host name to those namespaces. Repeat the flag for another name. `NAME` may be a one-label suffix, `*.example.com` | none: the class assigns no host, and an Ingress is refused until one is |
 | `--context NAME` | The `kvo` context to use | The current one |
 
 The host that runs it needs the runtime and, with `--host-port external`, an external IP.
@@ -157,6 +162,9 @@ spec:
     silo: ingress-public
     options: { client-max-body-size: 32m }
   public: true
+  hosts:
+    - { host: api.example.com, namespaces: [payments] }
+    - { host: "*.example.com", namespaces: [payments, shop] }
 ```
 
 | Field | Meaning |
@@ -166,7 +174,23 @@ spec:
 | `controller.silo` or `controller.siloSet` | The silo, or the SiloSet whose instances all run the proxy (one of the two) |
 | `controller.options` | The driver's options |
 | `public` | Reachable from the internet |
+| `hosts` | Which namespaces may publish which names. `host` is a host name, or a one-label suffix such as `*.example.com` (that matches `a.example.com`, and not `example.com` or `b.a.example.com`). `namespaces` lists the namespaces allowed |
 | `dns` | `{ provider, ttl }`: publish every host name of this class through a DNS provider, pointing at the controller's address. `ttl` is in seconds (300). The provider comes from a [provider plugin]({{ '/extending/plugins/' | relative_url }}); its page says how |
+
+Only a cluster admin writes an IngressClass, which is where the assignment lives. On a class that
+is already there:
+
+```bash
+kvoadm ingress assign public --host api.example.com=payments
+```
+
+```text
+→ IngressClass public assigns api.example.com to payments
+```
+
+`--host` is `NAME=NAMESPACE[,NAMESPACE]`, and it can be repeated. The same flag on
+`kvoadm ingress install` records the assignment on the class it creates. A class that already
+exists is left as it is; the command tells you to add the host with `ingress assign`.
 
 Where certificates come from is each Ingress's choice (below).
 
@@ -209,6 +233,13 @@ spec:
 
 ```bash
 kvo apply -f api.yaml
+```
+
+The class must already assign `api.example.com` to `payments`. Otherwise the API refuses the Ingress
+with status 422:
+
+```text
+host "api.example.com" is not assigned to namespace payments on ingress class public: set IngressClass.spec.hosts, or add one with: kvoadm ingress assign public --host api.example.com=payments
 ```
 
 The Ingress opens exactly one path through the firewall: from the class's controller to the silo's
@@ -364,9 +395,41 @@ Built in:
 | Cert-controller | Gets certificates from |
 |---|---|
 | `acme` | An ACME server: Let's Encrypt, or your own. Proves each host with an HTTP-01 or DNS-01 solver |
-| `internal-ca` | The cluster's own CA, for private names. No proof needed |
+| `internal-ca` | A CA of its own, for private names. No proof needed. See [The internal CA](#the-internal-ca) |
 
 You can add your own on the control-plane host: see [Other tools](#other-tools-certbot-and-friends).
+
+### The internal CA
+
+`internal-ca` signs with its own CA, the files `internal-ca.crt` and `internal-ca.key` in
+`/var/lib/kevaso/pki/`. It is not the cluster CA. A client that pins the cluster CA does not trust
+it. The public certificate is served at `/internal-ca.crt`.
+
+An API server's name is never signed: the host's name, its addresses, and the host of its API URL.
+
+```text
+host "203.0.113.10" is a name of this cluster's API server and is not signed
+```
+
+Any other name on a Certificate is kept only when an IngressClass assigns it to that namespace, or
+it is one of the namespace's own service names (`NAME.payments.kevaso`, or with `.mesh`,
+`.internal` or `.external` before the suffix). Otherwise:
+
+```text
+host "api.example.com" is not assigned to namespace payments on an ingress class, and is not one of its service names (NAME.payments.kevaso): ask a cluster admin to assign it
+```
+
+A worker reads `/internal-ca.crt`. A system node's own worker already has the certificate.
+
+- A `docker` or `podman` silo gets it in the CA bundle the host mounts at
+  `/etc/ssl/certs/kevaso-ca-bundle.crt`, together with the host's system CAs and the egress CA.
+  `SSL_CERT_FILE`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE` and `NODE_EXTRA_CA_CERTS` point at that file.
+- An OpenShell gateway gets it in `/etc/kevaso/openshell-upstream-cas.pem`, which the gateway's own
+  user can read, and trusts that file upstream. The file is public certificates only. It is not
+  kept in `/var/lib/kevaso`, which is root-only.
+
+A microVM does not get this bundle. Its trust store is the image's, plus the egress CA when a grant
+injects a secret.
 
 ### Your own ACME server
 
@@ -498,7 +561,7 @@ spec:
   secretName: internal-wildcard-tls
 ```
 
-The certificate and its key land in the Secret `internal-wildcard-tls`, renewed like any other.
+The class has to assign that suffix to the namespace first (`hosts: [{ host: "*.internal.example.com", namespaces: [payments] }]`, or `kvoadm ingress assign`). The certificate and its key land in the Secret `internal-wildcard-tls`, renewed like any other.
 
 ### Other tools: certbot and friends
 
