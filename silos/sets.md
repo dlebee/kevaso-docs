@@ -69,9 +69,41 @@ spec:
 | Field | Means |
 |---|---|
 | `image` | `NAME[:VERSION]` of a VMImage in the silo's namespace, or the built-in `ubuntu-24.04`. It can't be a registry reference |
-| `disk.url` | An `https://` address |
+| `disk.url` | An `https://` address. The worker downloads it. The body is capped at `disk.size`, or at the default disk (20 GiB, 21474836480 bytes) when `disk.size` is omitted. A larger body is refused and the partial file is removed |
 | `disk.sha256` | The disk's hash. Hosts refuse a disk that doesn't match |
 | the file itself | Raw, or a plain qcow2 with no backing file, no external data file and no encryption. Another format is refused. [Runtimes]({{ '/silos/runtimes/#cloud-hypervisor' | relative_url }}) |
+
+A download that names its length over the cap fails before the body is kept:
+
+```text
+GET https://images.example.com/web-app.img: 21474836481 bytes, larger than the disk's 21474836480 bytes
+```
+
+A body that runs past the cap without that length fails as:
+
+```text
+GET https://images.example.com/web-app.img: body is larger than the disk's 21474836480 bytes
+```
+
+That number is the disk this silo will get: `disk.size`, or 21474836480 (20 GiB) when `disk.size`
+is omitted. A body the same size as the disk is kept.
+
+Every address, after DNS and including a redirect, is refused when it is a cluster address,
+loopback, link-local or a private address. The message names the host it was about to use:
+
+```text
+GET 127.0.0.1: loopback
+GET 10.64.0.5: the silo range
+GET 10.62.0.1: the mesh range
+GET 10.65.0.1: the service range
+GET 192.168.1.1: a private address
+GET 169.254.169.254: link-local
+```
+
+An address in `10.0.0.0/8` that is outside those cluster ranges says
+`a private address: the mesh, silos and services are in it`. The silo's `Ready` condition is false,
+reason `StartFailed`, and the message is `image URL: ` plus one of these, then
+`(trying again in …)`.
 
 ### VMImage: a named disk with versions
 
@@ -195,8 +227,11 @@ When it grows, a standby instance is used first, since it's booted already; then
 made, and the standby is refilled.
 
 Shrinking deletes instances and their disks, so `kvo scale` lists which ones first and wants
-`--yes`. Instances that aren't Ready go first, then the newest (`scaleInPolicy: NewestFirst`, or
-`OldestFirst`). A protected instance is never removed:
+`--yes`. With no volumes in the template, instances that aren't Ready go first, then the newest
+(`scaleInPolicy: NewestFirst`, the default, or `OldestFirst`). When the template has volumes, the
+newest instances past the desired count go first, even when an older instance is not Ready. Those
+are the extra ones from a surge (`maxSurge`). The scale-in policy still orders within that group.
+A standby trim still takes instances that aren't Ready first. A protected instance is never removed:
 
 ```bash
 kvo protect silo api-pool-0 -n payments

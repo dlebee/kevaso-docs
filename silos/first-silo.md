@@ -65,7 +65,7 @@ spec:
 | `vm` | What it boots: `image` names a built-in OS image (`ubuntu-24.04`, downloaded once per host and checked) or a [VMImage]({{ '/silos/sets/#what-a-silo-starts-from' | relative_url }}); `disk` gives a disk by URL and `sha256`. A container silo says `container:` instead. |
 | `resources` | CPUs and memory it may use. The scheduler only places it where they fit. |
 | `disk` | Its root disk. It lives on the host it was created on. |
-| `init.steps` | Optional. Scripts, run as root inside the silo, in order. If you give any, the silo is Ready only after the last one succeeds. |
+| `init.steps` | Optional. Scripts, run as root inside the silo, in order. If you give any, the silo is Ready only after the last one succeeds. The script is part of the spec: every worker can read it. A value belongs in a [Secret]({{ '/secrets/#who-can-do-what-with-secrets' | relative_url }}), not in the script |
 | `init.when` | `firstBoot` (the default) or `everyBoot`. `firstBoot` runs once. `everyBoot` runs on every boot, including after the silo crashes and is started again. |
 | `init.timeout` | Optional. A duration, such as `15m`. The steps of one start must finish within it. |
 

@@ -345,6 +345,10 @@ The `428` body has the pending name and says `kvo approve NAME -n ops`; it is al
 the secret without asking again. `wait` is how long a request may wait for an answer. For an
 injection, the request itself waits at the egress gate.
 
+A yes answers the pending request you read. The access that follows is a time window, not that one
+request. Until `for` ends (default 15 minutes, at most 12 hours), later calls go through: any
+payload on sign, any request on inject. The window is not bound to one payload or one host.
+
 **You** see the queue and answer. `kvo get approvals` and `kvo watch approvals` have a `REQUEST` column. It is the first 32 hex digits of the request's id. The full id is 64 hex digits. It names what this request asks for. A silo that asks again with anything different gets a new id. A yes is for the id you read. That keeps it from landing on a different ask.
 
 ```bash
@@ -471,7 +475,7 @@ Secrets have their own verbs, separate powers:
 | Verb | Allows |
 |---|---|
 | `list` | See that a secret exists (name, labels, version), never its value |
-| `use` | Name it in a Grant, i.e. let a silo receive it |
+| `use` | Name it in a Grant, i.e. let a silo receive it. On a secret that allows `inject`, the value can be sent to any host the grant's `to.host` names. That field is checked as one host name |
 | `read-value` | Read the value as a person |
 | `write` | Create, change, rotate, delete |
 | `approve` | Answer a silo's request to use it ([approvals](#ask-a-person-first-approvals)) |
@@ -486,6 +490,17 @@ rules:
   - { resources: [secrets], verbs: [use], resourceNames: [signing-key] }
   - { resources: [secrets], verbs: [approve], selector: { sensitivity: critical } }
 ```
+
+**`use` on an injectable secret lets the value leave.** Anyone who can `use` that secret and write
+a Grant picks `to.host`. The name is checked for syntax only. The value can reach any host that
+name points at, including a host that person runs. Put a value in a secret only when `use` may
+send it where the grant says.
+
+**Every worker reads every silo's spec.** A worker certificate gets the whole Silo object, for
+every namespace, not only the silos placed on it. That includes the image, the command, and init
+and daemon scripts. A value written there is readable on every worker. The Silo spec has no
+environment field. Put a value in a Secret, and deliver it as `inject`, `file` or `env`. Secret
+values are not in the Silo object.
 
 **No back door through silos:** writing a Grant needs `use` on every secret it names, and giving a
 silo a Grant needs `use` on that Grant's secrets too. Being able to create silos doesn't give you the

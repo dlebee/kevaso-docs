@@ -38,6 +38,9 @@ the rest ([what a silo starts from]({{ '/silos/sets/#what-a-silo-starts-from' | 
 The default choice: a real Linux machine, booted from `ubuntu-24.04`, with its own disk.
 
 - It boots from `vm: { image: … }` (a built-in OS image or a VMImage) or `vm: { disk: { url, sha256 } }`.
+  A download of that URL is capped at `disk.size`, or at the default 20 GiB disk when `disk.size`
+  is omitted, and a redirect to a private, loopback, link-local or cluster address is refused.
+  The messages are on [what a silo starts from]({{ '/silos/sets/#vm' | relative_url }}).
   A disk image is accepted only when it is raw, or a plain qcow2: version 2 or 3, no backing file,
   no external data file and no encryption. Anything else is refused, and the silo does not start:
 
@@ -263,3 +266,8 @@ spec:
 | Persistence | Volumes survive restarts; the container's own files stay on its host |
 | Secrets | `inject`, `broker`, `file` and `env`. `broker` secrets come from the [local endpoint]({{ '/secrets/' | relative_url }}), so the image needs `curl` or any HTTP client. `file` secrets are a read-only bind mount of a host tmpfs under `/run/secrets/…`. `env` secrets are set by Kevaso's own container runtime on Docker, so `docker inspect` and Docker's disk don't hold them; where that isn't available (podman, rootless Docker) they go through `--env-file` and admission warns. Nothing of Kevaso's is put in your image |
 | Volume `size` | Not enforced on containers |
+| Capabilities | `MKNOD`, `NET_RAW` and `SYS_CHROOT` are dropped. The container's root is the host's uid 0. There is no way to add those three back yet |
+
+A container silo cannot ping. Ping opens a raw socket, and `NET_RAW` is dropped, so the kernel
+refuses it. The firewall would allow ping to this host's gateway from a microVM; a container
+never sends it. A workload that needs `MKNOD`, `NET_RAW` or `SYS_CHROOT` cannot have them yet.

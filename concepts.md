@@ -77,7 +77,7 @@ Everything in Kevaso is an object with a **spec** (what you want) and a **status
 
 1. You `kvo apply` a silo. The API checks it (types, rules, your permissions) and stores it.
 2. The **scheduler** picks a host that fits (runtime installed, enough CPU and memory, labels,
-   region) and writes it into the silo's status.
+   region) from the capacity that worker reports, and writes it into the silo's status.
 3. That host's **agent** sees the silo, creates it with the runtime, starts it, runs its init steps (if it has any),
    and reports `Running` and `Ready`.
 4. If anything drifts later (the VM dies, the host restarts), the agent puts it back. That's the

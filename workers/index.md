@@ -145,7 +145,17 @@ spec:
 ```
 
 The scheduler also checks the runtime is installed and Ready there, that the CPU and memory fit, and
-taints and tolerations, like Kubernetes.
+taints and tolerations, like Kubernetes. It trusts the capacity each worker reports: `status.allocatable`,
+the runtimes, and the mount classes. Among the hosts that fit, it picks the one with the most free
+memory from those numbers. A large step (more than double, or under half, or a mount class added
+after the first report) is recorded on the host as `ReportedChange`, reason `LargeStep`, and
+placement still uses the new numbers:
+
+```text
+hv1 reported allocatable memory 8Gi → 64Gi (the scheduler places silos by what a host reports)
+```
+
+Several steps are joined with `; `.
 
 ---
 
