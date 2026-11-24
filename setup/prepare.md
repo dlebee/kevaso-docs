@@ -134,7 +134,7 @@ You should get a shell without being asked for the machine's password (only for 
 passphrase, if `ssh-agent` doesn't have it yet). Type `exit` to leave.
 
 > **Prefer not to do this by hand?** `kvoadm init --password` logs in with the password once and
-> adds a key of its own for next time (`~/.kevaso/ssh/id_ed25519`). It changes nothing else about how
+> adds a key of its own for next time (`ssh/id_ed25519` in the cluster's folder, `~/.kevaso/clusters/CLUSTER/`). It changes nothing else about how
 > the machine is logged in to.
 
 ---

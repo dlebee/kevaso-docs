@@ -8,7 +8,7 @@ permalink: /networking/
 Kevaso owns the firewall on its hosts, and starts from **deny**. This page goes through every way
 traffic is opened, one rule at a time.
 
-If nft refuses a new ruleset, the last one it took stays in force. `kvo describe host` shows
+If nft refuses a new ruleset, the last one it took stays in force. `kvoadm kvo describe host` shows
 `SiloFirewall` false, reason `Rejected`:
 
 ```text

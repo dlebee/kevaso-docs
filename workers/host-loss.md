@@ -23,7 +23,7 @@ and the opt-in are on one page:
 bin/kvoadm host drain hv2
 ```
 
-`drain` takes the host's name (the `--context NAME` flag, last, picks another `kvo` context). It
+`drain` takes the host's name (the `--cluster NAME` flag, last, picks another cluster folder). It
 has no other flags. It does two things:
 
 1. **Cordons** the host: it takes no new silos. `kvoadm host list` shows it as `cordoned`.

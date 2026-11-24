@@ -107,7 +107,7 @@ key**. For this throwaway VM you can let it go. On a real cluster, it's the one 
 ([why]({{ '/setup/single-node/' | relative_url }}#step-2--save-the-recovery-key)).
 
 ```bash
-bin/kvo get hosts
+bin/kvoadm kvo get hosts
 ```
 
 ## 5 · Let it run silos

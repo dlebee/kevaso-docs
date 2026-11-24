@@ -264,7 +264,7 @@ spec:
 Listing `external` needs the host to have an external IP. An external listener answers anyone who
 can reach it, so it is off until you ask for it. Kevaso doesn't open port 53 in the host's own
 firewall: that is yours to do. Change it by editing the Host (`kvo get host baremetal-1 -o yaml`, then
-`kvo apply -f`). `kvo describe host` shows it:
+`kvo apply -f`). `kvoadm kvo describe host` shows it:
 
 ```text
 Internal IP:        10.0.0.5

@@ -88,7 +88,7 @@ bin/kvoadm host add root@198.51.100.20 \
 `kevasod` like `init` does, and starts it as a worker. It joins, and appears in:
 
 ```bash
-bin/kvo get hosts
+bin/kvoadm kvo get hosts
 ```
 
 It shows each host's internal and external IP; `kvoadm host list` shows them too, with the zone and status.
@@ -192,7 +192,7 @@ If the second look itself fails, the message is `looking at the host again befor
 | Flag | Meaning |
 |---|---|
 | `[USER@]ADDRESS` | The machine, as for `kvoadm init`. The user defaults to `root`; any other user needs passwordless `sudo`. |
-| `--ssh-key PATH` | The key to log in with. Without it, `reset` uses `~/.kevaso/ssh/id_ed25519` if that file exists, and stops otherwise. Reset never logs in with a password. |
+| `--ssh-key PATH` | The key to log in with. Without it, `reset` uses your key from the cluster folder's `local.yaml`, else `kvoadm`'s own key in that folder, and stops otherwise. Reset never logs in with a password. |
 | `--host-key SHA256:…` | The machine's host key fingerprint, as in [Prepare a machine]({{ '/setup/prepare/#step-4--write-down-the-machines-fingerprint' | relative_url }}). A different key stops the command. Without it, `reset` shows the key and asks you to trust it. |
 | `--ssh-port N` | The machine's SSH port (default 22). |
 | `--dry-run` | Look and print the plan, then stop: it prints `Dry run: nothing was changed.` |

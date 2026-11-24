@@ -72,7 +72,7 @@ Continue)`, or `STOPS: the host stops this silo after 2m without the control pla
 (onControlPlaneLoss: Stop)`. A silo set shows the same for its instances.
 
 The host itself shows as `Unknown` in `kvoadm host list` (`Unknown (no heartbeat for 1m3s)`) and in
-`kvo describe host hv1` (the `Ready` condition, reason `HostLost`). `kvo get hosts` has no state
+`kvoadm kvo describe host hv1` (the `Ready` condition, reason `HostLost`). `kvoadm kvo get hosts` has no state
 column.
 
 When the host reports again, `HostUnreachable` turns `False`, reason `HostBack`, and nothing was
@@ -305,7 +305,7 @@ the data directory, a system node serving old data), the worker does not trust i
 | Deletes | Nothing: no silo, volume, secret file, lease or route is removed because the control plane no longer lists it |
 | New desired state | None applied from that control plane |
 | Heartbeats | Keeps sending them |
-| Where you see it | The host's `ControlPlaneBehind` condition, status `True`, reason `Held`, in `kvo describe host`. The worker's journal says `HOLD: the control plane is older than what this worker saw (kept: history … revision … epoch …; seen: history … revision … epoch …): keeping everything as it is`. `kvo get hosts` and `kvoadm host list` show nothing for it |
+| Where you see it | The host's `ControlPlaneBehind` condition, status `True`, reason `Held`, in `kvoadm kvo describe host`. The worker's journal says `HOLD: the control plane is older than what this worker saw (kept: history … revision … epoch …; seen: history … revision … epoch …): keeping everything as it is`. `kvoadm kvo get hosts` and `kvoadm host list` show nothing for it |
 | The condition's message | `the control plane is older than what this worker saw: kept history … revision … (epoch …), seen history … revision … (epoch …). Every silo keeps running as it is and nothing is applied until a deliberate restore (kvoadm init --restore) starts a new history, or a person who checked the control plane runs kvoadm host trust-control-plane [USER@]ADDRESS for this host` |
 | The local endpoint (`169.254.42.1`) | Answers 503: `this host is held (its control plane is older than what it saw): nothing is asked of it until that ends` |
 | Injected secrets | A secret this host was given before the hold keeps being injected for up to one hour, including a grant revoked or a secret rotated while the host is cut off. After that, and for a secret it was not given before the hold, injection is refused until the hold ends. A file or env value already in the silo stays |
@@ -322,15 +322,15 @@ condition's message names both. When the hold ends, the journal says
 `the control plane is trusted again (…): looking at every silo`.
 
 A silo this host still has, whose delete was never seen here, keeps running with its disk and
-volumes when a new history doesn't know it. `kvo describe host` lists those under `KeptSilos`.
+volumes when a new history doesn't know it. `kvoadm kvo describe host` lists those under `KeptSilos`.
 The same SSH flags as `trust-control-plane` apply.
 
 ```bash
-kvoadm host kept root@baremetal-1 --ssh-key ~/.kevaso/ssh/id_ed25519
+kvoadm host kept root@baremetal-1
 ```
 
 ```bash
-kvoadm host kept root@baremetal-1 --ssh-key ~/.kevaso/ssh/id_ed25519 --remove demo/web/0123abcd
+kvoadm host kept root@baremetal-1 --remove demo/web/0123abcd
 ```
 
 With no `--remove` it lists them, or prints `baremetal-1 keeps no copy the control plane doesn't know`.
@@ -350,13 +350,13 @@ nothing. A healthy answer does not clear this hold.
 
 | Where | What it shows |
 |---|---|
-| `kvo describe host` | `ControlPlaneBehind`, status `True`, reason `WatermarkUnreadable` |
+| `kvoadm kvo describe host` | `ControlPlaneBehind`, status `True`, reason `WatermarkUnreadable` |
 | The condition's message | `this worker's record of its control plane (PATH) is unreadable (WHY): it can't tell whether this control plane is older than one it saw. Every silo keeps running as it is; nothing is started, removed or applied meanwhile. Check that this host's control plane is the one it last used (not one restored from an older backup outside kvoadm init --restore), then run kvoadm host trust-control-plane [USER@]ADDRESS (the address of HOST)` |
 | The worker's journal | `CONTROL-PLANE WATERMARK UNREADABLE: PATH: WHY. This worker keeps running every silo and starts, removes and applies nothing until a person checks its control plane and runs kvoadm host trust-control-plane for this host` |
 
 `WHY` is the read error, `not a watermark: …`, or `it names no cluster`.
 
-If the worker cannot save that record, it holds the same way. `kvo describe host` shows
+If the worker cannot save that record, it holds the same way. `kvoadm kvo describe host` shows
 `ControlPlaneBehind`, status `True`, reason `WatermarkNotSaved`. The message names the path and the
 error, and says every silo keeps running and nothing is started, removed or applied until the record
 can be saved. Check the disk on that host. The hold ends once a save succeeds.
@@ -364,13 +364,13 @@ can be saved. Check the disk on that host. The hold ends once a save succeeds.
 Check that the control plane this host will reach is the newest of this cluster, then:
 
 ```bash
-kvoadm host trust-control-plane root@baremetal-1 --ssh-key ~/.kevaso/ssh/id_ed25519
+kvoadm host trust-control-plane root@baremetal-1
 ```
 
 | Flag | Meaning |
 |---|---|
 | `[USER@]ADDRESS` | The worker. The user defaults to `root` |
-| `--ssh-key PATH` | The key to log in with. Without it, the command uses `~/.kevaso/ssh/id_ed25519` if that file exists. If it does not: `--ssh-key PATH: kvoadm logs in with a key (no password logins)` |
+| `--ssh-key PATH` | The key to log in with. Without it, the command uses your key from the cluster folder's `local.yaml`, else `kvoadm`'s own key in that folder. If it does not: `--ssh-key PATH: kvoadm logs in with a key (no password logins)` |
 | `--host-key SHA256:…` | The machine's host key. Without it, you are asked to confirm the fingerprint |
 | `--ssh-port N` | The machine's SSH port (default 22) |
 | `--data DIR` | The worker's data directory (default `/var/lib/kevaso`). A clean absolute path |

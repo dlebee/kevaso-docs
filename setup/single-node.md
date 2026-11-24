@@ -82,7 +82,7 @@ What it does, in order (each line is printed as it happens):
    `/var/lib/kevaso-install/record` (root only), and [`kvoadm reset`]({{ '/workers/#reset-a-machine' | relative_url }})
    reads it. A second install keeps the first record.
 4. **Installs `kevasod`**, signed: `kvoadm` signs the binary with a key of its own
-   (`~/.kevaso/signing.key`, made on first use), pins the public half on the machine
+   (`signing.key` in the cluster's folder, `~/.kevaso/clusters/CLUSTER/`, made on first use), pins the public half on the machine
    (`/etc/kevaso/release.pub`) and the machine verifies the signature before installing to
    `/usr/local/bin/kevasod`. A binary changed on the way doesn't get installed.
 5. **Creates the cluster** on the machine and **starts the control plane** as `kevasod.service`.
@@ -91,15 +91,22 @@ What it does, in order (each line is printed as it happens):
    and the master key for secrets, all in `/var/lib/kevaso` (root only). The service never creates a
    cluster by itself: [Starting a cluster, and a node that finds its data gone]({{ '/operations/backup/#starting-a-cluster-and-a-node-that-finds-its-data-gone' | relative_url }}).
 6. **Gets you an admin certificate**: the private key is made *on your computer*; only a signing
-   request goes to the machine, which signs it through its root-only admin socket.
+   request goes to the machine, which signs it through its root-only admin socket. It stays in the
+   cluster's folder, `~/.kevaso/clusters/CLUSTER/`, with `cluster.yaml` (what your team shares) and
+   `local.yaml` (what stays on your computer): [kvoadm's cluster folder]({{ '/access/#kvoadms-cluster-folder' | relative_url }}).
 7. **Writes your `kvo` context** to `~/.kevaso/config.yaml`: the API address, the cluster CA (so
-   `kvo` trusts only *this* cluster) and your certificate.
+   `kvo` trusts only *this* cluster) and a second certificate, a plain user's: `editor` in every
+   namespace, starting in namespace `default`. Admin work goes through `kvoadm kvo …`.
 8. **Waits for the host to be Ready**, then prints the **recovery key** (next step).
 
-Now try `kvo`:
+Now try `kvo`, as the admin and as yourself:
 
 ```bash
-bin/kvo get hosts
+bin/kvoadm kvo get hosts
+```
+
+```bash
+bin/kvo get silos
 ```
 
 ```

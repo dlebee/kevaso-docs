@@ -122,7 +122,7 @@ kvoadm host list
 kvo get host sys2 -o yaml
 ```
 
-`status.controlPlane` says whether the node is a `learner` or a `voter` (`member`), and whether it leads (`leader: true`). `kvoadm host list` and `kvo describe host` don't show it.
+`status.controlPlane` says whether the node is a `learner` or a `voter` (`member`), and whether it leads (`leader: true`). `kvoadm host list` and `kvoadm kvo describe host` don't show it.
 
 ---
 
@@ -142,7 +142,7 @@ next only when it **couldn't connect** at all (so nothing is ever sent twice). A
 a few seconds, not a long hang: the connect gives up after 5 seconds.
 
 `kvoadm host add` adds each new node to your context. On another computer, list them yourself:
-the server is comma-separated, in `~/.kevaso/config.yaml`.
+the server is comma-separated, in `~/.kevaso/config.yaml` and in the cluster's `cluster.yaml` (`kvoadm` adds each new system node to both).
 
 ### What workers do
 
@@ -206,7 +206,7 @@ kvoadm upgrade --kevasod ./kevasod
 | `--version V` | Must be the version the binary reports. A binary that reports none, or a different one, is refused |
 | `--batch N` | How many workers restart at once (default 2) |
 | `--ssh-key PATH` | The key for the hosts |
-| `--context NAME` | The `kvo` context to act as |
+| `--cluster NAME` | The cluster folder to act from (default: the only one, or `$KVOADM_CLUSTER`) |
 | `--dry-run` | Only the plan |
 
 **The order:** light nodes first, the other system nodes next, the leader last (so there's one
@@ -238,7 +238,7 @@ With one system node it goes ahead and says the API is away while it restarts.
 | A worker is **never newer** than the oldest system node, and at most one minor older | So system nodes always go first |
 
 A cluster already outside the rule is refused with the reason. Each host shows its version in
-`kvo get hosts -o yaml` (`status.version`).
+`kvoadm kvo get hosts -o yaml` (`status.version`).
 
 Upgrade by hand if a host is older than version reporting. Self-update (a host pulling a signed
 version itself) is not built.
