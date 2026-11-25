@@ -295,7 +295,7 @@ token). It installs only when you type `yes`.
 | `--adopt` | Take over objects of the same names that no plugin owns |
 | `--yes` | Don't ask |
 | `--ssh-key`, `--host-key`, `--ssh-port` | As for [other `kvoadm` commands]({{ '/reference/' | relative_url }}) |
-| `--context NAME` | The `kvo` context to act as (a cluster admin) |
+| `--cluster NAME` | The cluster folder to act from (its admin certificate and signing key) |
 
 What it does:
 

@@ -121,7 +121,7 @@ The control plane writes the new copy and restarts the plugin. The same bytes ag
 Within a few seconds the Linode workers are recognised:
 
 ```bash
-bin/kvo describe host hv2
+bin/kvoadm kvo describe host hv2
 ```
 
 ```text

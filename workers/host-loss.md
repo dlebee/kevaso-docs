@@ -23,7 +23,7 @@ and the opt-in are on one page:
 bin/kvoadm host drain hv2
 ```
 
-`drain` takes the host's name (the `--context NAME` flag, last, picks another `kvo` context). It
+`drain` takes the host's name (the `--cluster NAME` flag, last, picks another cluster folder). It
 has no other flags. It does two things:
 
 1. **Cordons** the host: it takes no new silos. `kvoadm host list` shows it as `cordoned`.
@@ -60,7 +60,7 @@ answers for it, so the silo stays in `Moving`, and Kevaso does not assume the ol
 Once you know it is, end the hand-off with:
 
 ```bash
-kvo move silo NAME -n NAMESPACE --to HOST --confirm-fenced
+kvoadm kvo move silo NAME -n NAMESPACE --to HOST --confirm-fenced
 ```
 
 A move that is already under way is refused without `--confirm-fenced` when its old host is lost

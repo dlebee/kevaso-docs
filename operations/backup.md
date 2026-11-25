@@ -53,6 +53,12 @@ bin/kvoadm backup root@203.0.113.10 \
 → backup written to home-2026-11-12.kvb (212 KiB), sealed to your recovery key
 ```
 
+After `init`, the machine's name is enough: the cluster's folder has the key and the host key.
+
+```bash
+bin/kvoadm backup hv1 --output home-2026-11-12.kvb
+```
+
 The control plane keeps running while it's taken. The file is readable only by you (`0600`), and
 `kvoadm` never overwrites an existing one: give each backup its own name.
 
@@ -153,8 +159,8 @@ With the right key:
 → kevasod installed (signature verified on the host)
 → backup restored into /var/lib/kevaso: store, cluster CA, and the master key rebuilt with the recovery key
 → control plane started (kevasod.service)
-→ kvo context "home" written to /Users/you/.kevaso/config.yaml (server https://198.51.100.7:6443)
-→ host hv1 is Ready. Try: kvo get hosts
+→ cluster home: kvoadm's config and admin credential in /Users/you/.kevaso/clusters/home (server https://198.51.100.7:6443)
+→ host hv1 is Ready. Try: kvoadm host list
 → the recovery key is still the one you restored with
 → worker hv2 reconnected (https://198.51.100.7:6443)
 → worker hv3 reconnected (https://198.51.100.7:6443)
@@ -269,7 +275,7 @@ history settles until a statement exists, which `kvoadm init --restore` writes f
 ### 4 · Check
 
 ```bash
-bin/kvo get hosts
+bin/kvoadm kvo get hosts
 ```
 
 ```bash
@@ -281,6 +287,17 @@ Secrets open again, and existing `kvo` contexts keep working: it's the same clus
 A silo whose only copy was on the machine you replaced starts from its spec once it is settled,
 with an empty disk. Restore that data from your own backup of it. A copy a worker still has keeps
 running; the restored control plane does not start another.
+
+**The old machine ran silos too** (a [combined node]({{ '/setup/' | relative_url }}#combined-node-control-plane-and-silos-on-one-machine))?
+The restore brings back its worker and runtimes, not where its silo disks live: the new machine has
+no `kevaso` volume group yet, and `kvoadm kvo get hosts` shows `cloud-hypervisor:Failed` (`volume
+group "kevaso" missing`). Give it storage again, with every runtime it had:
+
+```bash
+bin/kvoadm host enable-worker hv1 --runtime cloud-hypervisor --storage-device /dev/DISK
+```
+
+(`--loop-storage 40G` for a file instead.)
 
 ### 5 · Workers
 
@@ -379,8 +396,8 @@ bin/kvoadm init root@198.51.100.7 \
 ```
 → cluster home found on this host (its data in /var/lib/kevaso): starting it as it is, no new cluster
 → control plane started (kevasod.service)
-→ kvo context "home" written to /Users/you/.kevaso/config.yaml (server https://198.51.100.7:6443)
-→ host hv1 is Ready. Try: kvo get hosts
+→ cluster home: kvoadm's config and admin credential in /Users/you/.kevaso/clusters/home (server https://198.51.100.7:6443)
+→ host hv1 is Ready. Try: kvoadm host list
 → the recovery key is still this cluster's: no new one is made
 → worker hv2 reconnected (https://198.51.100.7:6443)
 ```
@@ -472,7 +489,7 @@ kvoadm host trust-control-plane root@198.51.100.23 --ssh-key ~/.ssh/kevaso_ed255
 
 It tells you what it found and asks you to type `yes`. Then it restarts `kevasod` on that host, and
 the worker trusts the control plane it reaches next. While the worker is held, a silo's local
-endpoint answers 503 and asks the control plane for nothing. `kvo describe host` shows
+endpoint answers 503 and asks the control plane for nothing. `kvoadm kvo describe host` shows
 `ControlPlaneBehind`.
 
 If the worker's record of its control plane cannot be read, it holds the same way. A read that
@@ -501,7 +518,7 @@ List them from your computer:
 kvoadm host kept root@198.51.100.23 --ssh-key ~/.ssh/kevaso_ed25519
 ```
 
-`kvo describe host` shows the same copies on the host's `KeptSilos` condition. To remove one, its
+`kvoadm kvo describe host` shows the same copies on the host's `KeptSilos` condition. To remove one, its
 disk and its volumes, pass `--remove` with the namespace, the name, and the uid from that list.
 The first 8 characters of the uid are enough. It asks you to type the silo's name.
 

@@ -34,8 +34,10 @@ The day-two tasks, and where to look when something isn't right.
 
 | Path | What |
 |---|---|
-| `~/.kevaso/config.yaml` | `kvo` contexts (or `$KVO_CONFIG`) |
-| `~/.kevaso/signing.key` | The key `kvoadm` signs `kevasod` with before installing it |
+| `~/.kevaso/config.yaml` | `kvo` contexts (or `$KVO_CONFIG`), a plain user's certificate under `~/.kevaso/contexts/` |
+| `~/.kevaso/clusters/CLUSTER/cluster.yaml` | `kvoadm`'s shared file for the cluster: API, CA, hosts and their addresses, admins' public keys |
+| `~/.kevaso/clusters/CLUSTER/local.yaml` | `kvoadm`'s file for this computer: who you are, your SSH key, your admin certificate |
+| `~/.kevaso/clusters/CLUSTER/signing.key` | The key `kvoadm` signs `kevasod` and plugins with before installing them. Hosts pin it |
 | macOS Keychain, `com.kevaso.kvo` | Your sign-in tokens |
 
 ---
@@ -68,10 +70,10 @@ sudo tail -f /var/lib/kevaso/audit.log | jq -c 'select(.allowed == false)'
 
 | Task | Command |
 |---|---|
-| See them, with runtimes and leases | `kvo get hosts`, `kvo describe host hv2` |
+| See them, with runtimes and leases | `kvoadm kvo get hosts`, `kvoadm kvo describe host hv2` |
 | Take one out for maintenance | `kvoadm host drain hv2`: [Draining a host]({{ '/workers/host-loss/' | relative_url }}) |
 | Take one out for good | `kvoadm host remove hv2`: [Removing a host]({{ '/workers/host-loss/#removing-a-host' | relative_url }}) |
-| Roll a new `kevasod` over all of them | `kvoadm upgrade --kevasod ./kevasod`: [High availability]({{ '/operations/ha/' | relative_url }}#upgrade) |
+| Roll a new `kevasod` over all of them | `kvoadm upgrade --kevasod bin/kevasod-linux-amd64` (and one `--kevasod` per other system and CPU): [High availability]({{ '/operations/ha/' | relative_url }}#upgrade) |
 | Put it back | `kvoadm host uncordon hv2` |
 | The control-plane host runs silos too | `kvoadm host enable-worker root@HOST --ssh-key … --runtime …` |
 | Take Kevaso off a machine | `kvoadm reset root@HOST --ssh-key …`: [Reset a machine]({{ '/workers/#reset-a-machine' | relative_url }}) |

@@ -28,6 +28,8 @@ A runtime with no inbound network (the OpenShell ones) has no way to take a conn
 open ports on its silos. Admission refuses a grant that an OpenShell silo can't express (an address
 range, for example).
 
+A Mac worker has one more runtime, `tart`: macOS silos ([below](#tart-macos-silos)).
+
 What a silo starts from depends on the runtime: `vm:` for `cloud-hypervisor`, `container:` for
 the rest ([what a silo starts from]({{ '/silos/sets/#what-a-silo-starts-from' | relative_url }})).
 
@@ -251,7 +253,7 @@ spec:
   runtime: docker
   container:
     image: docker.io/library/python:3.12-slim
-    command: [python3, -m, http.server, "8080"]
+    command: [python3, -m, http.server, "8080", --directory, /data]
   volumes: [{ name: data, mountPath: /data }]
   ports: [{ name: http, port: 8080 }]
   service:
@@ -261,6 +263,12 @@ spec:
       - name: seed
         run: echo hello > /data/index.html
 ```
+
+Opening a port on a host address (`hostPort`) is a namespace admin's (`create` on
+`services/expose-public`, [Access]({{ '/access/' | relative_url }})): a plain `editor`, as your own
+`kvo` is, gets `may not expose silos publicly`. Apply this one as the admin (`bin/kvoadm kvo apply -f
+web.yaml`), or leave out `service` and reach it from other silos with `allowFrom`. Then
+`curl http://HOST_INTERNAL_IP:8080/` answers `hello`.
 
 | Good to know | |
 |---|---|
@@ -276,3 +284,30 @@ spec:
 A container silo cannot ping. Ping opens a raw socket, and `NET_RAW` is dropped, so the kernel
 refuses it. The firewall would allow ping to this host's gateway from a microVM; a container
 never sends it. A workload that needs `MKNOD`, `NET_RAW` or `SYS_CHROOT` cannot have them yet.
+
+---
+
+## tart (macOS silos)
+
+On a [Mac worker]({{ '/workers/mac/' | relative_url }}), `runtime: tart` runs a macOS VM through
+[Tart](https://tart.run), from an OCI image:
+
+```yaml
+apiVersion: kevaso/v1
+kind: Silo
+metadata: { name: mac, namespace: demo }
+spec:
+  runtime: tart
+  container: { image: ghcr.io/cirruslabs/macos-tahoe-base:latest }
+  resources: { cpu: 4, memory: 8Gi }
+```
+
+| Good to know | |
+|---|---|
+| How many | At most **two** running per Mac: Apple's licence for macOS allows two virtual copies. A third waits, `Pending`, until one stops |
+| Size | 4 CPUs and 8 GiB by default. The image is large (25 to 70 GB): pull it on the Mac first (`tart pull IMAGE`), or the first start takes that long |
+| Network | Through `softnet`: the internet, yes; the Mac's LAN, the other silos and the cluster, no. It has **no silo IP**, and needs no grant to reach the internet |
+| Refused when you apply | `ports` and `service` (nothing can reach it), `grants` (the egress gate is a Linux host's), and volumes: its disk is the VM itself, kept on its Mac |
+| `kvo exec` | Works, as on any silo (`kvo exec silo mac -n demo -- sw_vers`) |
+| Tart | Licensed FSL-1.1-ALv2; Kevaso only runs the `tart` program installed on the Mac |
+

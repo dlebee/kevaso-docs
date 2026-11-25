@@ -12,7 +12,7 @@ node and each worker.
 
 | Step | You do | Why |
 |---|---|---|
-| [1](#step-1--build-the-tools) | Build `kvo`, `kvoadm` and `kevasod` | Kevaso is built from source |
+| [1](#step-1--get-the-tools) | Get `kvo`, `kvoadm` and `kevasod` | From a release, or built from source |
 | [2](#step-2--make-an-ssh-key-for-kevaso) | Make an SSH key for Kevaso | So `kvoadm` never needs a password |
 | [3](#step-3--put-the-key-on-the-machine) | Put its public half on the machine | So the machine lets that key in |
 | [4](#step-4--write-down-the-machines-fingerprint) | Write down the machine's host-key fingerprint | So you know you're talking to *your* machine |
@@ -30,8 +30,9 @@ Then: [install the control plane]({{ '/setup/single-node/' | relative_url }}) on
 |---|---|
 | Ubuntu 24.04 | `ubuntu` `24.04` |
 | Debian 12 | `debian` `12` |
+| macOS 26 (a [Mac worker]({{ '/workers/mac/' | relative_url }})) | `sw_vers -productVersion` 26 |
 
-On the machine, `kevasod platforms` prints the list (`ubuntu 24.04, debian 12`). A system is added
+On the machine, `kevasod platforms` prints the list (`ubuntu 24.04, debian 12, macos 26`). A system is added
 to it once the whole end-to-end suite has passed on it.
 
 `kvoadm` reads the list out of the `kevasod` binary you give it with `--kevasod`, so the list it
@@ -43,7 +44,7 @@ machine and compare the `ID` and `VERSION_ID` with the list, exactly:
 
 - **On the list:** the line is `✓ operating system`.
 - **Not on the list** (Ubuntu 22.04, Ubuntu 24.10, Debian 13, any other Linux): the line is a `!`
-  warning, `this kevasod supports: ubuntu 24.04, debian 12; others may work`. It is a warning, not a
+  warning, `this kevasod supports: ubuntu 24.04, debian 12, macos 26; others may work`. It is a warning, not a
   stop: `kvoadm` goes on. Kevaso has not been tested on that system, so nothing says it works.
 
 The check stops (`✗`) for other reasons: a CPU that is not x86_64 or aarch64, no systemd, no
@@ -52,9 +53,40 @@ warning, and then you install the runtimes' packages yourself.
 
 ---
 
-## Step 1 · Build the tools
+## Step 1 · Get the tools
 
-From a checkout of [dlebee/kevaso](https://github.com/dlebee/kevaso), on your computer:
+**From a release** (the simplest). Each [release](https://github.com/dlebee/kevaso/releases) has
+`kvo` and `kvoadm` for macOS, Linux and Windows, and `kevasod` for Linux (x86_64 and ARM) and for
+Apple Silicon Macs. The macOS files are signed and notarized, the Windows ones signed. Download the
+ones you need with the GitHub CLI, into a folder of their own:
+
+```bash
+gh release download v0.1.0-rc.7 --repo dlebee/kevaso --pattern 'kvo*-darwin-arm64.zip' --pattern 'kevasod-*-linux-amd64.tar.gz' --pattern SHA256SUMS
+```
+
+Check them against the release's checksums, then unpack:
+
+```bash
+shasum -a 256 --check --ignore-missing SHA256SUMS
+```
+
+```bash
+unzip kvo-v0.1.0-rc.7-darwin-arm64.zip && unzip kvoadm-v0.1.0-rc.7-darwin-arm64.zip && tar -xzf kevasod-v0.1.0-rc.7-linux-amd64.tar.gz
+```
+
+Each archive unpacks into a folder of its own name. Put the three programs in a `bin/` folder, as the
+commands on these pages expect, and name `kevasod` for what it runs on:
+
+```bash
+mkdir -p bin && mv kvo-*/kvo kvoadm-*/kvoadm bin/ && mv kevasod-*-linux-amd64/kevasod bin/kevasod-linux-amd64
+```
+
+Pick the files for your computer (`darwin-arm64` for an Apple Silicon Mac, `linux-amd64`,
+`windows-amd64`) and for each machine's CPU (`uname -m` on it says `x86_64` → `amd64`, or
+`aarch64` → `arm64`). A [Mac worker]({{ '/workers/mac/' | relative_url }}) takes
+`kevasod-…-darwin-arm64.zip`.
+
+**From source.** From a checkout of [dlebee/kevaso](https://github.com/dlebee/kevaso), on your computer:
 
 ```bash
 go build -o bin/kvo ./cmd/kvo
@@ -65,7 +97,7 @@ go build -o bin/kvoadm ./cmd/kvoadm
 ```
 
 `kevasod` runs on the machine, so build it for Linux and for the machine's CPU (`amd64` for x86_64,
-`arm64` for ARM; `uname -m` on the machine says `x86_64` or `aarch64`):
+`arm64` for ARM):
 
 ```bash
 GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X kevaso.com/core/internal/version.Version=vX.Y.Z" -o bin/kevasod-linux-amd64 ./cmd/kevasod
@@ -134,7 +166,7 @@ You should get a shell without being asked for the machine's password (only for 
 passphrase, if `ssh-agent` doesn't have it yet). Type `exit` to leave.
 
 > **Prefer not to do this by hand?** `kvoadm init --password` logs in with the password once and
-> adds a key of its own for next time (`~/.kevaso/ssh/id_ed25519`). It changes nothing else about how
+> adds a key of its own for next time (`ssh/id_ed25519` in the cluster's folder, `~/.kevaso/clusters/CLUSTER/`). It changes nothing else about how
 > the machine is logged in to.
 
 ---
@@ -175,6 +207,6 @@ Compare it with what `ssh` showed you in step 3. Same? Keep it: you'll give it t
 | `host key not trusted: got SHA256:…, expected SHA256:…` | The machine isn't the one you wrote down, or it was reinstalled. Check the fingerprint again (step 4). |
 | `how should kvoadm log in?` | Give `--ssh-key PATH`, or `--password` to type it once. |
 | `… has a passphrase: load it with ssh-add first` | Run `ssh-add ~/.ssh/kevaso_ed25519`, or run `kvoadm` in a terminal so it can ask. |
-| `the host is aarch64 but --kevasod is built for x86_64` | Rebuild `kevasod` with the other `GOARCH` (step 1). |
+| `the host is aarch64 but --kevasod is built for x86_64` | Take the `kevasod` for the other CPU from the release, or rebuild with the other `GOARCH` (step 1). |
 | `host hv1 not Ready in …` | On the machine: `journalctl -u kevasod -n 50`. |
 | `fix the ✗ lines first: nothing was changed` | The check of the machine found something that stops the install. Fix what its `✗` lines say (see above). |

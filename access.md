@@ -100,7 +100,7 @@ The permissions beyond plain read and write are their own *subresources*:
 | `silos/files` | `get` | Read and list a silo's files (`kvo cp` out, `kvo ui` browsing) | | yes | yes |
 | `silos/files` | `create` | Write files into a silo (`kvo cp` in, `kvo ui` upload) | | yes | yes |
 | `silos/move` | `create` | `kvo move`, a plain move | | yes | yes |
-| `hosts/confirm-off` | `create` | `kvo move --confirm-fenced`, and `--insist` with it: say the old copy is off. Cluster-scoped. A RoleBinding cannot grant it | | | |
+| `hosts/confirm-off` | `create` | `kvo move --confirm-fenced`, and `--insist` with it (cluster-admin only by default: `kvoadm kvo move …`): say the old copy is off. Cluster-scoped. A RoleBinding cannot grant it | | | |
 | `serviceaccounts/token` | `create` | `kvo create token` | | | yes |
 | `panes` | `get`, `list`, `watch` | `kvo get panes`, `kvo pane watch`, `kvo pane bundle` | yes | yes | yes |
 | `panes` | `delete` | Clear a pane | | | yes |
@@ -258,6 +258,15 @@ certificate paths, never tokens. With [more than one system node]({{ '/operation
 a context's `server` can list them, comma-separated: `kvo` sticks to the last one that answered
 and moves on only when it can't connect.
 
+`kvoadm init` writes your context as a **plain user**: `editor` in every namespace (namespace
+`default` is made for you to start in), nothing cluster-wide. Namespaces, hosts, cluster secrets
+and roles are an admin's, and the admin certificate is never in this file: it stays in `kvoadm`'s
+cluster folder (next section). Run `kvo` as the admin through `kvoadm`:
+
+```bash
+kvoadm kvo create namespace shop
+```
+
 The certificate `kvoadm init` writes lasts 30 days. `kvo` renews it by itself at two thirds of that
 life, or inside the last ten days if that comes sooner, and stores the new certificate as the same
 person. You do nothing while it can still connect.
@@ -265,12 +274,14 @@ person. You do nothing while it can still connect.
 Once it has expired, `kvo` stops and names the recovery:
 
 ```text
-context NAME certificate for USER expired on DATE. Run: kvoadm users resign root@HOST --name USER
+context NAME certificate for USER expired on DATE. Run: kvoadm users resign root@HOST --name USER --kvo
 ```
 
 ```bash
-kvoadm users resign root@HOST --name USER
+kvoadm users resign root@HOST --name USER --kvo
 ```
+
+Without `--kvo`, the same command re-signs the admin certificate in the cluster folder.
 
 That command signs a new client certificate over SSH and writes it into the context. The key is
 made on your computer. The control plane only sees the request. Use it when the certificate has
@@ -324,3 +335,69 @@ His tokens stop working at once: every request checks that the person is still e
 Every decision about a person or service account (allowed or refused), every sign-in, every secret
 read and every broker call is written to `/var/lib/kevaso/audit.log` on the control plane, one JSON
 object per line. See [Operating]({{ '/operations/' | relative_url }}#the-audit-log).
+
+---
+
+## kvoadm's cluster folder
+
+`kvoadm` never reads `kvo`'s file. Each cluster it manages is a folder,
+`~/.kevaso/clusters/CLUSTER/` (`$KVOADM_HOME` replaces `~/.kevaso`), with two files:
+
+| File | Whose | Holds |
+|---|---|---|
+| `cluster.yaml` | The team's: commit it to a repository you share | The cluster's name, API addresses and CA certificate; every host by name with its SSH addresses, in the order to try; the admins and their SSH public keys. Never a secret: `kvoadm` refuses one that holds a private key, a token or a credential path |
+| `local.yaml` | This computer's: never committed | Which admin you are, the path to your SSH private key, your admin certificate (`admin.crt` and `admin.key` beside it), the host keys you pinned, and addresses only you use |
+
+The folder's `.gitignore` keeps everything but `cluster.yaml` out of a repository, including
+`local.yaml`, your credential and the keys hosts pin (`signing.key`, `ssh/`).
+
+`kvoadm init` makes the folder, and lists you as the first admin. Every other command picks the
+cluster with `--cluster NAME`, else `$KVOADM_CLUSTER`, else the only folder there is.
+
+### A host's addresses
+
+A host can have several addresses: one on the LAN, one on a VPN, one from outside. `kvoadm` tries
+them in order (your own first, then the team's, then the address the host was added with) and uses
+the first that answers **with the host key pinned for that host**. One where another machine
+answers is skipped. A host's name works wherever an address did:
+
+```bash
+kvoadm host ssh home1 add root@home1.example.ts.net
+```
+
+```bash
+kvoadm host ssh home1 add root@192.168.1.50 --local
+```
+
+```bash
+kvoadm host ssh home1
+```
+
+```bash
+kvoadm reset home1
+```
+
+Without `--local` an address goes in `cluster.yaml`, for everyone. With it, it goes in your
+`local.yaml`, tried before the shared ones.
+
+### Admins
+
+The admins' public keys in `cluster.yaml` are what every host lets in. Adding an admin is a commit
+and a sync:
+
+```bash
+kvoadm admins add ana ana.pub
+```
+
+```bash
+kvoadm admins sync
+```
+
+`sync` writes a block it owns into `authorized_keys` of the user `kvoadm` logs in as on each host,
+and leaves every other line alone. It refuses a change that would lock out the key it is connected
+with. `init` and `host add` put the block on each new host. `kvoadm admins remove NAME`, then a
+sync, takes someone's keys off every host.
+
+A teammate who clones the repository has `cluster.yaml` and no credential: `kvoadm` knows the
+hosts and says so. An admin certificate for them comes from `kvoadm users resign HOST --name THEM`,
+run over SSH as one of the admins.

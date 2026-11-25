@@ -205,7 +205,7 @@ the classes it can mount in its status:
 kvo get host hv2 -o yaml
 ```
 
-Look for `mountClasses: [juicefs]` under `status`. (`kvo describe host` doesn't print it.)
+Look for `mountClasses: [juicefs]` under `status`. (`kvoadm kvo describe host` doesn't print it.)
 
 ---
 

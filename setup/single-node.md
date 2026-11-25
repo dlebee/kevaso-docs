@@ -82,7 +82,7 @@ What it does, in order (each line is printed as it happens):
    `/var/lib/kevaso-install/record` (root only), and [`kvoadm reset`]({{ '/workers/#reset-a-machine' | relative_url }})
    reads it. A second install keeps the first record.
 4. **Installs `kevasod`**, signed: `kvoadm` signs the binary with a key of its own
-   (`~/.kevaso/signing.key`, made on first use), pins the public half on the machine
+   (`signing.key` in the cluster's folder, `~/.kevaso/clusters/CLUSTER/`, made on first use), pins the public half on the machine
    (`/etc/kevaso/release.pub`) and the machine verifies the signature before installing to
    `/usr/local/bin/kevasod`. A binary changed on the way doesn't get installed.
 5. **Creates the cluster** on the machine and **starts the control plane** as `kevasod.service`.
@@ -91,20 +91,30 @@ What it does, in order (each line is printed as it happens):
    and the master key for secrets, all in `/var/lib/kevaso` (root only). The service never creates a
    cluster by itself: [Starting a cluster, and a node that finds its data gone]({{ '/operations/backup/#starting-a-cluster-and-a-node-that-finds-its-data-gone' | relative_url }}).
 6. **Gets you an admin certificate**: the private key is made *on your computer*; only a signing
-   request goes to the machine, which signs it through its root-only admin socket.
+   request goes to the machine, which signs it through its root-only admin socket. It stays in the
+   cluster's folder, `~/.kevaso/clusters/CLUSTER/`, with `cluster.yaml` (what your team shares) and
+   `local.yaml` (what stays on your computer): [kvoadm's cluster folder]({{ '/access/#kvoadms-cluster-folder' | relative_url }}).
 7. **Writes your `kvo` context** to `~/.kevaso/config.yaml`: the API address, the cluster CA (so
-   `kvo` trusts only *this* cluster) and your certificate.
+   `kvo` trusts only *this* cluster) and a second certificate, a plain user's: `editor` in every
+   namespace, starting in namespace `default`. Admin work goes through `kvoadm kvo …`.
 8. **Waits for the host to be Ready**, then prints the **recovery key** (next step).
 
-Now try `kvo`:
+Now try `kvo`, as the admin:
 
 ```bash
-bin/kvo get hosts
+bin/kvoadm kvo get hosts
 ```
 
 ```
 NAME   INTERNAL IP    EXTERNAL IP   REGION   COMPONENTS      RUNTIMES   AGE
 hv1    203.0.113.10   -             -        control-plane   -          1m
+```
+
+And as yourself. Your own `kvo` sees silos, not hosts (`kvo get hosts` answers `no role lets NAME
+list hosts`):
+
+```bash
+bin/kvo get silos
 ```
 
 ### Running init again
@@ -174,11 +184,15 @@ A control plane alone runs no silos. That's the [recommended setup]({{ '/setup/'
 let it be a worker too:
 
 ```bash
-bin/kvoadm host enable-worker root@203.0.113.10 \
-    --ssh-key ~/.ssh/kevaso_ed25519 \
-    --host-key SHA256:kVvp5Yv9fNU4r4yX2P7+O99SU45jwdxC60ylimGFta4 \
-    --runtime cloud-hypervisor
+bin/kvoadm host enable-worker hv1 --runtime cloud-hypervisor --loop-storage 40G
 ```
+
+After `init`, `kvoadm` knows the machine by its name: the cluster's folder has your SSH key and the
+host key it checked, so neither `--ssh-key` nor `--host-key` is needed. Use `--storage-device
+/dev/DISK` instead of `--loop-storage` on a machine with an empty disk to give it (below).
+
+Running it again replaces the list of runtimes, so name every runtime you want each time. Storage
+is set up once: a run that names none keeps what the machine has.
 
 `--runtime` picks what kind of silos it runs (repeat it for several; see [Runtimes]({{ '/silos/runtimes/' | relative_url }})):
 
@@ -189,10 +203,10 @@ bin/kvoadm host enable-worker root@203.0.113.10 \
 | `docker`, `podman` | Nothing special (installed for you) |
 
 The worker installs its runtimes in the background (packages, Cloud Hypervisor, the Ubuntu image).
-Watch it:
+Watch it, as the admin (hosts are the admin's):
 
 ```bash
-bin/kvo watch hosts
+bin/kvoadm kvo watch hosts
 ```
 
 Wait for `cloud-hypervisor=Ready`, then make [your first silo]({{ '/silos/first-silo/' | relative_url }}).

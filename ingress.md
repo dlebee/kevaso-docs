@@ -74,7 +74,7 @@ The silo is in the namespace `kevaso-system`, named `ingress-CLASS`, with 1 CPU 
 | `--runtime NAME` | The silo's runtime | `docker` |
 | `--option KEY=VALUE` | A driver option, repeatable (see below) | |
 | `--host NAME=NAMESPACE[,NAMESPACE]` | Assign that host name to those namespaces. Repeat the flag for another name. `NAME` may be a one-label suffix, `*.example.com` | none: the class assigns no host, and an Ingress is refused until one is |
-| `--context NAME` | The `kvo` context to use | The current one |
+| `--cluster NAME` | The cluster folder to act from | The only one, or `$KVOADM_CLUSTER` |
 
 The host that runs it needs the runtime and, with `--host-port external`, an external IP.
 
