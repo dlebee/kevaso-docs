@@ -84,7 +84,7 @@ spec:
     - name: api-key
       deliver: inject
       env: API_KEY             # the variable holding the placeholder
-      to: { host: api.example.com, header: x-api-key, format: "{{value}}" }
+      to: { host: api.example.com, header: x-api-key, format: "{% raw %}{{value}}{% endraw %}" }
 ---
 apiVersion: kevaso/v1
 kind: Silo
@@ -104,7 +104,7 @@ with the real one.
 | Grants | Names and single addresses, TCP only, each port listed (at most 16 per rule) |
 | Policies | [OpenShell policies](#openshell-policies), listed in `openshellPolicies` |
 | Secrets | `inject` only. `file`, `env`, `broker`, `sign` and approval are refused for these runtimes, with the reason |
-| Injection format | `Bearer {{value}}` in `Authorization`, or `{{value}}` in any header |
+| Injection format | `Bearer {% raw %}{{value}}{% endraw %}` in `Authorization`, or `{% raw %}{{value}}{% endraw %}` in any header |
 | Init steps | Run as the sandbox's user, not root |
 | `kvo exec` stdin | At most 4 MiB (compress bigger files) |
 | Gateways | One per namespace by default (`--openshell-gateway-scope host \| namespace \| silo` on the worker): sandboxes of one gateway share its user, so the scope is how far an escape reaches. Each gateway runs as its own user, locked down. |

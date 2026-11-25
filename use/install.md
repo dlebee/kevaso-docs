@@ -180,9 +180,6 @@ It prints its usage line, starting `usage: kvo apply|get|describe|…`. A shell 
 `command not found` (or, on Windows, that `kvo` is not recognized) doesn't have the folder on its
 PATH yet: open a new window.
 
-The pages here sometimes write `bin/kvo`, for a `kvo` kept in a `bin` folder. With `kvo` on your
-PATH, type `kvo`.
-
 ---
 
 ## A new release

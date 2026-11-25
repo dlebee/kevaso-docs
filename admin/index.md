@@ -24,10 +24,26 @@ computer.
 
 ---
 
+## What a cluster needs
+
+- **A Linux machine** for the system node: x86_64 or arm64, running a system `kevasod` lists as
+  supported (Ubuntu 24.04, Ubuntu 26.04 or Debian 12; [details]({{ '/admin/setup/prepare/#supported-operating-systems' | relative_url }})).
+  2 CPUs and 2 GiB of memory is plenty for the control plane alone.
+- **KVM** (`/dev/kvm`) on the machines that run microVM silos: bare metal, or a virtual server with
+  nested virtualization. Without it, container silos still work.
+- **Your computer** (macOS, Linux or Windows) with OpenSSH and `kvoadm`
+  ([Install kvoadm]({{ '/admin/install/' | relative_url }})).
+
+To try it first, the [quick start]({{ '/quickstart/' | relative_url }}) sets up a whole cluster in
+a VM on a Mac in about 15 minutes, playing both the administrator and the user.
+
+---
+
 ## The pages
 
 | If you want to | Go to |
 |---|---|
+| Try a whole cluster in a VM on a Mac | [Quick start (Mac)]({{ '/quickstart/' | relative_url }}) |
 | Install `kvoadm`, `kvo` and `kevasod` on your computer | [Install kvoadm]({{ '/admin/install/' | relative_url }}) |
 | Decide how to set up a real cluster | [Choosing a setup]({{ '/admin/setup/' | relative_url }}) |
 | Set up a machine, then the control plane | [Prepare a machine]({{ '/admin/setup/prepare/' | relative_url }}), [Single system node]({{ '/admin/setup/single-node/' | relative_url }}) |

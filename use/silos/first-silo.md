@@ -76,11 +76,11 @@ spec:
 ## Create it
 
 ```bash
-bin/kvo apply -f hello.yaml
+kvo apply -f hello.yaml
 ```
 
 ```bash
-bin/kvo watch silos -n demo
+kvo watch silos -n demo
 ```
 
 ```
@@ -102,11 +102,11 @@ faster. Ctrl-C stops watching, not the silo.
 ## Look at it
 
 ```bash
-bin/kvo get silos -n demo
+kvo get silos -n demo
 ```
 
 ```bash
-bin/kvo describe silo hello -n demo
+kvo describe silo hello -n demo
 ```
 
 `describe` shows everything about it: where it runs, its silo IP, its init steps with their exit
@@ -140,11 +140,11 @@ A silo with no service has no name and is reachable by nobody. The addresses, th
 ## Step inside
 
 ```bash
-bin/kvo exec silo hello -n demo -- cat /root/hello
+kvo exec silo hello -n demo -- cat /root/hello
 ```
 
 ```bash
-bin/kvo exec silo hello -n demo -- bash -c "uname -a; df -h /"
+kvo exec silo hello -n demo -- bash -c "uname -a; df -h /"
 ```
 
 `exec` runs one command and exits with its exit code, so it works in scripts. It goes through the
@@ -185,7 +185,7 @@ Fix the step in `hello.yaml` and `apply` again.
 ## Clean up
 
 ```bash
-bin/kvo delete silo hello -n demo
+kvo delete silo hello -n demo
 ```
 
 The VM, its disk and its network device go away on the host.

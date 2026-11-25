@@ -80,7 +80,7 @@ spec:
   secrets:
     - name: api-key
       deliver: inject
-      to: { host: api.example.com, header: x-api-key, format: "{{value}}" }
+      to: { host: api.example.com, header: x-api-key, format: "{% raw %}{{value}}{% endraw %}" }
     - name: db-password                  # deliver: broker is the default
     - name: tls-key
       deliver: file
@@ -131,7 +131,7 @@ given before the hold, for that same hour, and adds none it wasn't given then.
 
 Several injected headers for one host are all kept.
 
-`to.header` defaults to `Authorization` and `to.format` to `Bearer {{value}}`. The program in the silo just calls the API without a key; it works. On **OpenShell** silos the
+`to.header` defaults to `Authorization` and `to.format` to `Bearer {% raw %}{{value}}{% endraw %}`. The program in the silo just calls the API without a key; it works. On **OpenShell** silos the
 same grant gives the program an environment variable holding a *placeholder* (`$API_KEY =
 openshell:resolve:env:…`), which it sends like a key, and OpenShell swaps the real one in. See
 [Runtimes]({{ '/use/silos/runtimes/' | relative_url }}#openshell).
