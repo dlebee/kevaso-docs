@@ -76,7 +76,7 @@ Both look at the machine first and stop, changing nothing, if something won't wo
 
 | Command | Does |
 |---|---|
-| `kvoadm users invite NAME [--namespace NS [--role editor\|admin\|viewer]] [--group G]… [--ttl D]` | A one-time sign-in code. Cluster-admin only. With `--namespace` and no `--role`, the role is `editor`. `--ttl` defaults to 15m |
+| `kvoadm users invite NAME [--namespace NS [--role editor\|admin\|viewer]] [--group G]… [--ttl D]` | A one-time sign-in code, and the `kvo login` line to send with it. Cluster-admin only. With `--namespace` and no `--role`, the role is `editor`. `--ttl` defaults to 15m, at most 168h. `kvo invite` does the same from `kvo` |
 | `kvoadm users list` | Everyone who can sign in |
 | `kvoadm users disable NAME` | Cut someone off now |
 | `kvoadm users resign HOST\|[USER@]ADDRESS --name USER [--kvo]` | Sign a new client certificate over SSH: the admin's, into the cluster folder, or with `--kvo` the plain user's, into the kvo context. The key is made on this computer. Use it when `kvo` says the client certificate has expired, or is nearly expired and could not be renewed. [Contexts]({{ '/admin/access/#your-own-kvo-and-the-admin-certificate' | relative_url }}) |

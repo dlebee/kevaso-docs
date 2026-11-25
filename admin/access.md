@@ -18,16 +18,16 @@ in, contexts, asking what they may do) is on [Signing in and contexts]({{ '/use/
 
 ## How sign-in works
 
-The control plane is its own sign-in provider (OpenID Connect). People get in with a **one-time
-invite code**, then hold short-lived tokens that refresh themselves:
+There are no usernames or passwords. The control plane is its own sign-in provider (OpenID
+Connect), and a person gets in once with a **one-time invite code** you give them:
 
 ```mermaid
 sequenceDiagram
   participant Admin
   participant Bob as Bob's kvo
   participant CP as Control plane
-  Admin->>CP: kvoadm users invite bob --namespace payments
-  CP-->>Admin: kvo login command + one-time code
+  Admin->>CP: kvo invite bob -n payments
+  CP-->>Admin: kvo login line + one-time code
   Admin->>Bob: sends both (chat, email)
   Bob->>CP: kvo login … (checks the CA fingerprint)
   Note over Bob: browser opens, Bob pastes the code
@@ -35,7 +35,11 @@ sequenceDiagram
   Note over Bob: tokens go to the OS keychain
 ```
 
----
+- **The code works once**, and only for 15 minutes unless you give it longer (`--ttl`, at most
+  `168h`).
+- **The session renews itself.** `kvo` refreshes its short-lived token as it goes, so the person
+  does nothing more while they use the cluster.
+- **It ends after 30 days without use.** Then they need a new invite from you.
 
 How long each token lives, and what happens when two commands refresh at once, is on
 [Signing in and contexts]({{ '/use/sign-in/#how-sign-in-works' | relative_url }}).
@@ -44,13 +48,48 @@ How long each token lives, and what happens when two commands refresh at once, i
 
 ## Invite someone
 
+Only a cluster admin can invite, however they signed in. A namespace admin cannot, and giving a
+role `create` on `invites` does not change that: an invite can name any person and any groups.
+
+An administrator who works with `kvo` invites from there, with no SSH and no cluster folder. Their
+`kvo` must sign in as a cluster admin: a person invited with `--group kevaso:cluster-admins`, for
+example.
+
 ```bash
-bin/kvoadm users invite bob --namespace payments
+kvo invite bob -n payments
 ```
 
-It binds bob as `editor` in `payments` (`--role admin` or `viewer` for others) and prints two things
-to send them: the `kvo login …` line and the code. Only a cluster admin can create an invite. A namespace admin cannot, and giving a role `create`
-on `invites` does not change that: an invite can name any person and any groups.
+From the cluster folder, with the admin certificate `kvoadm` keeps, the same invite is:
+
+```bash
+kvoadm users invite bob --namespace payments
+```
+
+(`kvoadm kvo invite bob -n payments` is the same again: `kvo invite` run with that certificate.)
+
+Both make bob a user, bind them as `editor` in `payments`, and print the two things to send:
+
+```text
+→ bob is editor in namespace payments
+→ invite for bob, valid until 14:32 UTC. Send them both lines:
+
+    kvo login https://203.0.113.10:6443 --ca sha256:4b1d…
+    invite code: …
+
+The code works once; the browser asks for it.
+```
+
+| Option | Means |
+|---|---|
+| `-n NS` (`--namespace NS` in `kvoadm`) | Give them a role in that namespace. Without it, the invite gives no role: bind one yourself ([Roles](#roles)) |
+| `--role ROLE` | That role instead of `editor`: `viewer`, `admin`, or a role you made. Needs a namespace |
+| `--group G` | A group they sign in with, repeated for several. Groups given replace the ones they had |
+| `--ttl D` | How long the code stays valid. Default `15m`, at most `168h` |
+
+Inviting someone who already exists gives them a new code and turns their account back on if it
+was disabled.
+
+`kvo invite` is in the releases after `v0.1.0-rc.8`. With `rc.8`, invite with `kvoadm users invite`.
 
 They sign in with what you sent: [Signing in and contexts]({{ '/use/sign-in/#sign-in' | relative_url }}).
 
