@@ -19,21 +19,23 @@ Either way, a plugin never gets more than it shows you first.
 
 ## Install a provider plugin
 
-A plugin reads each secret by name from its credential directory. You store the value as a cluster secret, then allow that plugin's service account to read that name and no other.
+A plugin reads its secrets from its credential directory. You store them as a cluster secret, then allow that plugin's service account to read that name and no other. A cluster secret can hold several values under names, its keys, like a [Secret]({{ '/use/secrets/#named-keys' | relative_url }}): a key pair is one cluster secret with two keys.
 
 Each side of a plugin has its own service account in the namespace `kevaso-system`: `plugin-NAME` for the controller side, on the control plane, and `plugin-NAME-node` for the node side, on the workers. A host fetches a value for a plugin's side only when that side's account may read the name, and a worker only ever fetches for the node side. So bind a secret to the side that uses it: a cloud API token only the controller needs goes to `plugin-NAME` and never reaches a worker. A secret both sides need is bound to both accounts.
 
-Save the value in a file only you can read:
+Save the value in a file only you can read, in the folder you run `kvo` from:
 
 ```bash
-chmod 600 ~/cloud-token.txt
+chmod 600 cloud-token.txt
 ```
 
 ```bash
-kvo create clustersecret token --from-file ~/cloud-token.txt
+kvo create clustersecret cloud --from-file token=cloud-token.txt
 ```
 
-Save this as `cloud-secrets.yaml`. `resourceNames` lists exactly this plugin's secrets. A rule with no names grants none.
+`--from-file KEY=FILE` names a key; repeat it for each key. A bare `--from-file FILE` stores one value, under the key `value`.
+
+Save this as `cloud-secrets.yaml`. `resourceNames` lists exactly this plugin's secrets. A rule with no names grants none. A name allows every key of that secret.
 
 ```yaml
 apiVersion: kevaso/v1
@@ -42,7 +44,7 @@ metadata: { name: cloud-secrets }
 rules:
   - verbs: [get]
     resources: [clustersecrets/value]
-    resourceNames: [token]
+    resourceNames: [cloud]
 ---
 apiVersion: kevaso/v1
 kind: ClusterRoleBinding
@@ -57,15 +59,21 @@ kvo apply -f cloud-secrets.yaml
 ```
 
 ```bash
-kvoadm plugin install root@203.0.113.10 --name cloud --binary ./kevaso-provider-cloud-linux-amd64 --cluster-secret token
+kvoadm plugin install root@203.0.113.10 --name cloud --binary ./kevaso-provider-cloud-linux-amd64 --cluster-secret cloud
 ```
 
-Install creates the service account `plugin-cloud` in the namespace `kevaso-system` and prints the account to bind. It records the name. It does not copy the file. Each host fetches the value and keeps a copy only root can read. The plugin reads `token` from its credential directory. Repeat `--cluster-secret` once for each name.
+Install creates the service account `plugin-cloud` in the namespace `kevaso-system` and prints the account to bind. It records the name. It does not copy the file. Each host fetches the keys and keeps them in a folder only root can read, one file per key. systemd gives the plugin each key as the credential `NAME_KEY` in its credential directory: here `cloud_token`. A cluster secret made from one value is `NAME_value`. Repeat `--cluster-secret` once for each name.
 
-To replace a value:
+To replace one key, keeping the others:
 
 ```bash
-kvo set clustersecret token --from-file ~/cloud-token.txt
+kvo set clustersecret cloud --from-file token=cloud-token.txt
+```
+
+To remove a key:
+
+```bash
+kvo set clustersecret cloud --remove-key old-token
 ```
 
 Each host writes the new copy and restarts the plugin. The same bytes again leave the plugin running.
@@ -74,7 +82,7 @@ Each host writes the new copy and restarts the plugin. The same bytes again leav
 |---|---|
 | `--name NAME` | What to call it (lower case, digits and `-`) |
 | `--binary FILE` | The plugin's program, built for the host. `kvoadm` signs it; the host checks the signature before it installs it |
-| `--cluster-secret NAME` | A cluster secret this side loads. Repeat for each name. A name, not a file |
+| `--cluster-secret NAME` | A cluster secret this side loads, every key of it (as `NAME_KEY`). Repeat for each name. A name, not a file |
 | `--config FILE` | Its settings (not secret) |
 | `--side controller\|node` | `controller` on a control plane (default), `node` on a worker |
 | `--manifest FILE` | What the plugin needs from the host: [below](#what-a-manifest-asks-for) |
@@ -89,7 +97,7 @@ kvoadm plugin remove root@203.0.113.10 --name cloud
 Removing the last side on a host deletes the service account. The cluster secret and the role stay until you delete them.
 
 ```bash
-kvo delete clustersecret token
+kvo delete clustersecret cloud
 ```
 
 ### The default is small

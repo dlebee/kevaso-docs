@@ -293,7 +293,8 @@ A binding for the group `system:serviceaccounts:NS` counts as naming namespace N
 cannot be deleted while the binding exists.
 
 A cluster secret has no namespace. Creating, changing and deleting one is for a cluster admin, and
-no role can grant that. A plugin reads one value only when a ClusterRole grants `get` on
+no role can grant that. Its keys (one or more named values) go with it: access is per cluster
+secret, never per key. A plugin reads a cluster secret only when a ClusterRole grants `get` on
 `clustersecrets/value` and names that secret, bound to the service account of the side that
 uses it in `kevaso-system`: `plugin-NAME` for the controller side, `plugin-NAME-node` for the node
 side. A worker only ever reads for the node side. A rule with no names grants none. See

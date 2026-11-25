@@ -62,8 +62,16 @@ make -C kevaso-provider-linode build
 
 Store the token as a cluster secret. The binding below names service account `plugin-linode` in the namespace `kevaso-system`, the controller side's account. A host fetches the token only when that account may read it, so it reaches the control plane and never a worker: the node side's account, `plugin-linode-node`, is not bound to it.
 
+Save the token in a file only you can read, in the folder you run `kvo` from:
+
 ```bash
-kvo create clustersecret token --from-file ~/linode-token.txt
+chmod 600 linode-token.txt
+```
+
+The plugin reads the key `token` of the cluster secret `linode`:
+
+```bash
+kvo create clustersecret linode --from-file token=linode-token.txt
 ```
 
 Save this as `linode-secrets.yaml`. `resourceNames` lists exactly this secret.
@@ -75,7 +83,7 @@ metadata: { name: linode-secrets }
 rules:
   - verbs: [get]
     resources: [clustersecrets/value]
-    resourceNames: [token]
+    resourceNames: [linode]
 ---
 apiVersion: kevaso/v1
 kind: ClusterRoleBinding
@@ -95,7 +103,7 @@ On the control plane:
 bin/kvoadm plugin install root@203.0.113.10 \
     --name linode \
     --binary kevaso-provider-linode/bin/kevaso-provider-linode-linux-amd64 \
-    --cluster-secret token
+    --cluster-secret linode
 ```
 
 ```text
@@ -105,16 +113,16 @@ bin/kvoadm plugin install root@203.0.113.10 \
 → bind a ClusterRole to service account plugin-linode in namespace kevaso-system
 → connected to 203.0.113.10:22 (host key SHA256:kVvp5Yv9…)
 → kevaso-plugin-linode installed (signature verified on the host)
-→ cluster secrets token recorded (kevasod writes each value, root only; the plugin reads it through systemd)
+→ cluster secrets linode recorded (kevasod writes each value, root only; the plugin reads it through systemd)
 → plugin linode recorded; kevasod writes its cluster secrets and starts kevaso-plugin-linode.service
 ```
 
-Install creates the service account `plugin-linode` in the namespace `kevaso-system` and prints the account to bind. It records the name. It does not copy the file. The control plane fetches the token and keeps a copy only root can read. The plugin reads `token` from its credential directory. The value is never on a command line. Workers are not given the name, so they never receive the token. See [Plugins]({{ '/admin/extending/plugins/' | relative_url }}).
+Install creates the service account `plugin-linode` in the namespace `kevaso-system` and prints the account to bind. It records the name. It does not copy the file. The control plane fetches the token and keeps a copy only root can read. The plugin reads the key as `linode_token` from its credential directory (another cluster secret or key: `tokenSecret` in its config, `{ "name": …, "key": … }`). The value is never on a command line. Workers are not given the name, so they never receive the token. See [Plugins]({{ '/admin/extending/plugins/' | relative_url }}).
 
 To replace the token:
 
 ```bash
-kvo set clustersecret token --from-file ~/linode-token.txt
+kvo set clustersecret linode --from-file token=linode-token.txt
 ```
 
 The control plane writes the new copy and restarts the plugin. The same bytes again leave the plugin running.
@@ -331,7 +339,7 @@ bin/kvoadm plugin remove root@203.0.113.10 --name linode
 This removes the unit on that host, and the program, the copy of the token and the service account once no side is left there. The cluster secret and the role stay until you delete them:
 
 ```bash
-kvo delete clustersecret token
+kvo delete clustersecret linode
 ```
 
 Delete the silos using its classes first. Their NodeBalancers and volumes are deleted with them, and nothing deletes them once the plugin is gone.
