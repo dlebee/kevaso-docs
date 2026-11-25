@@ -26,6 +26,7 @@ sections:
   - title: Workers
     pages:
       - { title: Adding workers, url: /workers/ }
+      - { title: A Mac as a worker, url: /workers/mac/ }
       - { title: Draining and removing a host, url: /workers/host-loss/ }
   - title: Silos
     pages:

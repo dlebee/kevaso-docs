@@ -165,8 +165,17 @@ Several steps are joined with `; `.
 ## Reset a machine
 
 `kvoadm reset` takes Kevaso off a machine, so the machine can be used again without reinstalling
-its operating system. It works on a system node or a worker. It only works on Debian and Ubuntu
-machines (it reads the installed packages with `dpkg`).
+its operating system. It works on a system node or a worker, on Debian and Ubuntu (it reads the
+installed packages with `dpkg`) and on a [Mac worker]({{ '/workers/mac/' | relative_url }}), where it
+removes Kevaso's daemons and files and never touches Tart, its images or SSH.
+
+A machine in the cluster, by its name:
+
+```bash
+bin/kvoadm reset hv2
+```
+
+Or one the cluster's folder doesn't know, by its address:
 
 ```bash
 bin/kvoadm reset root@198.51.100.20 \

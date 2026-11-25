@@ -53,6 +53,12 @@ bin/kvoadm backup root@203.0.113.10 \
 → backup written to home-2026-11-12.kvb (212 KiB), sealed to your recovery key
 ```
 
+After `init`, the machine's name is enough: the cluster's folder has the key and the host key.
+
+```bash
+bin/kvoadm backup hv1 --output home-2026-11-12.kvb
+```
+
 The control plane keeps running while it's taken. The file is readable only by you (`0600`), and
 `kvoadm` never overwrites an existing one: give each backup its own name.
 
@@ -281,6 +287,17 @@ Secrets open again, and existing `kvo` contexts keep working: it's the same clus
 A silo whose only copy was on the machine you replaced starts from its spec once it is settled,
 with an empty disk. Restore that data from your own backup of it. A copy a worker still has keeps
 running; the restored control plane does not start another.
+
+**The old machine ran silos too** (a [combined node]({{ '/setup/' | relative_url }}#combined-node-control-plane-and-silos-on-one-machine))?
+The restore brings back its worker and runtimes, not where its silo disks live: the new machine has
+no `kevaso` volume group yet, and `kvoadm kvo get hosts` shows `cloud-hypervisor:Failed` (`volume
+group "kevaso" missing`). Give it storage again, with every runtime it had:
+
+```bash
+bin/kvoadm host enable-worker hv1 --runtime cloud-hypervisor --storage-device /dev/DISK
+```
+
+(`--loop-storage 40G` for a file instead.)
 
 ### 5 · Workers
 

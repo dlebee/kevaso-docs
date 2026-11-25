@@ -190,19 +190,35 @@ component): use `remove`.
 
 ## Upgrade
 
+Give it the new `kevasod` for each kind of host in the cluster: one per operating system and CPU
+(the Linux build for Linux hosts; with a [Mac worker]({{ '/workers/mac/' | relative_url }}), the macOS
+build too). With only Linux hosts, one is enough.
+
 ```bash
-kvoadm upgrade --kevasod ./kevasod --dry-run
+bin/kvoadm upgrade --kevasod bin/kevasod-linux-amd64 --kevasod bin/kevasod-darwin-arm64 --dry-run
 ```
 
-It prints the plan and changes nothing. Without `--dry-run` it does it:
+It prints the plan, and which build each host gets, and changes nothing:
+
+```text
+Upgrade to v0.1.0-rc.8:
+  1. system hv1
+  2. worker hv2, mac1
+  note: one system node: the API is away while it restarts (silos keep running)
+  hv1: linux/x86_64, bin/kevasod-linux-amd64
+  hv2: linux/x86_64, bin/kevasod-linux-amd64
+  mac1: darwin/arm64, bin/kevasod-darwin-arm64
+```
+
+Without `--dry-run` it does it:
 
 ```bash
-kvoadm upgrade --kevasod ./kevasod
+bin/kvoadm upgrade --kevasod bin/kevasod-linux-amd64 --kevasod bin/kevasod-darwin-arm64
 ```
 
 | Flag | Meaning |
 |---|---|
-| `--kevasod PATH` | The new `kevasod`, for the hosts' CPU |
+| `--kevasod PATH` | The new `kevasod`. Repeat it, one per operating system and CPU in the cluster: each host gets the one for its own (`uname -sm`). All must carry the same version |
 | `--version V` | Must be the version the binary reports. A binary that reports none, or a different one, is refused |
 | `--batch N` | How many workers restart at once (default 2) |
 | `--ssh-key PATH` | The key for the hosts |
@@ -211,8 +227,9 @@ kvoadm upgrade --kevasod ./kevasod
 
 **The order:** light nodes first, the other system nodes next, the leader last (so there's one
 handover); then workers, a few at a time. It signs the binary as `kvoadm host add` does; each host
-checks the signature against the key it was set up with before it swaps the program in, and
-restarts it. Then it waits until the host is `Ready` and reports the new version before it goes on.
+checks the signature against the key it was set up with, runs the new program once (`kevasod
+version`: a build for another system or CPU fails there, and the old one keeps running) before it
+swaps it in, and restarts it. Then it waits until the host is `Ready` and reports the new version before it goes on.
 It stops at the first failure and says what's left.
 
 **Silos keep running** while their host's `kevasod` restarts: a microVM is its own service, a
@@ -226,6 +243,9 @@ restarts (`live-restore`), and Kevaso restarts Docker only when its own settings
 - The `kevasod` binary does not report its own version, or `--version` names a different one.
   Build it with the version stamped in: `-ldflags "-X kevaso.com/core/internal/version.Version=vX.Y.Z"`.
 - A host reports no version, or the move breaks the rule below.
+- A host has no build for its system and CPU: `no --kevasod for mac1 (darwin/arm64): give a build
+  for each (nothing was changed)`. It asks every host before it changes any.
+- Two builds for the same system and CPU, or builds that carry different versions.
 
 With one system node it goes ahead and says the API is away while it restarts.
 

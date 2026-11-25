@@ -34,13 +34,23 @@ there across stops and restarts. The rest of this page adds an init step to that
 
 ## Describe it
 
-Save this as `hello.yaml`:
+Silos live in a namespace. Making one is the admin's, so an admin makes `demo` once. Save this as
+`demo.yaml`:
 
 ```yaml
 apiVersion: kevaso/v1
 kind: Namespace
 metadata: { name: demo }
----
+```
+
+```bash
+bin/kvoadm kvo apply -f demo.yaml
+```
+
+Your own `kvo` is `editor` in every namespace: it makes the silos. (Given a Namespace, it answers
+`no role lets NAME get namespaces/demo`.) Save this as `hello.yaml`:
+
+```yaml
 apiVersion: kevaso/v1
 kind: Silo
 metadata: { name: hello, namespace: demo }

@@ -99,19 +99,22 @@ What it does, in order (each line is printed as it happens):
    namespace, starting in namespace `default`. Admin work goes through `kvoadm kvo …`.
 8. **Waits for the host to be Ready**, then prints the **recovery key** (next step).
 
-Now try `kvo`, as the admin and as yourself:
+Now try `kvo`, as the admin:
 
 ```bash
 bin/kvoadm kvo get hosts
 ```
 
-```bash
-bin/kvo get silos
-```
-
 ```
 NAME   INTERNAL IP    EXTERNAL IP   REGION   COMPONENTS      RUNTIMES   AGE
 hv1    203.0.113.10   -             -        control-plane   -          1m
+```
+
+And as yourself. Your own `kvo` sees silos, not hosts (`kvo get hosts` answers `no role lets NAME
+list hosts`):
+
+```bash
+bin/kvo get silos
 ```
 
 ### Running init again
@@ -181,11 +184,15 @@ A control plane alone runs no silos. That's the [recommended setup]({{ '/setup/'
 let it be a worker too:
 
 ```bash
-bin/kvoadm host enable-worker root@203.0.113.10 \
-    --ssh-key ~/.ssh/kevaso_ed25519 \
-    --host-key SHA256:kVvp5Yv9fNU4r4yX2P7+O99SU45jwdxC60ylimGFta4 \
-    --runtime cloud-hypervisor
+bin/kvoadm host enable-worker hv1 --runtime cloud-hypervisor --loop-storage 40G
 ```
+
+After `init`, `kvoadm` knows the machine by its name: the cluster's folder has your SSH key and the
+host key it checked, so neither `--ssh-key` nor `--host-key` is needed. Use `--storage-device
+/dev/DISK` instead of `--loop-storage` on a machine with an empty disk to give it (below).
+
+Running it again replaces the list of runtimes, so name every runtime you want each time. Storage
+is set up once: a run that names none keeps what the machine has.
 
 `--runtime` picks what kind of silos it runs (repeat it for several; see [Runtimes]({{ '/silos/runtimes/' | relative_url }})):
 
@@ -196,10 +203,10 @@ bin/kvoadm host enable-worker root@203.0.113.10 \
 | `docker`, `podman` | Nothing special (installed for you) |
 
 The worker installs its runtimes in the background (packages, Cloud Hypervisor, the Ubuntu image).
-Watch it:
+Watch it, as the admin (hosts are the admin's):
 
 ```bash
-bin/kvo watch hosts
+bin/kvoadm kvo watch hosts
 ```
 
 Wait for `cloud-hypervisor=Ready`, then make [your first silo]({{ '/silos/first-silo/' | relative_url }}).

@@ -31,6 +31,9 @@ go build -o bin/kvoadm ./cmd/kvoadm
 GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags "-X kevaso.com/core/internal/version.Version=vX.Y.Z" -o bin/kevasod-linux-arm64 ./cmd/kevasod
 ```
 
+Or take all three from a [release]({{ '/setup/prepare/' | relative_url }}#step-1--get-the-tools)
+(`kvo` and `kvoadm` for `darwin-arm64`, `kevasod` for `linux-arm64`), and skip Go.
+
 ## 2 · Make a Linux VM
 
 Install [Lima](https://lima-vm.io), which runs Linux VMs on a Mac:
@@ -121,23 +124,32 @@ bin/kvoadm host enable-worker you@127.0.0.1 \
     --loop-storage 40G
 ```
 
-The worker now installs Cloud Hypervisor and an Ubuntu image. Watch it:
+The worker now installs Cloud Hypervisor and an Ubuntu image. Watch it (hosts are the admin's, so
+through `kvoadm kvo`):
 
 ```bash
-bin/kvo watch hosts
+bin/kvoadm kvo watch hosts
 ```
 
 When you see `cloud-hypervisor=Ready`, press Ctrl-C.
 
 ## 6 · Your first silo
 
-Save this as `hello.yaml`:
+Silos live in a namespace, and making one is the admin's. Save this as `demo.yaml`:
 
 ```yaml
 apiVersion: kevaso/v1
 kind: Namespace
 metadata: { name: demo }
----
+```
+
+```bash
+bin/kvoadm kvo apply -f demo.yaml
+```
+
+Your own `kvo` makes the silo. Save this as `hello.yaml`:
+
+```yaml
 apiVersion: kevaso/v1
 kind: Silo
 metadata: { name: hello, namespace: demo }
@@ -178,9 +190,14 @@ A microVM, inside a VM, on your Mac.
 limactl delete --force kevaso-local
 ```
 
+Then forget the cluster on your Mac: its folder holds the admin certificate and keys.
+
 ```bash
-rm -rf ~/.kevaso
+rm -rf ~/.kevaso/clusters/local
 ```
+
+Not all of `~/.kevaso`: other clusters' folders live there too. `kvo` keeps a `local` context in
+`~/.kevaso/config.yaml` that points at nothing now; `bin/kvo ctx` lists the contexts.
 
 ---
 
