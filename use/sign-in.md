@@ -77,7 +77,9 @@ role covers, and you see no other namespace.
 
 ## What you may do
 
-What you may do is your role in each namespace. The built-in ones:
+What you may do is your role in each namespace: the one your invite gave you, or one an admin
+bound later. With none, you can sign in and do nothing yet: ask an admin for a role. The built-in
+ones:
 
 | Role | Can |
 |---|---|

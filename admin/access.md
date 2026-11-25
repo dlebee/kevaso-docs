@@ -26,7 +26,7 @@ sequenceDiagram
   participant Admin
   participant Bob as Bob's kvo
   participant CP as Control plane
-  Admin->>CP: kvo invite bob -n payments
+  Admin->>CP: kvo invite bob -n payments --role clusterrole/editor
   CP-->>Admin: kvo login line + one-time code
   Admin->>Bob: sends both (chat, email)
   Bob->>CP: kvo login … (checks the CA fingerprint)
@@ -56,21 +56,21 @@ An administrator who works with `kvo` invites from there, with no SSH and no clu
 example.
 
 ```bash
-kvo invite bob -n payments
+kvo invite bob -n payments --role clusterrole/editor
 ```
 
 From the cluster folder, with the admin certificate `kvoadm` keeps, the same invite is:
 
 ```bash
-kvoadm users invite bob --namespace payments
+kvoadm users invite bob -n payments --role clusterrole/editor
 ```
 
-(`kvoadm kvo invite bob -n payments` is the same again: `kvo invite` run with that certificate.)
+(`kvoadm kvo invite …` is the same again: `kvo invite` run with that certificate.)
 
-Both make bob a user, bind them as `editor` in `payments`, and print the two things to send:
+Both give bob the built-in `editor` role in `payments` and print the two things to send:
 
 ```text
-→ bob is editor in namespace payments
+→ bob has the ClusterRole editor in namespace payments
 → invite for bob, valid until 14:32 UTC. Send them both lines:
 
     kvo login https://203.0.113.10:6443 --ca sha256:4b1d…
@@ -79,17 +79,61 @@ Both make bob a user, bind them as `editor` in `payments`, and print the two thi
 The code works once; the browser asks for it.
 ```
 
+### Which role
+
+An invite names its role explicitly: what kind of role it is, and where it applies. There is no
+default role.
+
+| You give | The person gets | Printed |
+|---|---|---|
+| `-n NS --role clusterrole/NAME` | The ClusterRole `NAME`, in namespace `NS` only. The built-in roles (`viewer`, `editor`, `admin`) are ClusterRoles | `→ bob has the ClusterRole editor in namespace payments` |
+| `-n NS --role role/NAME` | The Role `NAME` that lives in namespace `NS` | `→ bob has the Role deployer in namespace payments` |
+| `--cluster-role NAME` | The ClusterRole `NAME` in every namespace | `→ bob has the ClusterRole viewer in every namespace` |
+| No role flag | No role at all. They can sign in, and do nothing until someone binds a role ([Roles](#roles)) | `→ bob has no role yet: …` |
+
+For a role of your own in one namespace, make the Role there first, then invite with
+`--role role/NAME`. A Role is a list of rules, like the ClusterRole in [Roles](#roles), with a
+namespace:
+
+```yaml
+apiVersion: kevaso/v1
+kind: Role
+metadata: { name: deployer, namespace: payments }
+rules:
+  - verbs: [get, list, watch, create, update]
+    resources: [silos, silosets]
+```
+
+```bash
+kvo apply -f deployer.yaml
+```
+
+```bash
+kvo invite bob -n payments --role role/deployer
+```
+
+The invite is refused before anything is made, with no code and no binding, when:
+
+- `--role` doesn't say its kind (`--role editor`): write `role/editor` or `clusterrole/editor`;
+- `--role` has no `-n`: a role in every namespace is `--cluster-role NAME`;
+- `--cluster-role` has `-n`: for a ClusterRole in one namespace, use `-n NS --role clusterrole/NAME`;
+- both `--role` and `--cluster-role` are given: one role per invite;
+- the role doesn't exist;
+- you could not give that role yourself ([You can't give more than you hold](#you-cant-give-more-than-you-hold)).
+
+### The other options
+
 | Option | Means |
 |---|---|
-| `-n NS` (`--namespace NS` in `kvoadm`) | Give them a role in that namespace. Without it, the invite gives no role: bind one yourself ([Roles](#roles)) |
-| `--role ROLE` | That role instead of `editor`: `viewer`, `admin`, or a role you made. Needs a namespace |
 | `--group G` | A group they sign in with, repeated for several. Groups given replace the ones they had |
 | `--ttl D` | How long the code stays valid. Default `15m`, at most `168h` |
+| `--cluster NAME` | `kvoadm` only: which cluster folder |
 
 Inviting someone who already exists gives them a new code and turns their account back on if it
-was disabled.
+was disabled. Inviting them again to the same role finds the binding already there.
 
-`kvo invite` is in the releases after `v0.1.0-rc.8`. With `rc.8`, invite with `kvoadm users invite`.
+`kvo invite` and the role flags above are in the releases after `v0.1.0-rc.8`. With `rc.8`, invite
+with `kvoadm users invite NAME --namespace NS`, which gives `editor` there, or `--role ROLE` with it.
 
 They sign in with what you sent: [Signing in and contexts]({{ '/use/sign-in/#sign-in' | relative_url }}).
 
@@ -313,7 +357,7 @@ Give it a role with a RoleBinding (subject kind `ServiceAccount`), then mint a t
 kvoadm kvo create token deployer -n payments --duration 1h
 ```
 
-A namespace `admin` (someone you invited with `--role admin`) runs the same commands with their own
+A namespace `admin` (someone you invited with `--role clusterrole/admin`) runs the same commands with their own
 `kvo`, without `kvoadm`.
 
 In CI, set `KVO_TOKEN` to it (and `KVO_CA_FILE` to the cluster CA). A namespace `admin` can mint

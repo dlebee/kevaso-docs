@@ -30,7 +30,8 @@ invite code: …
   in your browser, and only for a while (15 minutes unless the administrator gave it longer). If it
   ran out, ask for a new invite.
 
-You are most likely an `editor` there: you make and change silos and what goes with them. A few
+Your role there is the one the invite gave you, often `editor`: you make and change silos and what
+goes with them. A few
 things stay with an administrator (namespaces, roles, opening a port to the outside); the pages say
 where. A script or CI job gets a token instead of an invite ([In CI]({{ '/use/sign-in/#in-ci' | relative_url }})).
 
