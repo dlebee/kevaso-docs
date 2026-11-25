@@ -526,8 +526,6 @@ The first 8 characters of the uid are enough. It asks you to type the silo's nam
 kvoadm host kept root@198.51.100.23 --ssh-key ~/.ssh/kevaso_ed25519 --remove shop/web/a1b2c3d4
 ```
 
-On bare metal a held worker has served its last state, and the hold has ended with `kvoadm host trust-control-plane`. A hold ended by a new history from `kvoadm init --restore` has not. See [what is not built]({{ '/silos/control-plane-loss/#what-is-not-built-and-what-has-not-run-on-real-machines' | relative_url }}).
-
 ---
 
 ## Either store

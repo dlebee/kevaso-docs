@@ -102,6 +102,10 @@ bin/kvoadm init you@127.0.0.1 \
 `--api-server https://127.0.0.1:6443`: Lima forwards the VM's API port to your Mac's loopback, so
 that's where `kvo` reaches it.
 
+> **Save the recovery key** that `init` prints last (it starts `KVR1-`), in your password manager.
+> It's shown only once, and only it opens your backups
+> ([why]({{ '/setup/single-node/' | relative_url }}#step-2--save-the-recovery-key)).
+
 ```bash
 bin/kvoadm host enable-worker you@127.0.0.1 \
     --ssh-port 60022 \
@@ -121,8 +125,10 @@ limactl delete --force kevaso-local
 ```
 
 ```bash
-rm -rf ~/.kevaso
+rm -rf ~/.kevaso/clusters/local
 ```
+
+Only this cluster's folder: other clusters' folders live in `~/.kevaso` too.
 
 ---
 

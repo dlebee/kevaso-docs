@@ -114,6 +114,5 @@ then add the others with `kvoadm host add … --install control-plane`.
 |---|---|
 | **Fault tolerance** | Lose one system node: nothing stops. Lose two of three: the store stops taking changes until one is back; silos keep running |
 | **Operational risk** | More machines to patch, and port 2380 open between them. `kvoadm upgrade` rolls them one at a time |
-| **Proven** | On real cloud VMs: three system nodes, two with a light node, losing and removing one, an upgrade |
 
 → [High availability]({{ '/operations/ha/' | relative_url }})

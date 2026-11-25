@@ -68,11 +68,6 @@ A move that is already under way is refused without `--confirm-fenced` when its 
 copy is provably stopped …`). `kvoadm host drain` has no `--confirm-fenced` flag: drain a host while
 it is up. [Moving a silo off a host you know is off]({{ '/silos/control-plane-loss/#moving-a-silo-off-a-host-you-know-is-off' | relative_url }}).
 
-### What has run
-
-`drain` has run on two bare-metal machines. Ending a hand-off whose old host is lost has not run
-on real machines.
-
 ## Removing a host
 
 Removing a host takes it out of the cluster for good. A host with no silos is removed at once:
@@ -168,10 +163,3 @@ The new certificate it gets works. [Adding workers]({{ '/workers/' | relative_ur
 
 System nodes keep their own rules: removing one is refused if the store would lose its majority
 ([High availability]({{ '/operations/ha/' | relative_url }})).
-
-### What has run
-
-Removing a stopped worker that still had a recreatable silo and a silo with a local volume has run
-on two nested-VM machines. The first silo started on the other worker, the second was marked
-`HostDeleted`, and the machine's old certificate was refused when its `kevasod` started again.
-Then it was added again.

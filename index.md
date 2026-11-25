@@ -12,13 +12,10 @@ Unlike a pod, a silo is a *machine*: it has a disk that stays, a name, an addres
 place a developer works, or a service lives, for months. Its secrets can work inside it without ever
 entering it.
 
-> **Built from source.** Kevaso has no packaged releases yet: the [quick start]({{ '/quickstart/' | relative_url }})
-> shows how to build `kvo`, `kvoadm` and `kevasod`.
-
-> **Not proven everywhere.** Bare metal has run on one machine and on two. OpenShell stop, delete
-> and reboot have run on bare metal. A long soak and the failure cases have not.
-> [What's proven where]({{ '/operations/#whats-proven-where' | relative_url }})
-> lists what has run on which machines.
+> **Release candidates.** Kevaso is at `v0.1.0` release candidates: take `kvo`, `kvoadm` and
+> `kevasod` from a [release](https://github.com/dlebee/kevaso/releases) (see
+> [Get the tools]({{ '/setup/prepare/' | relative_url }}#step-1--get-the-tools)), or build them from source as the
+> [quick start]({{ '/quickstart/' | relative_url }}) shows.
 
 ---
 
@@ -39,7 +36,6 @@ entering it.
 | Give silos volumes, or make a microVM movable | [Volumes]({{ '/silos/volumes/' | relative_url }}), [Moves]({{ '/silos/moves/' | relative_url }}), [When the control plane is lost]({{ '/silos/control-plane-loss/' | relative_url }}) |
 | Survive losing a system node, or upgrade without stopping | [High availability]({{ '/operations/ha/' | relative_url }}) |
 | Add your own kinds and rules, or install a plugin | [Defining your own kind]({{ '/extending/kinds/' | relative_url }}), [Policies]({{ '/extending/policies/' | relative_url }}), [Plugins]({{ '/extending/plugins/' | relative_url }}), [Plugins for kvo]({{ '/extending/kvo-plugins/' | relative_url }}) |
-| See what has been proven on real machines | [What's proven where]({{ '/operations/#whats-proven-where' | relative_url }}) |
 | Look up a command | [Command reference]({{ '/reference/' | relative_url }}) |
 
 ---

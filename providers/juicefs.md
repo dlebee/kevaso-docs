@@ -26,12 +26,12 @@ flowchart LR
 
 ---
 
-## Status: what works, what isn't confirmed
+## Status
 
 | | |
 |---|---|
-| **Container silos** (`docker`, `podman`) | Run on real cloud machines with `docker`: the volume formatted once, mounted with `--subdir` so the silo sees only its folder, sized, and deleted. A plain `kvo move` of the container is refused. Not run with `podman`. |
-| **MicroVM silos** (`cloud-hypervisor`) | In code and tested with fakes: a volume is shared into the VM over virtiofs, and a root disk can be an image file on a volume, so the VM moves ([Volumes]({{ '/silos/volumes/' | relative_url }})). **Not run on a real machine.** |
+| **Container silos** (`docker`, `podman`) | With `docker`, the volume is formatted once, mounted with `--subdir` so the silo sees only its folder, sized, and deleted. A plain `kvo move` of the container is refused. |
+| **MicroVM silos** (`cloud-hypervisor`) | A volume is shared into the VM over virtiofs, and a root disk can be an image file on a volume, so the VM moves ([Volumes]({{ '/silos/volumes/' | relative_url }})). |
 | **Volume sizes** | `size` is required. It is a directory quota on the volume's folder (whole GiB, rounded up): writes past it fail, and growing `size` in the spec raises it with the silo running. A volume with no `size` is refused: `volume … needs a size: give it one in the silo's volumes[].size (e.g. 10Gi)`. |
 | **The metadata database** | Bring your own. Kevaso doesn't run it for you yet. |
 | **Silos that don't run as root** | Not handled: a volume's folder is owned by root with mode `0700`, so a program running as another user can't write to it. |

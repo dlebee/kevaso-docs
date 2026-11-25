@@ -137,6 +137,3 @@ contract and how to build and sign an index.
 - **No key rotation or freshness limit for an index yet:** an index stays valid until a newer one
   replaces it.
 - **Artifacts of the macOS client are not notarised.**
-
-> **Proven where:** installing and running a plugin end to end (a local signed index, an example
-> plugin) has run in tests. Nothing here has run against a published index.

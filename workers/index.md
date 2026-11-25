@@ -281,10 +281,3 @@ else, and deletes it with the rest.
   `NO INSTALL RECORD` and uses fixed lists only. It deletes nftables tables named `kevaso*`, purges no
   package, leaves IP forwarding alone, and removes Docker's `daemon.json` only if it is exactly what
   Kevaso writes.
-
-### What has run
-
-The plan `reset` runs is the one the bare-metal test suite uses to clean its machine; the 13
-one-machine tests passed and the machine came back clean. On bare metal it has also reset a named
-disk, with and without `--wipe-storage`. Beside a Docker that was already installed, containers that
-are not Kevaso's come back, and a failed step fails the reset and keeps the install record.

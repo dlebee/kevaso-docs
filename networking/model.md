@@ -323,8 +323,6 @@ service says so, and has no name. A silo with ports that open outside its silo I
 
 ## Limits today
 
-- The model is tested in-process, with the firewall rules generated and checked. The per-port firewall rules and
-  the DNS listeners on a host's internal and external IPs have not been run on real machines yet.
 - A cloud whose external IP is a 1:1 translation (the address is on no interface of the machine) is
   not handled: a `hostPort: [external]` port matches nothing there. Use a load balancer or
   `hostPort: [internal]` behind the translation.

@@ -291,13 +291,6 @@ Errors come back as JSON, `{"error": "…"}`; `curl -f` turns a refusal into a f
 - **`openshell` and `openshell-container` silos have no endpoint.** `kvo describe` shows the silo
   condition `LocalEndpoint=False NotSupported` for one that has a grant needing it.
 
-> **Proven on one bare-metal machine** (Ubuntu 26.04): the endpoint, files and variables on a
-> microVM, and files and variables on Docker through Kevaso's runtime (including that `docker inspect`
-> and Docker's folder on disk hold no value). **Not yet proven:** files and variables on Podman
-> (a Podman silo has run, opened a port and read a secret from the endpoint), the fallback on a real host, a second machine,
-> the failure cases, OpenShell. See
-> [What's proven where]({{ '/operations/#whats-proven-where' | relative_url }}).
-
 ---
 
 ## Ask a person first: approvals
@@ -450,9 +443,6 @@ Secret registry-pull: spec.valueReadable, spec.allowedDelivery, and a registry s
   credential, and refuse `container.pull`.
 - `kvo describe silo` shows whether the image is pinned by digest, the digest pulled and the pull
   secret. A tag can move; a digest can't.
-
-> **Not proven on real machines:** pulling with a credential has run in tests, not against a real
-> private registry.
 
 ---
 

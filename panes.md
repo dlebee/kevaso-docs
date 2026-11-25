@@ -80,10 +80,6 @@ digest doesn't match.
 Meanwhile the panes go stale. The silo's `Panes` condition says why: `CutOff`, or `Unreachable` while
 nothing answers (which isn't held against it).
 
-> **Proven on one bare-metal machine, for status panes only:** a microVM and a container silo served
-> panes, the host fetched them, `kvo get panes` showed them, and a silo that answered too much was cut
-> off with the `CutOff` reason. `html` panes were not part of that test. See [What's proven where]({{ '/operations/#whats-proven-where' | relative_url }}).
-
 ---
 
 ### The bundle format
@@ -288,10 +284,7 @@ it can sit over your work.
 - **Not published.** There is no plugin index, signed or not, so `kvo plugin install panes` has
   nothing to install. The macOS build is only ad-hoc signed and not notarised, so a release also
   needs a Developer ID signature.
-- **Not run through `kvo panes` on a real Mac yet.** The hand-off from `kvo` has tests, including a
-  real process, but launching the windows that way hasn't been tried.
-- **A macOS update can change how the sealed view behaves.** The app has a test with hostile panes
-  for this; it is run by people building the app, not by you.
+- **A macOS update can change how the sealed view behaves.**
 - **The untrusted label isn't reserved or copied into the pane,** so a person who may read panes but
   not silos sees every rim as "trust unknown".
 - **The streamed browser, Linux, Windows, a web client:** none yet.

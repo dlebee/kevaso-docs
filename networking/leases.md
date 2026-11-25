@@ -264,11 +264,3 @@ plugin that filters. Plugin authors: see [Plugins]({{ '/extending/plugins/' | re
 ## Not done
 
 - A lease on an **Ingress** host. Only service ports with `hostPort` or `loadBalancer: true` lease.
-- Leases on a plugin's node-port **load balancer** class have not run on a real machine.
-- Leases on host ports, as written on this page, ran on one Lima machine with microVM silos: closed until
-  leased, open and closed from the silo, approval, a held connection cut when the lease ends. They also ran
-  on one bare-metal machine: closed until leased, answers while open, a held connection is cut when the
-  lease ends, approval, and `kvo close`. They have not run on container silos, or across two machines.
-  Before ports were declared and opened one by one, leases also ran on real cloud machines.
-
-See [What's proven where]({{ '/operations/#whats-proven-where' | relative_url }}).

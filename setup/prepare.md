@@ -32,8 +32,7 @@ Then: [install the control plane]({{ '/setup/single-node/' | relative_url }}) on
 | Debian 12 | `debian` `12` |
 | macOS 26 (a [Mac worker]({{ '/workers/mac/' | relative_url }})) | `sw_vers -productVersion` 26 |
 
-On the machine, `kevasod platforms` prints the list (`ubuntu 24.04, debian 12, macos 26`). A system is added
-to it once the whole end-to-end suite has passed on it.
+On the machine, `kevasod platforms` prints the list (`ubuntu 24.04, debian 12, macos 26`).
 
 `kvoadm` reads the list out of the `kevasod` binary you give it with `--kevasod`, so the list it
 judges by is the list of the binary it is about to install. If that binary has no list, `kvoadm`
@@ -45,7 +44,7 @@ machine and compare the `ID` and `VERSION_ID` with the list, exactly:
 - **On the list:** the line is `✓ operating system`.
 - **Not on the list** (Ubuntu 22.04, Ubuntu 24.10, Debian 13, any other Linux): the line is a `!`
   warning, `this kevasod supports: ubuntu 24.04, debian 12, macos 26; others may work`. It is a warning, not a
-  stop: `kvoadm` goes on. Kevaso has not been tested on that system, so nothing says it works.
+  stop: `kvoadm` goes on.
 
 The check stops (`✗`) for other reasons: a CPU that is not x86_64 or aarch64, no systemd, no
 `openssl`, or something else already listening on port 6443. A machine without `apt-get` only gets a

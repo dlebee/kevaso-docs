@@ -105,9 +105,13 @@ bin/kvoadm init you@127.0.0.1 \
 
 It first shows what it found on the VM (all `✓`; a `!` for SSH password login is fine for a
 throwaway VM), asks two hardening questions (answer No to both here), then installs. `--api-server` is where
-*you* reach the API: Lima forwards the VM's port 6443 to your Mac. At the end it prints a **recovery
-key**. For this throwaway VM you can let it go. On a real cluster, it's the one thing you must save
-([why]({{ '/setup/single-node/' | relative_url }}#step-2--save-the-recovery-key)).
+*you* reach the API: Lima forwards the VM's port 6443 to your Mac.
+
+> **Save the recovery key.** The last thing `init` prints is a line starting `KVR1-`: the recovery
+> key. It's shown only this once. Put it in your password manager now, even for this practice VM, so
+> it's a habit. On a real cluster it's the only thing that opens your backups: lose it and a lost
+> control plane can't be restored, nor its secrets
+> ([more]({{ '/setup/single-node/' | relative_url }}#step-2--save-the-recovery-key)).
 
 ```bash
 bin/kvoadm kvo get hosts
