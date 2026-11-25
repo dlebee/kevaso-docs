@@ -23,6 +23,11 @@ Neither is for anything you'd mind losing: see [Choosing a setup]({{ '/setup/' |
 The [quick start]({{ '/quickstart/' | relative_url }}) has every command in order. This section
 explains what each one is for.
 
+> **On a Mac only.** This uses Lima on Apple's hypervisor. On Linux or Windows, run Kevaso on any
+> Ubuntu 24.04 or Debian 12 machine or VM you can reach over SSH:
+> [Prepare a machine]({{ '/setup/prepare/' | relative_url }}), then
+> [Single system node]({{ '/setup/single-node/' | relative_url }}).
+
 ### The VM
 
 On a Mac, [Lima](https://lima-vm.io) runs Linux VMs with Apple's own hypervisor. With **nested
@@ -138,7 +143,8 @@ No machines and no silos: the API alone, on your loopback, with no authenticatio
 stored (in `~/.kevaso/dev.db`) and checked like on a real cluster, so it's the fastest way to learn
 the YAML.
 
-Start it, and leave it running:
+On macOS or Linux, from a checkout of [dlebee/kevaso](https://github.com/dlebee/kevaso) (`kevasod`
+doesn't run on Windows). Start it, and leave it running:
 
 ```bash
 go run ./cmd/kevasod dev

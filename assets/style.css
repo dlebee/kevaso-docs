@@ -97,3 +97,19 @@ div.highlighter-rouge:not([class*="language-"]) pre, div.language-text pre, div.
   transition: opacity .15s; }
 div.highlighter-rouge:hover .copy, .copy:focus { opacity: 1; }
 @media (hover: none) { .copy { opacity: 1; } }
+
+/* OS tabs: one panel per operating system (.os-tabs > .os-tab[data-os][data-label]). Without
+   JavaScript every panel shows, each under its own label; with it, a tab row picks one. */
+.os-tabs { margin: 20px 0; }
+.os-tab::before { content: attr(data-label); display: block; margin: 18px 0 6px; font-weight: 600; font-size: 14px;
+  color: var(--ink-2); text-transform: uppercase; letter-spacing: .04em; }
+.os-tabs.os-ready .os-tab::before { display: none; }
+.os-tabs.os-ready .os-tab > :first-child { margin-top: 0; }
+.os-tab[hidden] { display: none; }
+.os-tablist { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+.os-tablist button { min-height: 40px; padding: 8px 16px; margin-bottom: -1px; border: 1px solid transparent; border-bottom: 0;
+  border-radius: 9px 9px 0 0; background: none; color: var(--ink-2); font: 500 14px "Inter", sans-serif; cursor: pointer; }
+.os-tablist button:hover { color: var(--ink); }
+.os-tablist button[aria-selected="true"] { background: var(--surface); color: var(--ink); border-color: var(--line);
+  box-shadow: inset 0 2px 0 var(--link); }
+.os-tablist button:focus-visible, .os-tab:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }

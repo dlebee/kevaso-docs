@@ -9,6 +9,12 @@ A whole cluster on your Mac in about 15 minutes: a Linux VM that is both the sys
 worker, and a microVM silo inside it. The [Running locally]({{ '/setup/local/' | relative_url }})
 page explains every step in more depth.
 
+> **This quick start is for a Mac:** it runs the cluster in a Lima VM on Apple's own hypervisor.
+> **On Linux or Windows,** use any Ubuntu 24.04 or Debian 12 machine you can reach over SSH (a VM, a
+> spare computer, a cloud machine): [prepare it]({{ '/setup/prepare/' | relative_url }}), then install a
+> [single system node]({{ '/setup/single-node/' | relative_url }}) on it. The tools for your
+> computer are in [Get the tools]({{ '/setup/prepare/' | relative_url }}#step-1--get-the-tools).
+
 **You need:** an Apple Silicon Mac (M3 or later, macOS 15 or later, for nested virtualization),
 [Homebrew](https://brew.sh), Go 1.27, and a checkout of
 [dlebee/kevaso](https://github.com/dlebee/kevaso). Run the commands from that checkout.
