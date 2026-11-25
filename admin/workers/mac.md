@@ -59,7 +59,7 @@ Do this once, on the Mac.
 
 ## Add it
 
-From your computer, with the `kevasod` for macOS from a [release]({{ '/admin/setup/prepare/#step-1--get-the-tools' | relative_url }})
+From your computer, with the `kevasod` for macOS from a [release]({{ '/admin/install/#kevasod-for-the-machines' | relative_url }})
 (`kevasod-…-darwin-arm64.zip`, signed and notarized):
 
 ```bash

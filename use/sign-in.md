@@ -5,7 +5,8 @@ permalink: /use/sign-in/
 
 # Signing in and contexts
 
-An admin invited you to a namespace and sent you two things: a `kvo login …` line and a one-time
+You have `kvo` ([Install kvo]({{ '/use/install/' | relative_url }})), and an admin invited you to a
+namespace and sent you two things: a `kvo login …` line and a one-time
 code. This page signs you in, sets your default namespace, and shows how to ask what you may do.
 
 ---

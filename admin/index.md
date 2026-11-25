@@ -28,6 +28,7 @@ computer.
 
 | If you want to | Go to |
 |---|---|
+| Install `kvoadm`, `kvo` and `kevasod` on your computer | [Install kvoadm]({{ '/admin/install/' | relative_url }}) |
 | Decide how to set up a real cluster | [Choosing a setup]({{ '/admin/setup/' | relative_url }}) |
 | Set up a machine, then the control plane | [Prepare a machine]({{ '/admin/setup/prepare/' | relative_url }}), [Single system node]({{ '/admin/setup/single-node/' | relative_url }}) |
 | Try it in a VM on your computer | [Running locally]({{ '/admin/setup/local/' | relative_url }}) |

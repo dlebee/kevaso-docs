@@ -24,6 +24,7 @@ sections:
     part_kind: use
     pages:
       - { title: Using Kevaso, url: /use/ }
+      - { title: Install kvo, url: /use/install/ }
       - { title: Signing in and contexts, url: /use/sign-in/ }
   - title: Silos
     pages:
@@ -51,6 +52,7 @@ sections:
     part_kind: admin
     pages:
       - { title: Administering Kevaso, url: /admin/ }
+      - { title: Install kvoadm, url: /admin/install/ }
       - { title: People and access, url: /admin/access/ }
   - title: Set up the system node
     pages:

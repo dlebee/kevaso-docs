@@ -14,7 +14,7 @@ entering it.
 
 > **Release candidates.** Kevaso is at `v0.1.0` release candidates: take `kvo`, `kvoadm` and
 > `kevasod` from a [release](https://github.com/dlebee/kevaso/releases) (see
-> [Get the tools]({{ '/admin/setup/prepare/' | relative_url }}#step-1--get-the-tools)), or build them from source as the
+> [Install kvo]({{ '/use/install/' | relative_url }}) and [Install kvoadm]({{ '/admin/install/' | relative_url }})), or build them from source as the
 > [quick start]({{ '/quickstart/' | relative_url }}) shows.
 
 ---

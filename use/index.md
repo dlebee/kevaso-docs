@@ -13,9 +13,8 @@ a way in; you never need SSH to a machine, nor `kvoadm`.
 
 ## What you need
 
-- **`kvo` on your computer.** Take it from a [release](https://github.com/dlebee/kevaso/releases)
-  ([Get the tools]({{ '/admin/setup/prepare/#step-1--get-the-tools' | relative_url }}) shows where
-  each file goes on macOS, Linux and Windows).
+- **`kvo` on your computer:** [Install kvo]({{ '/use/install/' | relative_url }}), with steps for
+  macOS, Linux and Windows.
 - **A way in, from an admin:** a `kvo login …` line and a one-time code, for a namespace. Then
   [sign in]({{ '/use/sign-in/' | relative_url }}).
 
@@ -28,6 +27,7 @@ these pages except the steps marked as an admin's. `kvo auth can-i` answers for 
 
 | If you want to | Go to |
 |---|---|
+| Install `kvo` | [Install kvo]({{ '/use/install/' | relative_url }}) |
 | Sign in, switch clusters, see what you may do | [Signing in and contexts]({{ '/use/sign-in/' | relative_url }}) |
 | Make a silo and step inside | [Your first silo]({{ '/use/silos/first-silo/' | relative_url }}) |
 | Pick a microVM, a container or a sandbox | [Runtimes]({{ '/use/silos/runtimes/' | relative_url }}) |

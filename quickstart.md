@@ -14,7 +14,7 @@ page explains every step in more depth.
 > **On Linux or Windows,** use any Ubuntu 24.04 or Debian 12 machine you can reach over SSH (a VM, a
 > spare computer, a cloud machine): [prepare it]({{ '/admin/setup/prepare/' | relative_url }}), then install a
 > [single system node]({{ '/admin/setup/single-node/' | relative_url }}) on it. The tools for your
-> computer are in [Get the tools]({{ '/admin/setup/prepare/' | relative_url }}#step-1--get-the-tools).
+> computer are in [Install kvoadm]({{ '/admin/install/' | relative_url }}).
 
 **You need:** an Apple Silicon Mac (M3 or later, macOS 15 or later, for nested virtualization),
 [Homebrew](https://brew.sh), Go 1.27, and a checkout of
@@ -38,7 +38,7 @@ go build -o bin/kvoadm ./cmd/kvoadm
 GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags "-X kevaso.com/core/internal/version.Version=vX.Y.Z" -o bin/kevasod-linux-arm64 ./cmd/kevasod
 ```
 
-Or take all three from a [release]({{ '/admin/setup/prepare/' | relative_url }}#step-1--get-the-tools)
+Or take all three from a [release]({{ '/admin/install/' | relative_url }})
 (`kvo` and `kvoadm` for `darwin-arm64`, `kevasod` for `linux-arm64`), and skip Go.
 
 ## 2 · Make a Linux VM

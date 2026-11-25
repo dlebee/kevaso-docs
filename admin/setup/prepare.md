@@ -13,7 +13,7 @@ node and each worker.
 
 | Step | You do | Why |
 |---|---|---|
-| [1](#step-1--get-the-tools) | Get `kvo`, `kvoadm` and `kevasod` | From a release, or built from source |
+| [1](#step-1--get-the-tools) | Get `kvoadm`, `kvo` and `kevasod` | [Install kvoadm]({{ '/admin/install/' | relative_url }}) |
 | [2](#step-2--make-an-ssh-key-for-kevaso) | Make an SSH key for Kevaso | So `kvoadm` never needs a password |
 | [3](#step-3--put-the-key-on-the-machine) | Put its public half on the machine | So the machine lets that key in |
 | [4](#step-4--write-down-the-machines-fingerprint) | Write down the machine's host-key fingerprint | So you know you're talking to *your* machine |
@@ -30,10 +30,11 @@ Then: [install the control plane]({{ '/admin/setup/single-node/' | relative_url 
 | System | `ID` and `VERSION_ID` in `/etc/os-release` |
 |---|---|
 | Ubuntu 24.04 | `ubuntu` `24.04` |
+| Ubuntu 26.04 | `ubuntu` `26.04` |
 | Debian 12 | `debian` `12` |
 | macOS 26 (a [Mac worker]({{ '/admin/workers/mac/' | relative_url }})) | `sw_vers -productVersion` 26 |
 
-On the machine, `kevasod platforms` prints the list (`ubuntu 24.04, debian 12, macos 26`).
+On the machine, `kevasod platforms` prints the list (`ubuntu 24.04, ubuntu 26.04, debian 12, macos 26`).
 
 `kvoadm` reads the list out of the `kevasod` binary you give it with `--kevasod`, so the list it
 judges by is the list of the binary it is about to install. If that binary has no list, `kvoadm`
@@ -44,7 +45,7 @@ machine and compare the `ID` and `VERSION_ID` with the list, exactly:
 
 - **On the list:** the line is `✓ operating system`.
 - **Not on the list** (Ubuntu 22.04, Ubuntu 24.10, Debian 13, any other Linux): the line is a `!`
-  warning, `this kevasod supports: ubuntu 24.04, debian 12, macos 26; others may work`. It is a warning, not a
+  warning, `this kevasod supports: ubuntu 24.04, ubuntu 26.04, debian 12, macos 26; others may work`. It is a warning, not a
   stop: `kvoadm` goes on.
 
 The check stops (`✗`) for other reasons: a CPU that is not x86_64 or aarch64, no systemd, no
@@ -55,179 +56,11 @@ warning, and then you install the runtimes' packages yourself.
 
 ## Step 1 · Get the tools
 
-**From a release** (the simplest). Each [release](https://github.com/dlebee/kevaso/releases) has
-`kvo` and `kvoadm` for macOS, Linux and Windows, and `kevasod` for Linux (x86_64 and ARM) and for
-Apple Silicon Macs. The macOS files are signed and notarized, the Windows ones signed.
-
-Your computer needs `kvo` and `kvoadm` for its own system; the machines need `kevasod` for theirs
-(`uname -m` on a machine says `x86_64` → `linux-amd64`, or `aarch64` → `linux-arm64`; a
-[Mac worker]({{ '/admin/workers/mac/' | relative_url }}) takes `kevasod-…-darwin-arm64.zip`). The commands
-below fetch `kevasod` for x86_64 Linux machines. Download into a folder of their own, with the
-[GitHub CLI](https://cli.github.com):
-
-<div class="os-tabs" markdown="1">
-<div class="os-tab" data-os="macos" data-label="macOS" markdown="1">
-
-```bash
-gh release download v0.1.0-rc.7 --repo dlebee/kevaso --pattern 'kvo*-darwin-arm64.zip' --pattern 'kevasod-*-linux-amd64.tar.gz' --pattern SHA256SUMS
-```
-
-On an Intel Mac, take `darwin-amd64` instead of `darwin-arm64`, here and below. Check the files
-against the release's checksums:
-
-```bash
-shasum -a 256 --check --ignore-missing SHA256SUMS
-```
-
-Unpack them. Each archive unpacks into a folder of its own name:
-
-```bash
-unzip kvo-v0.1.0-rc.7-darwin-arm64.zip && unzip kvoadm-v0.1.0-rc.7-darwin-arm64.zip && tar -xzf kevasod-v0.1.0-rc.7-linux-amd64.tar.gz
-```
-
-Put the three programs in a `bin/` folder, as the commands on these pages expect, and name
-`kevasod` for what it runs on:
-
-```bash
-mkdir -p bin && mv kvo-*/kvo kvoadm-*/kvoadm bin/ && mv kevasod-*-linux-amd64/kevasod bin/kevasod-linux-amd64
-```
-
-</div>
-<div class="os-tab" data-os="linux" data-label="Linux" markdown="1">
-
-```bash
-gh release download v0.1.0-rc.7 --repo dlebee/kevaso --pattern 'kvo*-linux-amd64.tar.gz' --pattern 'kevasod-*-linux-amd64.tar.gz' --pattern SHA256SUMS
-```
-
-On an ARM computer, take `kvo*-linux-arm64.tar.gz` for your own tools. Check the files against
-the release's checksums:
-
-```bash
-sha256sum --check --ignore-missing SHA256SUMS
-```
-
-Unpack them. Each archive unpacks into a folder of its own name:
-
-```bash
-tar -xzf kvo-v0.1.0-rc.7-linux-amd64.tar.gz && tar -xzf kvoadm-v0.1.0-rc.7-linux-amd64.tar.gz && tar -xzf kevasod-v0.1.0-rc.7-linux-amd64.tar.gz
-```
-
-Put the three programs in a `bin/` folder, as the commands on these pages expect, and name
-`kevasod` for what it runs on:
-
-```bash
-mkdir -p bin && mv kvo-*/kvo kvoadm-*/kvoadm bin/ && mv kevasod-*-linux-amd64/kevasod bin/kevasod-linux-amd64
-```
-
-</div>
-<div class="os-tab" data-os="windows" data-label="Windows" markdown="1">
-
-In PowerShell:
-
-```powershell
-gh release download v0.1.0-rc.7 --repo dlebee/kevaso --pattern 'kvo*-windows-amd64.zip' --pattern 'kevasod-*-linux-amd64.tar.gz' --pattern SHA256SUMS
-```
-
-Check each file's hash against its line in `SHA256SUMS` (the same letters and digits, in another
-case):
-
-```powershell
-Get-FileHash kvo-v0.1.0-rc.7-windows-amd64.zip, kvoadm-v0.1.0-rc.7-windows-amd64.zip, kevasod-v0.1.0-rc.7-linux-amd64.tar.gz
-```
-
-```powershell
-Get-Content SHA256SUMS
-```
-
-Unpack them with the `tar` that comes with Windows. Each archive unpacks into a folder of its own
-name:
-
-```powershell
-tar -xf kvo-v0.1.0-rc.7-windows-amd64.zip
-```
-
-```powershell
-tar -xf kvoadm-v0.1.0-rc.7-windows-amd64.zip
-```
-
-```powershell
-tar -xf kevasod-v0.1.0-rc.7-linux-amd64.tar.gz
-```
-
-Put the three programs in a `bin` folder, and name `kevasod` for what it runs on:
-
-```powershell
-mkdir bin
-```
-
-```powershell
-Move-Item kvo-v0.1.0-rc.7-windows-amd64\kvo.exe, kvoadm-v0.1.0-rc.7-windows-amd64\kvoadm.exe bin
-```
-
-```powershell
-Move-Item kevasod-v0.1.0-rc.7-linux-amd64\kevasod bin\kevasod-linux-amd64
-```
-
-**The commands on these pages, in PowerShell:** type `bin\kvoadm.exe` and `bin\kvo.exe` where
-they say `bin/kvoadm` and `bin/kvo`, and `$HOME\.ssh\…` where they say `~/.ssh/…`. A command split
-over several lines ends each line with `\`; in PowerShell end it with a backtick (`` ` ``)
-instead, or put it all on one line.
-
-</div>
-</div>
-
-**From source.** From a checkout of [dlebee/kevaso](https://github.com/dlebee/kevaso), with Go:
-
-<div class="os-tabs" markdown="1">
-<div class="os-tab" data-os="macos linux" data-label="macOS, Linux" markdown="1">
-
-```bash
-go build -o bin/kvo ./cmd/kvo
-```
-
-```bash
-go build -o bin/kvoadm ./cmd/kvoadm
-```
-
-`kevasod` runs on the machine, so build it for Linux and for the machine's CPU (`amd64` for x86_64,
-`arm64` for ARM):
-
-```bash
-GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X kevaso.com/core/internal/version.Version=vX.Y.Z" -o bin/kevasod-linux-amd64 ./cmd/kevasod
-```
-
-</div>
-<div class="os-tab" data-os="windows" data-label="Windows" markdown="1">
-
-In PowerShell:
-
-```powershell
-go build -o bin\kvo.exe .\cmd\kvo
-```
-
-```powershell
-go build -o bin\kvoadm.exe .\cmd\kvoadm
-```
-
-`kevasod` runs on the machine, so build it for Linux and for the machine's CPU (`amd64` for x86_64,
-`arm64` for ARM). Set the target for this PowerShell window, then build:
-
-```powershell
-$env:GOOS = "linux"; $env:GOARCH = "amd64"; $env:CGO_ENABLED = "0"
-```
-
-```powershell
-go build -ldflags "-X kevaso.com/core/internal/version.Version=vX.Y.Z" -o bin\kevasod-linux-amd64 .\cmd\kevasod
-```
-
-Close the window afterwards (or set `$env:GOOS = ""` and `$env:GOARCH = ""`), so later builds are
-for Windows again.
-
-</div>
-</div>
-
-> **Why `CGO_ENABLED=0`?** It makes a static binary that runs on any Linux, with nothing to install
-> next to it.
+On your computer: `kvoadm` and `kvo` for your own system, and `kevasod` for the machine's, in a
+`bin` folder. [Install kvoadm]({{ '/admin/install/' | relative_url }}) does it, with steps for
+macOS, Linux and Windows: from a release, checked against its checksums, or built from source. Its
+[kevasod section]({{ '/admin/install/#kevasod-for-the-machines' | relative_url }}) says which build a
+machine takes.
 
 ---
 
