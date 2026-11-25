@@ -88,15 +88,18 @@ See [Panes]({{ '/use/panes/' | relative_url }}).
 
 | Command | Does |
 |---|---|
-| `kvo create secret NAME --from-file F\|-` | Store a value. `--from-literal VALUE` is refused unless you add `--i-know`: the value is on the command line |
+| `kvo create secret NAME --from-file F\|-` | Store a value (the key `value`). `--from-literal KEY=VALUE` is refused unless you add `--i-know`: the value is on the command line |
+| `kvo create secret NAME --from-file KEY=F [--from-file KEY=F]…` | Store [named keys]({{ '/use/secrets/#named-keys' | relative_url }}), one per flag. `KEY=-` reads one from stdin |
 | `kvo create secret NAME --generate [--type ed25519\|ecdsa-p256]` | Let Kevaso make it |
 | …`--allow MODES`, `--write-only`, `-l KEY=VALUE` | Restrict delivery (`broker`, `inject`, `file`, `env`, comma-separated), make write-only, label |
 | `kvo create secret NAME --type registry --server HOST --username U --from-file - [--default-pull]` | A [private registry's]({{ '/use/secrets/' | relative_url }}) credential: write-only, the password on stdin. `--default-pull`: the one used for that registry when a silo names none |
-| `kvo secret set NAME --from-file F\|-` | A new value (rotation) |
-| `kvo get secret NAME --reveal` | Print the value (needs `read-value`; never for write-only) |
-| `kvo create clustersecret NAME [--description TEXT] --from-file F\|-` | A secret with no namespace, for a plugin. Cluster-admin only. The value comes from a file or from stdin. `--from-literal` is refused |
-| `kvo set clustersecret NAME --from-file F\|-` | Replace that value. Each host that has it writes the new copy and restarts the plugin |
-| `kvo get clustersecret [NAME] [--reveal]` | The name and description. `--reveal` prints the value. A value is readable by a cluster admin, or by `get` on `clustersecrets/value` in a ClusterRole whose `resourceNames` lists that name |
+| `kvo secret set NAME --from-file F\|-` | A new value (rotation): every key is replaced by the one key `value` |
+| `kvo secret set NAME --from-file KEY=F…` | Change these keys, keep the others |
+| `kvo secret set NAME --remove-key KEY…` | Remove keys (with `--from-file KEY=F` in the same write, or alone) |
+| `kvo get secret NAME --reveal [--key KEY]` | Print the value, every key as `KEY: VALUE`, or one key's bytes with `--key` (needs `read-value`; never for write-only) |
+| `kvo create clustersecret NAME [--description TEXT] --from-file F\|- \| --from-file KEY=F…` | A secret with no namespace, for a plugin. Cluster-admin only. One value, or named keys, from files or stdin. `--from-literal` is refused |
+| `kvo set clustersecret NAME --from-file F\|- \| --from-file KEY=F… \| --remove-key KEY…` | Replace the value, change some keys, or remove keys. Each host that has it writes the new copy and restarts the plugin |
+| `kvo get clustersecret [NAME] [--reveal [--key KEY]]` | The name and description. `--reveal` prints the value (every key, or `--key`). A value is readable by a cluster admin, or by `get` on `clustersecrets/value` in a ClusterRole whose `resourceNames` lists that name |
 | `kvo delete clustersecret NAME` | Delete it |
 | `kvo get approvals` / `kvo watch approvals` | Silos waiting for a person's yes. The `REQUEST` column is 32 hex digits, the start of the request's 64-digit id |
 | `kvo approve NAME [--request ID]` | Say yes (needs `approve` on that secret; people only). `--request` is that column, a longer prefix, or the full 64 hex digits. At least 32 digits. On a terminal you can omit it: the request is shown and the yes is for what was shown. [Approvals]({{ '/use/secrets/#ask-a-person-first-approvals' | relative_url }}) |

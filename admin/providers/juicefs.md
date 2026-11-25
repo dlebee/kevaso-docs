@@ -71,9 +71,9 @@ A JSON file naming the classes. It holds no secrets: credentials are only *named
     "storage": "s3",
     "bucket": "https://objects.example.com/kevaso-volumes",
     "credentials": {
-      "accessKey": "bucket-access-key",
-      "secretKey": "bucket-secret-key",
-      "metaPassword": "metadata-password"
+      "accessKey": { "name": "juicefs", "key": "access-key" },
+      "secretKey": { "name": "juicefs", "key": "secret-key" },
+      "metaPassword": { "name": "juicefs", "key": "metadata-password" }
     }
   }]
 }
@@ -88,7 +88,7 @@ A JSON file naming the classes. It holds no secrets: credentials are only *named
 | `fileSystem` | The JuiceFS file system's name | `kevaso` |
 | `cacheDir` | The local cache on each host | `/var/cache/kevaso-juicefs/CLASS` |
 | `cacheSizeMiB` | That cache's size, in MiB | JuiceFS's own size, when you leave it out |
-| `credentials` | The names of the cluster secrets holding the bucket's keys and the metadata password. Each is optional. | none |
+| `credentials` | Where the bucket's keys and the metadata password are: each a cluster secret's `name` and one of its keys, `key` (default `value`, a cluster secret made from one value). Each is optional. | none |
 | `description` | Text shown for the class | A standard line |
 | `stateDir` | The controller side's folder, where it mounts each class's root | `/var/lib/kevaso-provider-juicefs` |
 | `volumesDir` | The folder the node side mounts under | `/var/lib/kevaso/volumes` |
@@ -114,27 +114,19 @@ git clone https://github.com/dlebee/kevaso-provider-juicefs
 make -C kevaso-provider-juicefs build
 ```
 
-Save the three secrets, each in a file only you can read:
+Save the three secrets, each in a file only you can read, in the folder you run `kvo` from:
 
 ```bash
-chmod 600 ~/bucket-access-key.txt ~/bucket-secret-key.txt ~/metadata-password.txt
+chmod 600 bucket-access-key.txt bucket-secret-key.txt metadata-password.txt
 ```
 
-Create one cluster secret for each name in the config's `credentials`:
+Create one cluster secret holding the three as keys, named as the config's `credentials` say:
 
 ```bash
-kvo create clustersecret bucket-access-key --from-file ~/bucket-access-key.txt
+kvo create clustersecret juicefs --from-file access-key=bucket-access-key.txt --from-file secret-key=bucket-secret-key.txt --from-file metadata-password=metadata-password.txt
 ```
 
-```bash
-kvo create clustersecret bucket-secret-key --from-file ~/bucket-secret-key.txt
-```
-
-```bash
-kvo create clustersecret metadata-password --from-file ~/metadata-password.txt
-```
-
-Save this as `juicefs-secrets.yaml`. `resourceNames` lists exactly these three. Both sides of JuiceFS need all three, so the binding names both service accounts in the namespace `kevaso-system`: `plugin-juicefs` for the controller side and `plugin-juicefs-node` for the node side. A host fetches a value for a side only when that side's account may read the name.
+Save this as `juicefs-secrets.yaml`. `resourceNames` lists exactly that name: it allows all three keys. Both sides of JuiceFS need it, so the binding names both service accounts in the namespace `kevaso-system`: `plugin-juicefs` for the controller side and `plugin-juicefs-node` for the node side. A host fetches a value for a side only when that side's account may read the name.
 
 ```yaml
 apiVersion: kevaso/v1
@@ -143,7 +135,7 @@ metadata: { name: juicefs-secrets }
 rules:
   - verbs: [get]
     resources: [clustersecrets/value]
-    resourceNames: [bucket-access-key, bucket-secret-key, metadata-password]
+    resourceNames: [juicefs]
 ---
 apiVersion: kevaso/v1
 kind: ClusterRoleBinding
@@ -167,13 +159,11 @@ bin/kvoadm plugin install root@203.0.113.10 \
     --binary kevaso-provider-juicefs/bin/kevaso-provider-juicefs-linux-amd64 \
     --manifest kevaso-provider-juicefs/kevaso-plugin.json --yes \
     --config juicefs.json \
-    --cluster-secret bucket-access-key \
-    --cluster-secret bucket-secret-key \
-    --cluster-secret metadata-password
+    --cluster-secret juicefs
 ```
 
 The **node side** runs on each worker. It mounts a volume where the silo is placed, and unmounts it
-when the silo leaves. It reads the same names:
+when the silo leaves. It reads the same cluster secret:
 
 ```bash
 bin/kvoadm plugin install root@203.0.113.20 \
@@ -182,19 +172,17 @@ bin/kvoadm plugin install root@203.0.113.20 \
     --binary kevaso-provider-juicefs/bin/kevaso-provider-juicefs-linux-amd64 \
     --manifest kevaso-provider-juicefs/kevaso-plugin.json --yes \
     --config juicefs.json \
-    --cluster-secret bucket-access-key \
-    --cluster-secret bucket-secret-key \
-    --cluster-secret metadata-password
+    --cluster-secret juicefs
 ```
 
-Install creates the service account of the side it installs (`plugin-juicefs`, or `plugin-juicefs-node` with `--side node`) in the namespace `kevaso-system` and prints the account to bind. It records the names. It does not copy the files. Each host fetches the values and keeps copies only root can read. The plugin reads each name from its credential directory. See [Plugins]({{ '/admin/extending/plugins/' | relative_url }}).
+Install creates the service account of the side it installs (`plugin-juicefs`, or `plugin-juicefs-node` with `--side node`) in the namespace `kevaso-system` and prints the account to bind. It records the name. It does not copy the files. Each host fetches the keys and keeps them in a folder only root can read, one file per key. The plugin reads each key from its credential directory as `juicefs_KEY` (`juicefs_access-key`, and so on). See [Plugins]({{ '/admin/extending/plugins/' | relative_url }}).
 
 `--manifest` shows you what each side asks of the host (root, `/dev/fuse`, and on the node side the host's own mount namespace) and `--yes` grants it. See [Plugins]({{ '/admin/extending/plugins/' | relative_url }}#what-a-manifest-asks-for).
 
-To replace a value:
+To replace one key (the others stay):
 
 ```bash
-kvo set clustersecret bucket-secret-key --from-file ~/bucket-secret-key.txt
+kvo set clustersecret juicefs --from-file secret-key=bucket-secret-key.txt
 ```
 
 Each host writes the new copy and restarts the plugin. The same bytes again leave the plugin running.
