@@ -15,8 +15,9 @@
 <header class="top"><div class="top-in">
   <a class="brand" href="{{ '/' | relative_url }}"><img src="{{ '/assets/mark.svg' | relative_url }}" alt="" width="30" height="30">Kevaso <span>docs</span></a>
   <nav class="top-links">
-    <a href="{{ '/quickstart/' | relative_url }}">Quick start</a>
-    <a href="{{ '/reference/' | relative_url }}">Reference</a>
+    <a href="{{ '/use/' | relative_url }}"{% if page.url contains "/use/" %} aria-current="true"{% endif %}>Using</a>
+    <a href="{{ '/admin/' | relative_url }}"{% if page.url contains "/admin/" %} aria-current="true"{% endif %}>Administration</a>
+    <a href="{{ '/reference/' | relative_url }}"{% if page.url contains "/reference/" %} aria-current="true"{% endif %}>Reference</a>
     <a href="https://github.com/dlebee/kevaso">GitHub</a>
   </nav>
 </div></header>
@@ -25,6 +26,7 @@
     <details open>
       <summary>Contents</summary>
       {% for section in site.sections %}
+      {% if section.part %}<p class="side-part side-part-{{ section.part_kind }}">{{ section.part }}</p>{% endif %}
       <div class="side-section">
         <p class="side-title">{{ section.title }}</p>
         <ul>
@@ -41,6 +43,12 @@
       (function () {
         var side = document.querySelector(".side"), key = "kevaso-docs-side-scroll";
         try { side.scrollTop = +sessionStorage.getItem(key) || 0; } catch (e) {}
+        // Keep the current page's link in view, so an admin page shows the admin part.
+        var here = side.querySelector('a[aria-current="page"]');
+        if (here && side.scrollHeight > side.clientHeight) {
+          var a = here.getBoundingClientRect(), s = side.getBoundingClientRect();
+          if (a.top < s.top || a.bottom > s.bottom) side.scrollTop += a.top - s.top - s.height / 3;
+        }
         var save = function () { try { sessionStorage.setItem(key, side.scrollTop); } catch (e) {} };
         side.addEventListener("scroll", save, { passive: true });
         side.addEventListener("click", save);
@@ -49,6 +57,15 @@
     </script>
   </aside>
   <main>
+    {% assign audience = page.audience %}
+    {% unless audience %}{% if page.url contains "/use/" %}{% assign audience = "user" %}{% elsif page.url contains "/admin/" %}{% assign audience = "admin" %}{% endif %}{% endunless %}
+    {% if audience == "user" %}
+    <p class="audience audience-user"><strong>For users of <code>kvo</code>.</strong> Everything here works with the credential an admin gave you. Steps only an admin can do are marked and link to <a href="{{ '/admin/' | relative_url }}">Administration</a>.</p>
+    {% elsif audience == "admin" %}
+    <p class="audience audience-admin"><strong>For administrators.</strong> These steps use <code>kvoadm</code>, which logs in to your machines over SSH and holds the cluster-admin certificate. Using silos day to day is in <a href="{{ '/use/' | relative_url }}">Using Kevaso</a>.</p>
+    {% elsif audience == "both" %}
+    <p class="audience audience-both"><strong>For both.</strong> You play the administrator (<code>kvoadm</code>) and the user (<code>kvo</code>) on this page.</p>
+    {% endif %}
 {{ content }}
     {% assign flat = "" | split: "" %}
     {% for section in site.sections %}{% for item in section.pages %}{% assign flat = flat | push: item %}{% endfor %}{% endfor %}
@@ -67,6 +84,16 @@
 <footer>
   <a href="https://github.com/dlebee/kevaso-docs/edit/main/{{ page.path }}">Edit this page</a> · Apache 2.0
 </footer>
+{% if page.moved_anchors %}
+<script>
+  // A section that moved to another page: follow an old link to it.
+  (function () {
+    var moved = {{ page.moved_anchors | jsonify }}, to = moved[decodeURIComponent(location.hash.slice(1))];
+    if (!to) return;
+    location.replace(to.charAt(0) === "#" ? to : "{{ site.baseurl }}" + to);
+  })();
+</script>
+{% endif %}
 <script>
   // A copy button on every command block.
   document.querySelectorAll("div.language-bash, div.language-sh, div.language-yaml, div.language-powershell").forEach((block) => {

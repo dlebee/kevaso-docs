@@ -10,60 +10,84 @@ kramdown:
 defaults:
   - scope: { path: "" }
     values: { layout: default }
-# The sidebar, in reading order.
+plugins: [jekyll-redirect-from]
+# The sidebar, in reading order. `part` starts a new part of the docs: the pages for people who use
+# Kevaso with kvo, then the pages for administrators who run it with kvoadm.
 sections:
   - title: Getting started
     pages:
       - { title: Overview, url: / }
       - { title: Concepts, url: /concepts/ }
       - { title: Quick start (Mac), url: /quickstart/ }
-  - title: Set up the system node
+  - title: Start here
+    part: Using Kevaso (kvo)
+    part_kind: use
     pages:
-      - { title: Choosing a setup, url: /setup/ }
-      - { title: Prepare a machine, url: /setup/prepare/ }
-      - { title: Single system node, url: /setup/single-node/ }
-      - { title: Running locally, url: /setup/local/ }
-  - title: Workers
-    pages:
-      - { title: Adding workers, url: /workers/ }
-      - { title: A Mac as a worker, url: /workers/mac/ }
-      - { title: Draining and removing a host, url: /workers/host-loss/ }
+      - { title: Using Kevaso, url: /use/ }
+      - { title: Signing in and contexts, url: /use/sign-in/ }
   - title: Silos
     pages:
-      - { title: Your first silo, url: /silos/first-silo/ }
-      - { title: Runtimes, url: /silos/runtimes/ }
-      - { title: Sets, images and updates, url: /silos/sets/ }
-      - { title: Probes and routing, url: /silos/probes/ }
-      - { title: Volumes, url: /silos/volumes/ }
-      - { title: When the control plane is lost, url: /silos/control-plane-loss/ }
-      - { title: Moves, url: /silos/moves/ }
-      - { title: Daemons and upkeep, url: /silos/daemons/ }
-      - { title: Terminals, files and the small UI, url: /silos/terminals/ }
-      - { title: Panes, url: /panes/ }
+      - { title: Your first silo, url: /use/silos/first-silo/ }
+      - { title: Runtimes, url: /use/silos/runtimes/ }
+      - { title: "Sets, images and updates", url: /use/silos/sets/ }
+      - { title: Probes and routing, url: /use/silos/probes/ }
+      - { title: Volumes, url: /use/silos/volumes/ }
+      - { title: Moves, url: /use/silos/moves/ }
+      - { title: Daemons and upkeep, url: /use/silos/daemons/ }
+      - { title: "Terminals, files and the small UI", url: /use/silos/terminals/ }
+      - { title: Panes, url: /use/panes/ }
   - title: Networking and secrets
     pages:
-      - { title: Addresses, ports and names, url: /networking/model/ }
-      - { title: Networking, url: /networking/ }
-      - { title: Port leases, url: /networking/leases/ }
-      - { title: Addresses you keep (IPs), url: /networking/ips/ }
-      - { title: HTTPS sites (ingress), url: /ingress/ }
-      - { title: Secrets, url: /secrets/ }
-  - title: Providers
+      - { title: "Addresses, ports and names", url: /use/networking/model/ }
+      - { title: Networking, url: /use/networking/ }
+      - { title: Port leases, url: /use/networking/leases/ }
+      - { title: HTTPS sites (ingress), url: /use/ingress/ }
+      - { title: Secrets, url: /use/secrets/ }
+  - title: Extending kvo
     pages:
-      - { title: Linode, url: /providers/linode/ }
-      - { title: JuiceFS, url: /providers/juicefs/ }
-  - title: Extending
+      - { title: kvo plugins, url: /use/kvo-plugins/ }
+  - title: Start here
+    part: Administration (kvoadm)
+    part_kind: admin
     pages:
-      - { title: Defining your own kind, url: /extending/kinds/ }
-      - { title: Policies, url: /extending/policies/ }
-      - { title: Provider and operator plugins, url: /extending/plugins/ }
-      - { title: kvo plugins, url: /extending/kvo-plugins/ }
+      - { title: Administering Kevaso, url: /admin/ }
+      - { title: People and access, url: /admin/access/ }
+  - title: Set up the system node
+    pages:
+      - { title: Choosing a setup, url: /admin/setup/ }
+      - { title: Prepare a machine, url: /admin/setup/prepare/ }
+      - { title: Single system node, url: /admin/setup/single-node/ }
+      - { title: Running locally, url: /admin/setup/local/ }
+  - title: Workers and hosts
+    pages:
+      - { title: Adding workers, url: /admin/workers/ }
+      - { title: A Mac as a worker, url: /admin/workers/mac/ }
+      - { title: Draining and removing a host, url: /admin/workers/host-loss/ }
+      - { title: When the control plane is lost, url: /admin/control-plane-loss/ }
+  - title: Addresses and sites
+    pages:
+      - { title: Addresses you keep (IPs), url: /admin/ips/ }
+      - { title: Ingress controllers and certificates, url: /admin/ingress/ }
   - title: Running it
     pages:
-      - { title: People and access, url: /access/ }
-      - { title: Operations, url: /operations/ }
-      - { title: High availability, url: /operations/ha/ }
-      - { title: Backup and restore, url: /operations/backup/ }
+      - { title: Operations, url: /admin/operations/ }
+      - { title: High availability, url: /admin/operations/ha/ }
+      - { title: Backup and restore, url: /admin/operations/backup/ }
+  - title: Providers
+    pages:
+      - { title: Linode, url: /admin/providers/linode/ }
+      - { title: JuiceFS, url: /admin/providers/juicefs/ }
+  - title: Extending the cluster
+    pages:
+      - { title: Defining your own kind, url: /admin/extending/kinds/ }
+      - { title: Policies, url: /admin/extending/policies/ }
+      - { title: Provider and operator plugins, url: /admin/extending/plugins/ }
+  - title: Commands
+    part: Reference
+    part_kind: ref
+    pages:
       - { title: Command reference, url: /reference/ }
+      - { title: kvo commands, url: /reference/kvo/ }
+      - { title: kvoadm and kevasod commands, url: /reference/kvoadm/ }
       - { title: Contributing, url: /contributing/ }
 exclude: [README.md]

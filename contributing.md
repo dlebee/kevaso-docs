@@ -39,7 +39,12 @@ itself and the research behind it are in separate repositories.
 
 ## These docs
 
-These pages are for people *using* Kevaso. They're Markdown in
+These pages are for people *using* and *running* Kevaso. They're Markdown in
 [dlebee/kevaso-docs](https://github.com/dlebee/kevaso-docs), served by GitHub Pages with no build
 step. Edit a `.md` file and push to `main`; add a page to the sidebar in `_config.yml`
 (`sections`).
+
+Pages for users of `kvo` live under `use/`, pages for administrators under `admin/`; the layout
+says on each page who it is for. A user page never asks the reader to run `kvoadm`: where a step is
+an admin's, it says so and links the admin page. A page that moves keeps its old address with
+`redirect_from`.

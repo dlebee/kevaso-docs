@@ -1,19 +1,20 @@
 ---
 title: Quick start
 permalink: /quickstart/
+audience: both
 ---
 
 # Quick start
 
 A whole cluster on your Mac in about 15 minutes: a Linux VM that is both the system node and a
-worker, and a microVM silo inside it. The [Running locally]({{ '/setup/local/' | relative_url }})
+worker, and a microVM silo inside it. The [Running locally]({{ '/admin/setup/local/' | relative_url }})
 page explains every step in more depth.
 
 > **This quick start is for a Mac:** it runs the cluster in a Lima VM on Apple's own hypervisor.
 > **On Linux or Windows,** use any Ubuntu 24.04 or Debian 12 machine you can reach over SSH (a VM, a
-> spare computer, a cloud machine): [prepare it]({{ '/setup/prepare/' | relative_url }}), then install a
-> [single system node]({{ '/setup/single-node/' | relative_url }}) on it. The tools for your
-> computer are in [Get the tools]({{ '/setup/prepare/' | relative_url }}#step-1--get-the-tools).
+> spare computer, a cloud machine): [prepare it]({{ '/admin/setup/prepare/' | relative_url }}), then install a
+> [single system node]({{ '/admin/setup/single-node/' | relative_url }}) on it. The tools for your
+> computer are in [Get the tools]({{ '/admin/setup/prepare/' | relative_url }}#step-1--get-the-tools).
 
 **You need:** an Apple Silicon Mac (M3 or later, macOS 15 or later, for nested virtualization),
 [Homebrew](https://brew.sh), Go 1.27, and a checkout of
@@ -37,7 +38,7 @@ go build -o bin/kvoadm ./cmd/kvoadm
 GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags "-X kevaso.com/core/internal/version.Version=vX.Y.Z" -o bin/kevasod-linux-arm64 ./cmd/kevasod
 ```
 
-Or take all three from a [release]({{ '/setup/prepare/' | relative_url }}#step-1--get-the-tools)
+Or take all three from a [release]({{ '/admin/setup/prepare/' | relative_url }}#step-1--get-the-tools)
 (`kvo` and `kvoadm` for `darwin-arm64`, `kevasod` for `linux-arm64`), and skip Go.
 
 ## 2 · Make a Linux VM
@@ -117,7 +118,7 @@ throwaway VM), asks two hardening questions (answer No to both here), then insta
 > key. It's shown only this once. Put it in your password manager now, even for this practice VM, so
 > it's a habit. On a real cluster it's the only thing that opens your backups: lose it and a lost
 > control plane can't be restored, nor its secrets
-> ([more]({{ '/setup/single-node/' | relative_url }}#step-2--save-the-recovery-key)).
+> ([more]({{ '/admin/setup/single-node/' | relative_url }}#step-2--save-the-recovery-key)).
 
 ```bash
 bin/kvoadm kvo get hosts
@@ -211,5 +212,7 @@ Not all of `~/.kevaso`: other clusters' folders live there too. `kvo` keeps a `l
 
 ---
 
-**Next:** [Concepts]({{ '/concepts/' | relative_url }}) for the words, or
-[Choosing a setup]({{ '/setup/' | relative_url }}) for a real cluster.
+**Next:** [Concepts]({{ '/concepts/' | relative_url }}) for the words. Then
+[Using Kevaso]({{ '/use/' | relative_url }}) for what you do with `kvo` (steps 6 on), or
+[Administration]({{ '/admin/' | relative_url }}) and [Choosing a setup]({{ '/admin/setup/' | relative_url }})
+for a real cluster (steps 1 to 5).
