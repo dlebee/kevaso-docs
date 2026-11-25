@@ -195,9 +195,6 @@ plugin db 0.1.0 at /run/kevaso-plugins/db/plugin.sock refused: built against sdk
 The first is a plugin from before revisions. The second is any revision other than 1. Rebuild the
 plugin for this release, or run a `kevasod` that serves the revision the plugin was built with.
 
-> **Not proven on a real machine:** a privileged node side installed this way hasn't run on a real
-> host yet.
-
 ### Load balancer classes
 
 A plugin that provides load balancers lists **classes**. A silo or a `Service` names one in
@@ -391,6 +388,3 @@ Two features of [defined kinds]({{ '/extending/kinds/' | relative_url }}) that o
 - A controller in a **container or a silo**, or more than one copy with leader election.
 - Cleaning up what a plugin made by owner references (the example uses a finalizer for its silos).
 - Installing the controller on every control-plane host.
-
-**On real machines:** installing an operator over SSH and systemd, and uninstalling it, has run on
-cloud machines.

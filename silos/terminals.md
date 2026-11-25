@@ -43,13 +43,6 @@ on a terminal instead of a shell, use `kvo exec -it`.
 **When you leave** (you close the window, `kvo` is killed, your network drops), Kevaso stops the
 command in the silo too, so it isn't left running with no one to talk to.
 
-What was checked, and what wasn't:
-
-| Runtime | Checked on a real machine? |
-|---|---|
-| `docker`, `podman` | Yes, on real Linux (Alpine, Ubuntu and Debian containers) |
-| `cloud-hypervisor`, `openshell`, `openshell-container` | Yes, on Lima virtual machines: terminal size and resize, exit code, Ctrl-C, and the command stopped when the client is killed. Not on bare metal. |
-
 ### When your client drops
 
 If `kvo exec` or `kvo ssh` is stopped (Ctrl-C, a closed laptop, a lost connection), Kevaso stops

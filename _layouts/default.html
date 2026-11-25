@@ -69,7 +69,7 @@
 </footer>
 <script>
   // A copy button on every command block.
-  document.querySelectorAll("div.language-bash, div.language-sh, div.language-yaml").forEach((block) => {
+  document.querySelectorAll("div.language-bash, div.language-sh, div.language-yaml, div.language-powershell").forEach((block) => {
     const button = document.createElement("button");
     button.className = "copy";
     button.type = "button";
@@ -83,6 +83,77 @@
     });
     block.appendChild(button);
   });
+</script>
+<script>
+  // OS tabs: a tab row over each .os-tabs group. Picking an OS picks it in every group, and the
+  // choice is kept for the next page. Without this script every panel shows, labelled.
+  (function () {
+    // A panel may cover several systems: data-os="macos linux".
+    var KEY = "kevaso-docs-os", groups = [], current = "";
+    function covers(panel, os) { return panel.dataset.os.split(" ").indexOf(os) >= 0; }
+    var guess = (function () {
+      var p = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || "";
+      return /win/i.test(p) ? "windows" : /mac/i.test(p) ? "macos" : /linux/i.test(p) ? "linux" : "";
+    })();
+    var saved = "";
+    try { saved = localStorage.getItem(KEY) || ""; } catch (e) {}
+    function pick(os, store) {
+      current = os;
+      groups.forEach(function (g) {
+        var i = g.panels.findIndex(function (p) { return covers(p, os); });
+        if (i < 0) return;
+        g.panels.forEach(function (p, j) {
+          p.hidden = j !== i;
+          g.tabs[j].setAttribute("aria-selected", j === i ? "true" : "false");
+          g.tabs[j].tabIndex = j === i ? 0 : -1;
+        });
+      });
+      if (store) { try { localStorage.setItem(KEY, os); } catch (e) {} }
+    }
+    document.querySelectorAll(".os-tabs").forEach(function (box, n) {
+      var panels = Array.prototype.filter.call(box.children, function (el) { return el.classList.contains("os-tab"); });
+      if (panels.length < 2) return;
+      var list = document.createElement("div");
+      list.className = "os-tablist";
+      list.setAttribute("role", "tablist");
+      list.setAttribute("aria-label", "Your operating system");
+      var tabs = panels.map(function (panel, i) {
+        var tab = document.createElement("button");
+        tab.type = "button";
+        tab.id = "os-tab-" + n + "-" + i;
+        tab.textContent = panel.dataset.label;
+        tab.setAttribute("role", "tab");
+        panel.id = panel.id || tab.id + "-panel";
+        tab.setAttribute("aria-controls", panel.id);
+        panel.setAttribute("role", "tabpanel");
+        panel.setAttribute("aria-labelledby", tab.id);
+        panel.tabIndex = 0;
+        var choose = function (p) { return covers(p, current) ? current : p.dataset.os.split(" ")[0]; };
+        tab.addEventListener("click", function () { pick(choose(panel), true); });
+        tab.addEventListener("keydown", function (e) {
+          var k = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: panels.length - 1 }[e.key];
+          if (k === undefined) return;
+          e.preventDefault();
+          k = (k + panels.length) % panels.length;
+          pick(choose(panels[k]), true);
+          tabs[k].focus();
+        });
+        list.appendChild(tab);
+        return tab;
+      });
+      box.insertBefore(list, box.firstChild);
+      box.classList.add("os-ready");
+      groups.push({ panels: panels, tabs: tabs });
+    });
+    if (!groups.length) return;
+    var known = function (os) { return os && groups.some(function (g) { return g.panels.some(function (p) { return covers(p, os); }); }); };
+    pick(known(saved) ? saved : known(guess) ? guess : groups[0].panels[0].dataset.os.split(" ")[0], false);
+    groups.forEach(function (g) {
+      if (!g.tabs.some(function (t) { return t.getAttribute("aria-selected") === "true"; })) {
+        g.panels.forEach(function (p, j) { p.hidden = j !== 0; g.tabs[j].setAttribute("aria-selected", j === 0 ? "true" : "false"); g.tabs[j].tabIndex = j === 0 ? 0 : -1; });
+      }
+    });
+  })();
 </script>
 <script type="module">
   // Mermaid diagrams: ```mermaid blocks, rendered in the browser.

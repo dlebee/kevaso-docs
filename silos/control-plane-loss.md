@@ -398,16 +398,7 @@ held is left alone.
 
 ---
 
-## What is not built, and what has not run on real machines
+## What is not built
 
-- **Run on bare metal (2026-11-15):** the fence; an opted-in Stop silo moved with
-  `kvo move … --confirm-fenced` after its host was cut or shut down; a held worker serving its last
-  state, the hold ended with `kvoadm host trust-control-plane`.
-- **Not run on real machines under this rule:** the opt-in stopping and then restarting a silo
-  elsewhere by itself after the host reports `FenceStopped`; a cut-off worker keeping its silos; a
-  returning host stopping its old copy; a worker that reboots while it cannot reach the control plane;
-  a hold ended by a new history from `kvoadm init --restore`.
 - **Not built:** a provider powering a host off through its API to give the proof for you. Today the
   proof is you.
-
-See [What's proven where]({{ '/operations/#whats-proven-where' | relative_url }}).

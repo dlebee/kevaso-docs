@@ -23,6 +23,11 @@ Neither is for anything you'd mind losing: see [Choosing a setup]({{ '/setup/' |
 The [quick start]({{ '/quickstart/' | relative_url }}) has every command in order. This section
 explains what each one is for.
 
+> **On a Mac only.** This uses Lima on Apple's hypervisor. On Linux or Windows, run Kevaso on any
+> Ubuntu 24.04 or Debian 12 machine or VM you can reach over SSH:
+> [Prepare a machine]({{ '/setup/prepare/' | relative_url }}), then
+> [Single system node]({{ '/setup/single-node/' | relative_url }}).
+
 ### The VM
 
 On a Mac, [Lima](https://lima-vm.io) runs Linux VMs with Apple's own hypervisor. With **nested
@@ -102,6 +107,10 @@ bin/kvoadm init you@127.0.0.1 \
 `--api-server https://127.0.0.1:6443`: Lima forwards the VM's API port to your Mac's loopback, so
 that's where `kvo` reaches it.
 
+> **Save the recovery key** that `init` prints last (it starts `KVR1-`), in your password manager.
+> It's shown only once, and only it opens your backups
+> ([why]({{ '/setup/single-node/' | relative_url }}#step-2--save-the-recovery-key)).
+
 ```bash
 bin/kvoadm host enable-worker you@127.0.0.1 \
     --ssh-port 60022 \
@@ -121,8 +130,10 @@ limactl delete --force kevaso-local
 ```
 
 ```bash
-rm -rf ~/.kevaso
+rm -rf ~/.kevaso/clusters/local
 ```
+
+Only this cluster's folder: other clusters' folders live in `~/.kevaso` too.
 
 ---
 
@@ -132,7 +143,8 @@ No machines and no silos: the API alone, on your loopback, with no authenticatio
 stored (in `~/.kevaso/dev.db`) and checked like on a real cluster, so it's the fastest way to learn
 the YAML.
 
-Start it, and leave it running:
+On macOS or Linux, from a checkout of [dlebee/kevaso](https://github.com/dlebee/kevaso) (`kevasod`
+doesn't run on Windows). Start it, and leave it running:
 
 ```bash
 go run ./cmd/kevasod dev

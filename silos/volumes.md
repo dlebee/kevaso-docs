@@ -131,11 +131,6 @@ A microVM can have volumes too. How one reaches the guest depends on where it li
 - `size` on a `local` volume of a microVM sets the disk's size when it's made, and **doesn't grow**
   later. On a shared folder it isn't enforced.
 
-> **Proven only on virtual machines.** Local volumes and a mount class's volume over virtiofs have
-> run on Lima machines with a test provider plugin. Not proven: virtiofs under load, a JuiceFS
-> volume under a microVM, and whether a JuiceFS mount stays visible to `virtiofsd` if the plugin's
-> daemons die (a share would keep serving a dead mount until the silo restarts).
-
 ---
 
 ## A microVM that can move
@@ -172,10 +167,6 @@ A silo whose root disk and volumes are all on global classes is movable to
   host key and address.
 - **A device class** (`block-storage`) can't hold a root disk yet. It is refused: a VM's disk can live on a mount class, not a device class.
 - `kvo get silos -o wide` shows the result in the `MOVABLE` column.
-
-> **Proven on shared network storage between two Lima machines, not on JuiceFS.** Two moves, and a
-> `Move` after the old host was cut off, kept one copy running and kept the files. A microVM on a
-> JuiceFS root disk has not run.
 
 ---
 

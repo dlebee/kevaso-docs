@@ -9,6 +9,12 @@ A whole cluster on your Mac in about 15 minutes: a Linux VM that is both the sys
 worker, and a microVM silo inside it. The [Running locally]({{ '/setup/local/' | relative_url }})
 page explains every step in more depth.
 
+> **This quick start is for a Mac:** it runs the cluster in a Lima VM on Apple's own hypervisor.
+> **On Linux or Windows,** use any Ubuntu 24.04 or Debian 12 machine you can reach over SSH (a VM, a
+> spare computer, a cloud machine): [prepare it]({{ '/setup/prepare/' | relative_url }}), then install a
+> [single system node]({{ '/setup/single-node/' | relative_url }}) on it. The tools for your
+> computer are in [Get the tools]({{ '/setup/prepare/' | relative_url }}#step-1--get-the-tools).
+
 **You need:** an Apple Silicon Mac (M3 or later, macOS 15 or later, for nested virtualization),
 [Homebrew](https://brew.sh), Go 1.27, and a checkout of
 [dlebee/kevaso](https://github.com/dlebee/kevaso). Run the commands from that checkout.
@@ -105,9 +111,13 @@ bin/kvoadm init you@127.0.0.1 \
 
 It first shows what it found on the VM (all `✓`; a `!` for SSH password login is fine for a
 throwaway VM), asks two hardening questions (answer No to both here), then installs. `--api-server` is where
-*you* reach the API: Lima forwards the VM's port 6443 to your Mac. At the end it prints a **recovery
-key**. For this throwaway VM you can let it go. On a real cluster, it's the one thing you must save
-([why]({{ '/setup/single-node/' | relative_url }}#step-2--save-the-recovery-key)).
+*you* reach the API: Lima forwards the VM's port 6443 to your Mac.
+
+> **Save the recovery key.** The last thing `init` prints is a line starting `KVR1-`: the recovery
+> key. It's shown only this once. Put it in your password manager now, even for this practice VM, so
+> it's a habit. On a real cluster it's the only thing that opens your backups: lose it and a lost
+> control plane can't be restored, nor its secrets
+> ([more]({{ '/setup/single-node/' | relative_url }}#step-2--save-the-recovery-key)).
 
 ```bash
 bin/kvoadm kvo get hosts

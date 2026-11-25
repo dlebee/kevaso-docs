@@ -219,9 +219,5 @@ NAME's address: out is the host's meanwhile".
 
 ## What isn't done
 
-- **Not proven on real machines:** `ip-pool`, `dedicated` and `kvo ip keep` have run in-process
-  and in tests with a fake provider. A shared IP the account already had has run on real Linodes:
-  it moved with `kvo move … --confirm-fenced`. Reserving a new shared IP has not.
-  See [What's proven where]({{ '/operations/#whats-proven-where' | relative_url }}).
 - An external IP that is not on any of the host's interfaces (a cloud's 1:1 NAT address) matches
   nothing: `hostPort: [external]` doesn't work there yet.

@@ -371,13 +371,8 @@ a class is held rather than dropping a route that may still be there.
 
 ---
 
-## Not proven yet
+## Not built
 
-The drivers' output is checked in tests, including each proxy's own configuration test where its
-program is on the machine, and an agent applying configurations to a fake runtime. On a real machine
-with Let's Encrypt's staging server, nginx has been run, and a class refused for one annotation still
-served its challenges. Not run on real machines: leaving out one broken Ingress while the others
-are applied, the search for the broken one, DNS-01, and Kong's admin call from the host.
 Not built: drivers from plugins, request limits and authentication in front of a route, TCP and UDP
 routes, HTTP/3, and a proxy managing its own certificates.
 

@@ -16,7 +16,7 @@ sections:
     pages:
       - { title: Overview, url: / }
       - { title: Concepts, url: /concepts/ }
-      - { title: Quick start (local), url: /quickstart/ }
+      - { title: Quick start (Mac), url: /quickstart/ }
   - title: Set up the system node
     pages:
       - { title: Choosing a setup, url: /setup/ }

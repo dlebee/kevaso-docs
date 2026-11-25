@@ -174,15 +174,3 @@ for startup). `kvo describe service NAME` shows `Route when` and, for each endpo
 
 The conditions on a silo, with probes: `Started`, `StartFailed` (only with a `startup` probe), `Ready`
 and, from liveness or [upkeep]({{ '/silos/daemons/' | relative_url }}), `Degraded`.
-
----
-
-## What was checked
-
-Probes and `routeWhen` are tested in-process: a control plane and host agent with a fake runtime
-and fake network dials. One test has run on a single bare-metal machine: an `exec` readiness probe on
-a container silo, where `routeWhen: ready` holds the silo's name and its external port until the
-probe passes and holds them again when it fails, and `routeWhen: running` never holds them.
-
-Not run on a real machine: `startup` and `liveness` (including `onFailure: restart`), `tcp` and
-`http` checks, probes on a microVM, and what a real load balancer or Ingress does with a held silo.
