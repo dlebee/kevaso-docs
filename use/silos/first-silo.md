@@ -1,0 +1,191 @@
+---
+title: Your first silo
+permalink: /use/silos/first-silo/
+redirect_from: /silos/first-silo/
+---
+
+# Your first silo
+
+You can sign in to a cluster that has a worker ([Signing in and contexts]({{ '/use/sign-in/' | relative_url }})).
+Now make a microVM, watch it come up, and step inside.
+
+---
+
+## The smallest silo
+
+A silo needs nothing ensured inside it. Init steps, [daemons and upkeep]({{ '/use/silos/daemons/' | relative_url }})
+and [probes]({{ '/use/silos/probes/' | relative_url }}) are all optional. A silo with none of them is a normal,
+stateful machine: Kevaso creates it, keeps it started, and otherwise leaves it alone. This is the
+whole manifest:
+
+```yaml
+apiVersion: kevaso/v1
+kind: Silo
+metadata: { name: plain, namespace: demo }
+spec:
+  runtime: cloud-hypervisor
+  vm: { image: ubuntu-24.04 }
+```
+
+With no `resources` or `disk`, a microVM gets 1 CPU, 1 GiB of memory and a 20 GiB disk. With no
+`init` it is `Running` and `Ready` as soon as it has booted. Whatever you put on its disk stays
+there across stops and restarts. The rest of this page adds an init step to that, as an example.
+
+---
+
+## Describe it
+
+Silos live in a namespace. This page uses `demo`. Making a namespace is an admin's, not an
+`editor`'s: ask your admin for one, or use a namespace you were invited to and put its name where
+the page says `demo`. (The admin's side is
+[Your own kvo, and the admin certificate]({{ '/admin/access/#your-own-kvo-and-the-admin-certificate' | relative_url }}).)
+
+As an `editor` your `kvo` makes the silos. Save this as `hello.yaml`:
+
+```yaml
+apiVersion: kevaso/v1
+kind: Silo
+metadata: { name: hello, namespace: demo }
+spec:
+  runtime: cloud-hypervisor        # a microVM with its own kernel and network card
+  vm: { image: ubuntu-24.04 }      # what it boots
+  resources: { cpu: 1, memory: 1Gi }
+  disk: { size: 10Gi }             # its own disk, kept for its whole life
+  init:                            # optional: run inside, in order, before it's Ready
+    steps:
+      - name: hello
+        run: echo "hello from $(hostname)" > /root/hello
+      - name: python
+        shell: python3             # any interpreter in the image
+        run: |
+          import platform; print("kernel", platform.release())
+```
+
+| Field | Means |
+|---|---|
+| `runtime` | What kind of silo: here a microVM. Others in [Runtimes]({{ '/use/silos/runtimes/' | relative_url }}). |
+| `vm` | What it boots: `image` names a built-in OS image (`ubuntu-24.04`, downloaded once per host and checked) or a [VMImage]({{ '/use/silos/sets/#what-a-silo-starts-from' | relative_url }}); `disk` gives a disk by URL and `sha256`. A container silo says `container:` instead. |
+| `resources` | CPUs and memory it may use. The scheduler only places it where they fit. |
+| `disk` | Its root disk. It lives on the host it was created on. |
+| `init.steps` | Optional. Scripts, run as root inside the silo, in order. If you give any, the silo is Ready only after the last one succeeds. The script is part of the spec: every worker can read it. A value belongs in a [Secret]({{ '/use/secrets/#who-can-do-what-with-secrets' | relative_url }}), not in the script |
+| `init.when` | `firstBoot` (the default) or `everyBoot`. `firstBoot` runs once. `everyBoot` runs on every boot, including after the silo crashes and is started again. |
+| `init.timeout` | Optional. A duration, such as `15m`. The steps of one start must finish within it. |
+
+---
+
+## Create it
+
+```bash
+bin/kvo apply -f hello.yaml
+```
+
+```bash
+bin/kvo watch silos -n demo
+```
+
+```
+14:02:11 NOW      silo/demo/hello  phase=Pending  host=-
+14:02:11 MODIFIED silo/demo/hello  phase=Scheduled  host=hv1
+14:02:13 MODIFIED silo/demo/hello  phase=Starting  host=hv1  Ready: creating on hv1
+14:03:40 MODIFIED silo/demo/hello  phase=Starting  host=hv1  init=0/2  Ready: init step hello
+14:03:52 MODIFIED silo/demo/hello  phase=Running  host=hv1  init=2/2  address=10.64.1.2
+```
+
+`apply` refuses a field the kind doesn't have, and the error names it
+(`decode Silo: json: unknown field "runtim"`), so a typo is never silently dropped.
+
+The first silo on a host takes a few minutes (the image is copied onto its disk); later ones are
+faster. Ctrl-C stops watching, not the silo.
+
+---
+
+## Look at it
+
+```bash
+bin/kvo get silos -n demo
+```
+
+```bash
+bin/kvo describe silo hello -n demo
+```
+
+`describe` shows everything about it: where it runs, its silo IP, its init steps with their exit
+codes and durations, and its conditions (the *why* when something isn't Ready). `get silos` has a
+`READY` column next to the phase.
+
+Text that silos and hosts write into their status (a check's output, a runtime's message) is
+filtered before `get`, `describe` and `watch` print it: escape sequences and other control
+characters are removed, so a silo can't drive your terminal.
+
+---
+
+## Reaching it
+
+The silo has an address of its own (its silo IP), but nothing can connect to it yet and it has no
+name. A silo declares the ports it listens on in `spec.ports`; a `spec.service` opens them, one by
+one, to the silos, hosts or networks you choose, and gives the silo a name:
+
+```yaml
+spec:
+  ports: [{ name: web, port: 8080 }]
+  service:
+    ports: [{ port: web, allowFrom: [client] }]   # silo "client" may connect, on the silo IP
+```
+
+A silo with no service has no name and is reachable by nobody. The addresses, the options of
+`service.ports` and the names are all on [Addresses, ports and names]({{ '/use/networking/model/' | relative_url }}).
+
+---
+
+## Step inside
+
+```bash
+bin/kvo exec silo hello -n demo -- cat /root/hello
+```
+
+```bash
+bin/kvo exec silo hello -n demo -- bash -c "uname -a; df -h /"
+```
+
+`exec` runs one command and exits with its exit code, so it works in scripts. It goes through the
+worker's dial-out channel: no SSH, no open port on the host, and every call is checked against your
+permissions and written to the audit log.
+
+> **Is it locked down?** Each VM's hypervisor runs as its own unprivileged user, with no
+> capabilities, a system-call filter, and access to only its own disk and network device.
+
+---
+
+## When an init step fails
+
+The silo stays up (so you can look inside) but never becomes Ready, and `describe` shows which step
+failed and the end of its output:
+
+```
+Conditions:
+  TYPE        STATUS  REASON      SINCE  MESSAGE
+  InitFailed  True    StepFailed  12s    step python exited 1: …
+```
+
+If `init.timeout` runs out, the step still running is stopped. `InitFailed` is `True` with reason `StepTimedOut`, and the message names the step and the timeout. The silo's main process is not started.
+
+Fix the step in `hello.yaml` and `apply` again.
+
+---
+
+## Next
+
+- Get a shell, or move files: [Terminals, files and the small UI]({{ '/use/silos/terminals/' | relative_url }}).
+- Keep a program running, or a check passing, if you want that (a silo doesn't need it): [Daemons and upkeep]({{ '/use/silos/daemons/' | relative_url }}).
+- Say when it is started, ready and healthy: [Probes and routing]({{ '/use/silos/probes/' | relative_url }}).
+- Show a status to the people watching: [Panes]({{ '/use/panes/' | relative_url }}).
+
+---
+
+## Clean up
+
+```bash
+bin/kvo delete silo hello -n demo
+```
+
+The VM, its disk and its network device go away on the host.

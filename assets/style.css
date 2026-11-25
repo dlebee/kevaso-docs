@@ -113,3 +113,15 @@ div.highlighter-rouge:hover .copy, .copy:focus { opacity: 1; }
 .os-tablist button[aria-selected="true"] { background: var(--surface); color: var(--ink); border-color: var(--line);
   box-shadow: inset 0 2px 0 var(--link); }
 .os-tablist button:focus-visible, .os-tab:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+
+/* Who a page is for: a line above its title. */
+.side-part { margin: 30px 0 12px; padding: 14px 0 0 10px; border-top: 1px solid var(--line); font: 700 16px/1.3 "Space Grotesk", sans-serif;
+  color: var(--ink); box-shadow: inset 3px 0 0 var(--part, var(--line)); }
+.side-part-use { --part: var(--mint); }
+.side-part-admin { --part: var(--amber); }
+.audience { margin: 0 0 18px; padding: 8px 12px; border: 1px solid var(--line); border-left: 3px solid var(--aud, var(--mint));
+  border-radius: 10px; background: var(--surface); color: var(--ink-2); font-size: 14px; line-height: 1.5; }
+.audience strong { color: var(--ink); }
+.audience-user { --aud: var(--mint); }
+.audience-admin { --aud: var(--amber); }
+.audience-both { --aud: var(--violet); }
