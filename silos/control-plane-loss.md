@@ -99,13 +99,13 @@ Make sure the old copy is stopped: power the machine off, or force-stop it throu
 Then say so:
 
 ```bash
-kvo move silo api -n payments --to hv2 --confirm-fenced
+kvoadm kvo move silo api -n payments --to hv2 --confirm-fenced
 ```
 
 For a silo with `onHostLoss: Recreate`, which starts a fresh copy from its image:
 
 ```bash
-kvo move silo runner -n payments --to hv2 --confirm-fenced --recreate
+kvoadm kvo move silo runner -n payments --to hv2 --confirm-fenced --recreate
 ```
 
 | Without `--confirm-fenced`, for a lost host | |

@@ -60,7 +60,7 @@ answers for it, so the silo stays in `Moving`, and Kevaso does not assume the ol
 Once you know it is, end the hand-off with:
 
 ```bash
-kvo move silo NAME -n NAMESPACE --to HOST --confirm-fenced
+kvoadm kvo move silo NAME -n NAMESPACE --to HOST --confirm-fenced
 ```
 
 A move that is already under way is refused without `--confirm-fenced` when its old host is lost

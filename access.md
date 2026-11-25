@@ -100,7 +100,7 @@ The permissions beyond plain read and write are their own *subresources*:
 | `silos/files` | `get` | Read and list a silo's files (`kvo cp` out, `kvo ui` browsing) | | yes | yes |
 | `silos/files` | `create` | Write files into a silo (`kvo cp` in, `kvo ui` upload) | | yes | yes |
 | `silos/move` | `create` | `kvo move`, a plain move | | yes | yes |
-| `hosts/confirm-off` | `create` | `kvo move --confirm-fenced`, and `--insist` with it: say the old copy is off. Cluster-scoped. A RoleBinding cannot grant it | | | |
+| `hosts/confirm-off` | `create` | `kvo move --confirm-fenced`, and `--insist` with it (cluster-admin only by default: `kvoadm kvo move …`): say the old copy is off. Cluster-scoped. A RoleBinding cannot grant it | | | |
 | `serviceaccounts/token` | `create` | `kvo create token` | | | yes |
 | `panes` | `get`, `list`, `watch` | `kvo get panes`, `kvo pane watch`, `kvo pane bundle` | yes | yes | yes |
 | `panes` | `delete` | Clear a pane | | | yes |
