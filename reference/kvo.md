@@ -139,6 +139,7 @@ A plugin never takes the name of a `kvo` command. See [Plugins for kvo]({{ '/use
 | Command | Does |
 |---|---|
 | `kvo login SERVER --ca sha256:…` | Sign in (browser + invite code). `SERVER` is `https://` only. Several control planes from an invite are comma-separated: each is tried for the CA, and the whole list is kept in the context |
+| `kvo invite NAME [--group G]… [-n NS --role role/NAME\|clusterrole/NAME \| --cluster-role NAME] [--ttl D]` | Bring a person in: prints the `kvo login SERVER --ca sha256:…` line and a one-time code to send them. Cluster-admin only, however you signed in. `-n NS --role role/NAME`: the Role `NAME` in `NS`. `-n NS --role clusterrole/NAME`: the ClusterRole `NAME`, in `NS` only. `--cluster-role NAME`: the ClusterRole in every namespace. No role flag: no role. A role without its kind, `--role` without `-n`, `--cluster-role` with `-n`, both, or a missing role is refused before anything is made. `--ttl` defaults to `15m`, at most `168h`. Releases after `v0.1.0-rc.8`. [Invite someone]({{ '/admin/access/#invite-someone' | relative_url }}) |
 | `kvo logout` | Forget this context's session |
 | `kvo ctx [NAME]` | List contexts, or switch |
 | `kvo ns [NAME]` | Show or set the default namespace |

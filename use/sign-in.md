@@ -6,15 +6,19 @@ permalink: /use/sign-in/
 # Signing in and contexts
 
 You have `kvo` ([Install kvo]({{ '/use/install/' | relative_url }})), and an admin invited you to a
-namespace and sent you two things: a `kvo login …` line and a one-time
-code. This page signs you in, sets your default namespace, and shows how to ask what you may do.
+namespace and sent you two things: a `kvo login …` line and a one-time invite code. This page signs
+you in, sets your default namespace, and shows how to ask what you may do.
 
 ---
 
 ## How sign-in works
 
-The control plane is its own sign-in provider (OpenID Connect). You get in with the **one-time
-invite code**, then hold short-lived tokens that refresh themselves:
+There is no username or password. You sign in once, in your browser, with the **one-time invite
+code** an admin gave you. After that your session renews itself while you use `kvo`, and ends after
+30 days without use; then you need a new invite.
+
+Underneath, the control plane is its own sign-in provider (OpenID Connect), and `kvo` holds
+short-lived tokens that refresh themselves:
 
 ```mermaid
 sequenceDiagram
@@ -38,8 +42,8 @@ answer is `refresh raced with another; try again`. The client reads its token ag
 seconds the same token ends the session for everyone: `refresh token was already used; session
 revoked`. Sign in again.
 
-An invite code that ran out is not renewed: ask the admin for a new invite
-([Invite someone]({{ '/admin/access/#invite-someone' | relative_url }})).
+An invite code that ran out is not renewed, and neither is a session that ended: ask the admin for
+a new invite ([Invite someone]({{ '/admin/access/#invite-someone' | relative_url }})).
 
 ---
 
@@ -73,7 +77,9 @@ role covers, and you see no other namespace.
 
 ## What you may do
 
-What you may do is your role in each namespace. The built-in ones:
+What you may do is your role in each namespace: the one your invite gave you, or one an admin
+bound later. With none, you can sign in and do nothing yet: ask an admin for a role. The built-in
+ones:
 
 | Role | Can |
 |---|---|

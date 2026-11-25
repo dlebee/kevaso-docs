@@ -16,12 +16,22 @@ given.
 
 ## What you start with
 
-An administrator invited you to a **namespace** and sent you two things:
+An administrator invited you to a **namespace**. Their invite printed two lines, and they sent you
+both:
 
-- a **`kvo login …` line**, with the cluster's address and its CA fingerprint;
-- a **one-time code**, good for 15 minutes.
+```text
+kvo login https://203.0.113.10:6443 --ca sha256:4b1d…
+invite code: …
+```
 
-You are most likely an `editor` there: you make and change silos and what goes with them. A few
+- The **`kvo login …` line** has the cluster's address and its CA fingerprint, so your `kvo` talks
+  to that cluster and no other.
+- The **invite code** is how you sign in. There is no username or password: the code works once,
+  in your browser, and only for a while (15 minutes unless the administrator gave it longer). If it
+  ran out, ask for a new invite.
+
+Your role there is the one the invite gave you, often `editor`: you make and change silos and what
+goes with them. A few
 things stay with an administrator (namespaces, roles, opening a port to the outside); the pages say
 where. A script or CI job gets a token instead of an invite ([In CI]({{ '/use/sign-in/#in-ci' | relative_url }})).
 
@@ -40,8 +50,11 @@ Run the line you were sent. It looks like this:
 kvo login https://203.0.113.10:6443 --ca sha256:4b1d…
 ```
 
-Your browser opens; paste the code. Then make your namespace the default, so you can leave out
-`-n`:
+Your browser opens; paste the invite code. That is the only time you sign in: from then on your
+session renews itself while you use `kvo`. After 30 days without using it, the session ends, and
+you need a new invite.
+
+Make your namespace the default, so you can leave out `-n`:
 
 ```bash
 kvo ns payments
