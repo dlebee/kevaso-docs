@@ -49,10 +49,10 @@ bin/kvoadm users invite bob --namespace payments
 ```
 
 It binds bob as `editor` in `payments` (`--role admin` or `viewer` for others) and prints two things
-to send him: the `kvo login …` line and the code. Only a cluster admin can create an invite. A namespace admin cannot, and giving a role `create`
+to send them: the `kvo login …` line and the code. Only a cluster admin can create an invite. A namespace admin cannot, and giving a role `create`
 on `invites` does not change that: an invite can name any person and any groups.
 
-He signs in with what you sent: [Signing in and contexts]({{ '/use/sign-in/#sign-in' | relative_url }}).
+They sign in with what you sent: [Signing in and contexts]({{ '/use/sign-in/#sign-in' | relative_url }}).
 
 ---
 

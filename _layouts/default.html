@@ -15,6 +15,7 @@
 <header class="top"><div class="top-in">
   <a class="brand" href="{{ '/' | relative_url }}"><img src="{{ '/assets/mark.svg' | relative_url }}" alt="" width="30" height="30">Kevaso <span>docs</span></a>
   <nav class="top-links">
+    <a href="{{ '/' | relative_url }}"{% if page.url == "/" or page.url == "/concepts/" %} aria-current="true"{% endif %}>Introduction</a>
     <a href="{{ '/use/' | relative_url }}"{% if page.url contains "/use/" %} aria-current="true"{% endif %}>Using</a>
     <a href="{{ '/admin/' | relative_url }}"{% if page.url contains "/admin/" %} aria-current="true"{% endif %}>Administration</a>
     <a href="{{ '/reference/' | relative_url }}"{% if page.url contains "/reference/" %} aria-current="true"{% endif %}>Reference</a>
@@ -23,27 +24,63 @@
 </div></header>
 <div class="page">
   <aside class="side">
-    <details open>
-      <summary>Contents</summary>
-      {% for section in site.sections %}
-      {% if section.part %}<p class="side-part side-part-{{ section.part_kind }}">{{ section.part }}</p>{% endif %}
-      <div class="side-section">
-        <p class="side-title">{{ section.title }}</p>
-        <ul>
-          {% for item in section.pages %}
+    <details class="side-menu" open>
+      <summary>Menu</summary>
+      <nav class="side-nav" aria-label="Documentation">
+      {% for part in site.parts %}
+      {% assign part_here = false %}
+      {% for section in part.sections %}{% for item in section.pages %}{% if item.url == page.url %}{% assign part_here = true %}{% endif %}{% endfor %}{% endfor %}
+      {% assign part_open = part_here %}
+      {% if page.url == "/" and part.kind == "use" %}{% assign part_open = true %}{% endif %}
+      <details class="side-part side-part-{{ part.kind }}" data-menu="{{ part.kind }}"{% if part_here %} data-here{% endif %}{% if part_open %} open{% endif %}>
+        <summary>{{ part.title }}</summary>
+        {% if part.sections.size == 1 %}
+        <ul class="side-only">
+          {% for item in part.sections[0].pages %}
           <li><a href="{{ item.url | relative_url }}"{% if page.url == item.url %} aria-current="page"{% endif %}>{{ item.title }}</a></li>
           {% endfor %}
         </ul>
-      </div>
+        {% else %}
+        {% for section in part.sections %}
+        {% assign section_here = false %}
+        {% for item in section.pages %}{% if item.url == page.url %}{% assign section_here = true %}{% endif %}{% endfor %}
+        <details class="side-section" data-menu="{{ part.kind }}/{{ section.title | slugify }}"{% if section_here %} data-here{% endif %} open>
+          <summary>{{ section.title }}</summary>
+          <ul>
+            {% for item in section.pages %}
+            <li><a href="{{ item.url | relative_url }}"{% if page.url == item.url %} aria-current="page"{% endif %}>{{ item.title }}</a></li>
+            {% endfor %}
+          </ul>
+        </details>
+        {% endfor %}
+        {% endif %}
+      </details>
       {% endfor %}
+      </nav>
     </details>
-    <script>if (matchMedia("(max-width: 860px)").matches) document.querySelector(".side details").removeAttribute("open");</script>
+    <script>if (matchMedia("(max-width: 860px)").matches) document.querySelector(".side-menu").removeAttribute("open");</script>
+    <script>
+      // Collapsible menus. The part and section that hold this page are always open; the others
+      // keep the open or closed state the reader left them in, for the next page.
+      (function () {
+        var KEY = "kevaso-docs-menus", state = {};
+        try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) {}
+        document.querySelectorAll(".side-nav details[data-menu]").forEach(function (d) {
+          var k = d.dataset.menu;
+          if (!d.hasAttribute("data-here") && typeof state[k] === "boolean") d.open = state[k];
+          d.addEventListener("toggle", function () {
+            state[k] = d.open;
+            try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+          });
+        });
+      })();
+    </script>
     <script>
       // Keep the sidebar where it was scrolled when the next page loads.
       (function () {
         var side = document.querySelector(".side"), key = "kevaso-docs-side-scroll";
         try { side.scrollTop = +sessionStorage.getItem(key) || 0; } catch (e) {}
-        // Keep the current page's link in view, so an admin page shows the admin part.
+        // Keep the current page's link in view.
         var here = side.querySelector('a[aria-current="page"]');
         if (here && side.scrollHeight > side.clientHeight) {
           var a = here.getBoundingClientRect(), s = side.getBoundingClientRect();
@@ -68,7 +105,7 @@
     {% endif %}
 {{ content }}
     {% assign flat = "" | split: "" %}
-    {% for section in site.sections %}{% for item in section.pages %}{% assign flat = flat | push: item %}{% endfor %}{% endfor %}
+    {% for part in site.parts %}{% for section in part.sections %}{% for item in section.pages %}{% assign flat = flat | push: item %}{% endfor %}{% endfor %}{% endfor %}
     {% for item in flat %}{% if item.url == page.url %}{% assign i = forloop.index0 %}{% endif %}{% endfor %}
     {% if i %}
     <nav class="pager">

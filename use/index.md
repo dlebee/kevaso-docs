@@ -1,55 +1,200 @@
 ---
-title: Using Kevaso
+title: Getting started with kvo
 permalink: /use/
 ---
 
-# Using Kevaso
+# Getting started with kvo
 
-This part is for the people who use a cluster: you make silos, step inside them, give them
-volumes, secrets, ports and HTTPS sites, all with `kvo`. An admin set up the machines and gave you
-a way in; you never need SSH to a machine, nor `kvoadm`.
+An administrator runs the cluster and has let you in. This path takes you from there to a silo you
+work in: install `kvo`, sign in, make a silo, step inside, then give it ports, a secret, a volume,
+and a move. Each step is short and links to the page with the whole story.
 
----
-
-## What you need
-
-- **`kvo` on your computer:** [Install kvo]({{ '/use/install/' | relative_url }}), with steps for
-  macOS, Linux and Windows.
-- **A way in, from an admin:** a `kvo login …` line and a one-time code, for a namespace. Then
-  [sign in]({{ '/use/sign-in/' | relative_url }}).
-
-Your role decides what you may do. Most people are an `editor` in their namespaces: everything on
-these pages except the steps marked as an admin's. `kvo auth can-i` answers for any one step.
+You never need SSH to a machine, nor `kvoadm`: everything here is `kvo`, with the access you were
+given.
 
 ---
 
-## The pages
+## What you start with
+
+An administrator invited you to a **namespace** and sent you two things:
+
+- a **`kvo login …` line**, with the cluster's address and its CA fingerprint;
+- a **one-time code**, good for 15 minutes.
+
+You are most likely an `editor` there: you make and change silos and what goes with them. A few
+things stay with an administrator (namespaces, roles, opening a port to the outside); the pages say
+where. A script or CI job gets a token instead of an invite ([In CI]({{ '/use/sign-in/#in-ci' | relative_url }})).
+
+---
+
+## 1 · Install kvo
+
+`kvo` is one program for macOS, Linux and Windows:
+[Install kvo]({{ '/use/install/' | relative_url }}).
+
+## 2 · Sign in
+
+Run the line you were sent. It looks like this:
+
+```bash
+kvo login https://203.0.113.10:6443 --ca sha256:4b1d…
+```
+
+Your browser opens; paste the code. Then make your namespace the default, so you can leave out
+`-n`:
+
+```bash
+kvo ns payments
+```
+
+```bash
+kvo auth whoami
+```
+
+More, and how to keep several clusters: [Signing in and contexts]({{ '/use/sign-in/' | relative_url }}).
+
+## 3 · Your first silo
+
+A silo is a YAML object. Save this as `hello.yaml`, with your namespace in place of `payments`:
+
+```yaml
+apiVersion: kevaso/v1
+kind: Silo
+metadata: { name: hello, namespace: payments }
+spec:
+  runtime: cloud-hypervisor
+  vm: { image: ubuntu-24.04 }
+```
+
+```bash
+kvo apply -f hello.yaml
+```
+
+```bash
+kvo watch silos
+```
+
+When it says `phase=Running`, press Ctrl-C. That is a microVM with its own kernel and a 20 GiB disk
+that stays. Other runtimes (containers, OpenShell sandboxes, macOS) are on
+[Runtimes]({{ '/use/silos/runtimes/' | relative_url }}); init steps and the fields are on
+[Your first silo]({{ '/use/silos/first-silo/' | relative_url }}).
+
+## 4 · Step inside
+
+Run one command:
+
+```bash
+kvo exec silo hello -- uname -a
+```
+
+Get a shell:
+
+```bash
+kvo ssh silo hello
+```
+
+Copy a file in:
+
+```bash
+kvo cp ./notes.txt silo/hello:/root/
+```
+
+None of these is SSH: they go through the worker's own channel, are checked against your role, and
+are written to the audit log.
+[Terminals, files and the small UI]({{ '/use/silos/terminals/' | relative_url }}).
+
+## 5 · Open a port
+
+Nothing can reach a silo until it says so. It **declares** its ports, and its **service** opens
+each one to the silos you name. This lets the silo `client` connect to port 8080:
+
+```yaml
+spec:
+  ports: [{ name: web, port: 8080 }]
+  service:
+    ports: [{ port: web, allowFrom: [client] }]
+```
+
+The silo now has a name too, `hello.payments.kevaso`. Opening a port on a host's address, to the
+outside, is an administrator's.
+[Addresses, ports and names]({{ '/use/networking/model/' | relative_url }}),
+[Networking]({{ '/use/networking/' | relative_url }}),
+[Port leases]({{ '/use/networking/leases/' | relative_url }}) for ports that open only for a while.
+
+## 6 · Give it a secret
+
+Store a value. `--from-file -` reads it from stdin, so it never sits on the command line:
+
+```bash
+kvo create secret api-key --from-file -
+```
+
+A silo gets a secret only through a **Grant**, which also says how. This one adds the key to the
+silo's requests to one API, outside the silo, so the silo never holds it:
+
+```yaml
+apiVersion: kevaso/v1
+kind: Grant
+metadata: { name: api-access, namespace: payments }
+spec:
+  secrets:
+    - name: api-key
+      deliver: inject
+      to: { host: api.example.com, header: x-api-key, format: "{% raw %}{{value}}{% endraw %}" }
+```
+
+The silo names the grant in `spec.grants: [api-access]`. A Grant is also what lets a silo reach
+anything outside the cluster. [Secrets]({{ '/use/secrets/' | relative_url }}).
+
+## 7 · Add a volume
+
+A volume is kept data with a size and a place inside the silo:
+
+```yaml
+spec:
+  volumes:
+    - { name: data, class: local, size: 50Gi, mountPath: /data }
+```
+
+Which classes there are is the administrator's choice: `local` stays on the host, others can be
+reached from every host. [Volumes]({{ '/use/silos/volumes/' | relative_url }}).
+
+## 8 · Move it
+
+A silo can move to another host with its data when its disk and volumes are on a class other hosts
+can reach. `hello` keeps its disk on `local`, the default, so it stays on its host. The `MOVABLE`
+column says where each silo could go:
+
+```bash
+kvo get silos -o wide
+```
+
+A silo that can move goes with:
+
+```bash
+kvo move silo NAME --to HOST
+```
+
+How to make a microVM movable, and what a container does instead:
+[Moves]({{ '/use/silos/moves/' | relative_url }}).
+
+## Clean up
+
+```bash
+kvo delete silo hello
+```
+
+---
+
+## Where next
 
 | If you want to | Go to |
 |---|---|
-| Install `kvo` | [Install kvo]({{ '/use/install/' | relative_url }}) |
-| Sign in, switch clusters, see what you may do | [Signing in and contexts]({{ '/use/sign-in/' | relative_url }}) |
-| Make a silo and step inside | [Your first silo]({{ '/use/silos/first-silo/' | relative_url }}) |
-| Pick a microVM, a container or a sandbox | [Runtimes]({{ '/use/silos/runtimes/' | relative_url }}) |
 | Run many copies, update an image | [Sets, images and updates]({{ '/use/silos/sets/' | relative_url }}) |
 | Send traffic only to silos that are ready | [Probes and routing]({{ '/use/silos/probes/' | relative_url }}) |
-| Give silos volumes, or make a microVM movable | [Volumes]({{ '/use/silos/volumes/' | relative_url }}), [Moves]({{ '/use/silos/moves/' | relative_url }}) |
 | Keep a program running inside | [Daemons and upkeep]({{ '/use/silos/daemons/' | relative_url }}) |
-| Get a shell, copy files | [Terminals, files and the small UI]({{ '/use/silos/terminals/' | relative_url }}) |
 | Show a status to the people watching | [Panes]({{ '/use/panes/' | relative_url }}) |
-| Understand addresses, ports and names | [Addresses, ports and names]({{ '/use/networking/model/' | relative_url }}) |
-| Open a port to another silo, or let a silo reach outside | [Networking]({{ '/use/networking/' | relative_url }}) |
-| Keep a port closed until you need it | [Port leases]({{ '/use/networking/leases/' | relative_url }}) |
 | Serve a site over HTTPS | [HTTPS sites]({{ '/use/ingress/' | relative_url }}) |
-| Give a silo a secret without installing anything in it | [Secrets]({{ '/use/secrets/' | relative_url }}) |
 | Add commands to `kvo` | [kvo plugins]({{ '/use/kvo-plugins/' | relative_url }}) |
+| Know what to ask an administrator for | [What an admin does for you first]({{ '/use/sign-in/#what-an-admin-does-for-you-first' | relative_url }}) |
 | Look up a command | [kvo commands]({{ '/reference/kvo/' | relative_url }}) |
-
----
-
-## What an admin does for you
-
-Namespaces, roles, CI tokens, opening ports to the outside, addresses you keep, host names on an
-ingress class, and reading a secret's value back are an admin's. Each page says where it needs one,
-and [What an admin does for you first]({{ '/use/sign-in/#what-an-admin-does-for-you-first' | relative_url }})
-lists them in one place.
