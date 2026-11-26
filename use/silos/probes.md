@@ -39,9 +39,9 @@ spec:
     startup:   { tcp: { port: web }, period: 5s, timeout: 2m }
     readiness: { http: { port: web, path: /ready }, period: 10s }
     liveness:  { exec: { command: [/usr/local/bin/api, healthcheck] }, onFailure: restart }
-  service:
-    ports: [{ port: web, allowFrom: [client] }]
-    routeWhen: ready
+  services:
+    - ports: [{ port: web, allowFrom: [client] }]
+      routeWhen: ready
 ```
 
 | Check | Passes when |
@@ -111,7 +111,7 @@ doesn't stop the silo and doesn't restart it: it only holds back what depends on
 
 ## `routeWhen`
 
-Traffic to a silo's service is **stated, never assumed**. `spec.service.routeWhen` is one of:
+Traffic to a silo's services is **stated, never assumed**. Each service's `routeWhen` is one of:
 
 | Value | Traffic goes to the silo |
 |---|---|
@@ -120,7 +120,8 @@ Traffic to a silo's service is **stated, never assumed**. `spec.service.routeWhe
 
 Rules admission applies:
 
-- A silo with a `readiness` probe **and** a service must say `routeWhen`.
+- A silo with a `readiness` probe **and** a service must say `routeWhen`. Each service of a silo
+  says its own: one can wait for ready while another takes traffic as soon as the silo runs.
 - `routeWhen: ready` needs a `readiness` probe.
 - A silo with no `readiness` probe is `running`, and need not say it.
 - A standalone Service has the same field, `spec.routeWhen`. It is refused when it selects, now, a silo or a
@@ -134,7 +135,7 @@ While a silo is held, new traffic goes elsewhere or nowhere:
 |---|---|
 | Its name | The name exists, with no address (an answer with no data) |
 | A standalone Service | The silo is listed as held, not as an endpoint. No host sends to it, and it is no backend of the Service's load balancer |
-| Its ports opened on its host (`hostPort`) and a load balancer's node ports | No rule on the host. Nothing already connected is cut |
+| Its `HostPort` services, and a balancer's node ports | No rule on the host. Nothing already connected is cut |
 | An Ingress route to it | Left out of the proxy's configuration |
 | Another silo that its service lets in (`allowFrom`) | **Not held.** That is access, not routing |
 

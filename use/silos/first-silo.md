@@ -122,18 +122,19 @@ characters are removed, so a silo can't drive your terminal.
 ## Reaching it
 
 The silo has an address of its own (its silo IP), but nothing can connect to it yet and it has no
-name. A silo declares the ports it listens on in `spec.ports`; a `spec.service` opens them, one by
-one, to the silos, hosts or networks you choose, and gives the silo a name:
+name. A silo declares the ports it listens on in `spec.ports`; its `services` open them, each in
+one way (to other silos, at its worker, or behind a balancer), and give the silo a name:
 
 ```yaml
 spec:
   ports: [{ name: web, port: 8080 }]
-  service:
-    ports: [{ port: web, allowFrom: [client] }]   # silo "client" may connect, on the silo IP
+  services:
+    - ports: [{ port: web, allowFrom: [client] }]   # silo "client" may connect, on the silo IP
 ```
 
-A silo with no service has no name and is reachable by nobody. The addresses, the options of
-`service.ports` and the names are all on [Addresses, ports and names]({{ '/use/networking/model/' | relative_url }}).
+A silo with no service has no name and is reachable by nobody. The ways in are on
+[Networking]({{ '/use/networking/' | relative_url }}); the addresses, every service field and the
+names are on [Addresses, ports and names]({{ '/use/networking/model/' | relative_url }}).
 
 ---
 

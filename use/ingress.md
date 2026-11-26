@@ -32,7 +32,7 @@ flowchart LR
   ic -->|"silo IP, port 3000"| web["silo web"]
 ```
 
-Compare with a [`hostPort`]({{ '/use/networking/' | relative_url }}#on-the-hosts-address-hostport): that forwards raw
+Compare with a [`HostPort` service]({{ '/use/networking/' | relative_url }}#at-the-worker-hostport): that forwards raw
 TCP or UDP to **one** silo; an ingress reads HTTP and routes to **many**.
 
 ---
@@ -41,7 +41,7 @@ TCP or UDP to **one** silo; an ingress reads HTTP and routes to **many**.
 
 | Object | What it is |
 |---|---|
-| **Ingress controller** | An ordinary silo running a stock proxy as its vendor ships it, with its ports 80 and 443 open on its host or a load balancer |
+| **Ingress controller** | An ordinary silo running a stock proxy as its vendor ships it, with its ports 80 and 443 open at its worker or behind a balancer |
 | **IngressClass** | Which silo serves a class of Ingresses, with which proxy driver, whether the class is public, and which host names each namespace may publish |
 | **Ingress** | Host names and paths → a service's port, and where its certificate comes from |
 | **Issuer** | Where certificates come from: an ACME server (Let's Encrypt) or the cluster's own CA |
@@ -72,8 +72,8 @@ Issuers the admin made. Two exist from the start: `letsencrypt` and `internal-ca
 
 ## 1 · A site
 
-The app. It declares its port, and its service opens that port. With no `allowFrom` and no `hostPort`,
-nothing reaches it except what an Ingress adds:
+The app. It declares its port, and its service opens that port. An `Internal` service with no
+`allowFrom` lets nothing reach it except what an Ingress adds:
 
 ```yaml
 apiVersion: kevaso/v1
@@ -86,8 +86,8 @@ spec:
     command: [python3, -m, http.server, "8080"]
   ports:
     - { name: http, port: 8080 }
-  service:
-    ports: [{ port: http }]
+  services:
+    - ports: [{ port: http }]
 ```
 
 And its Ingress, which names the **service** and one of its ports:
@@ -117,10 +117,8 @@ host "api.example.com" is not assigned to namespace payments on ingress class pu
 The fix is the admin's: [assign the name]({{ '/admin/ingress/#2--the-class' | relative_url }}).
 
 The Ingress opens exactly one path through the firewall: from the class's controller to the silo's
-`http` port. Nothing else can reach it. The service can be a silo's own (its `service.name`, or the
-silo's name) or a standalone `Service`, which sends to every silo it selects. A `LoadBalancer`
-Service publishes outside only ports those silos already open, and not a port that opens only on
-a lease: a silo that doesn't is left out of it. If the silo is held
+`http` port. Nothing else can reach it. The service can be one of a silo's own (its `name`, or the
+silo's name) or a standalone `Service`, which sends to every silo it selects. If the silo is held
 back by [`routeWhen`]({{ '/use/silos/probes/' | relative_url }}), or isn't running, its route is left out until it is
 routed again.
 

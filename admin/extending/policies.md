@@ -109,9 +109,9 @@ policies, then it's stored.
 1. Defaults, and the object's own metadata.
 2. **Mutation policies.**
 3. **The built-in guards**, on the object as the mutations left it:
-   - the ones that stand for a privilege: opening a service port on a host address (`hostPort`)
-     or behind a load balancer (`loadBalancer`), a `LoadBalancer` service, publishing on a public
-     ingress class, naming an `IP`, giving a silo a grant or naming secrets in a grant or as a
+   - the ones that stand for a privilege: a `HostPort` or `LoadBalancer` service (on a silo, a
+     set or a standalone `Service`), publishing on a public ingress class, naming an `IP` or an
+     `IPSet`, giving a silo a grant or naming secrets in a grant or as a
      pull secret, each needing its own permission;
    - the ones that refuse what a runtime or its storage can't do (the runtime fits, `onHostLoss`
      against storage, volumes on microVMs);
@@ -122,7 +122,7 @@ policies, then it's stored.
 6. Stored.
 
 So **a mutation policy can't get a write past a guard.** Whatever it changes is checked as if the
-person had sent it. A policy that sets `hostPort: [external]` on a silo's service port is refused
+person had sent it. A policy that adds a `HostPort` service to a silo is refused
 unless the writer may open ports to the outside.
 
 Two rules close what is left:

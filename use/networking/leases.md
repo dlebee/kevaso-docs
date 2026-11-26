@@ -10,9 +10,9 @@ A **lease** keeps a port closed until someone opens it for a while. When the tim
 port closes by itself. Use it for a port you want open only now and then: a debug port, an
 admin page, a management API while you check on it.
 
-A lease belongs to one service port, and only to a port that opens outside its silo IP: one with
-`hostPort` or `loadBalancer: true` (see [Addresses, ports and names]({{ '/use/networking/model/' | relative_url }})).
-Silo-to-silo access is never leased: that is `allowFrom`, and it is always on.
+A lease belongs to one port of a `HostPort` service: one that opens at the worker (see
+[Networking]({{ '/use/networking/' | relative_url }}#at-the-worker-hostport)). Silo-to-silo access is
+never leased: that is `allowFrom`, and it is always on. A port behind a balancer is not leased either.
 
 ---
 
@@ -25,16 +25,20 @@ spec:
   ports:
     - { name: web,   port: 8080 }
     - { name: debug, port: 6060 }
-  service:
-    ports:
-      - { port: web, hostPort: [external] }          # always open
-      - port: debug
-        hostPort: [internal]
-        sources: ["203.0.113.0/24"]
-        lease:
-          default: 15m
-          max: 2h
-          approval: { required: true }
+  services:
+    - name: web
+      type: HostPort                                 # worker: external
+      ports: [{ port: web }]                         # always open
+    - name: debug
+      type: HostPort
+      hostPort: { worker: internal }
+      ports:
+        - port: debug
+          sources: ["203.0.113.0/24"]
+          lease:
+            default: 15m
+            max: 2h
+            approval: { required: true }
 ```
 
 | Field | Meaning |
@@ -47,8 +51,8 @@ spec:
   open.
 - Who may connect while a lease is open is the port's own `sources` (and, on the host, the host
   address it opens on). A lease never makes it wider.
-- `lease` on a port that doesn't open outside its silo IP is refused: silo-to-silo access is never
-  leased.
+- `lease` on a port of an `Internal` or `LoadBalancer` service is refused: put the port in a
+  `HostPort` service to lease it.
 - Durations are written like `90s`, `30m` or `2h`, at least one second. `default` can't be more than
   `max`, and `max` can't be more than the cluster's limit.
 
@@ -174,13 +178,12 @@ add the flags to the `ExecStart` line of `kevasod control-plane …`, and restar
 
 At the end of its time, or on `kvo close`:
 
-- The host takes away the port's rules (the forward, or the node port), so **new connections are
+- The host takes away the port's rules (the forward), so **new connections are
   refused**.
 - Connections already open on that port are **reset**, so nothing carries on through a lease that
   has ended.
 - Hosts don't wait for the control plane to say so: each worker wakes at the next lease's end by
   itself, even if the control plane is down or out of reach.
-- On a [load balancer from a plugin]({{ '/admin/extending/plugins/' | relative_url }}), the port is taken out of what the plugin is asked to serve, and that is reconsidered at the end of the lease.
 
 A silo that is deleted and made again with the same name starts with its ports closed: a lease
 belongs to one silo, not to a name.
@@ -245,23 +248,23 @@ Opening a port to the outside, or widening one that is already open, is still it
 
 ---
 
-## Load balancers from a plugin, and `sources`
+## Balancers and `sources`
 
-A port's `sources` say which network ranges may connect, leased or not. Some load balancers can't
-filter by client address. The rule:
+A port's `sources` say which network ranges may connect. At the worker (`HostPort`), the host's
+firewall enforces them. Behind a balancer (`LoadBalancer`), the worker sees the balancer's address,
+not the client's, so only the provider can:
 
-| Class | What happens to a port that has `sources` |
+| The provider | What happens to a port that has `sources` |
 |---|---|
-| Announces its address (a plugin class with `announce`: the address is routed to the silo's host, which sees the client's own address) | The host's firewall enforces it |
-| A plugin's node-port class with `filtersSources: true` | The plugin is given each port's sources and must enforce them |
-| A plugin's node-port class without it | **The port is left out.** The silo's `LoadBalancer` condition says `SourcesNotEnforced` and names the ports |
+| Filters by client address | The provider is given each port's sources and enforces them |
+| Can't | **The port is left out.** The silo's `LoadBalancer` condition says `SourcesNotEnforced` and names the ports |
 
 The last row closes a hole rather than leaving one: a port someone narrowed is never served to
-everyone. If you hit it, drop the `sources`, use a host port or an announced class, or use a
-plugin that filters. Plugin authors: see [Plugins]({{ '/admin/extending/plugins/' | relative_url }}).
+everyone. If you hit it, drop the `sources`, or use a `HostPort` service for that port. Each
+provider's page says which it does. Plugin authors: see [Plugins]({{ '/admin/extending/plugins/' | relative_url }}).
 
 ---
 
 ## Not done
 
-- A lease on an **Ingress** host. Only service ports with `hostPort` or `loadBalancer: true` lease.
+- A lease on an **Ingress** host, or behind a balancer. Only ports of `HostPort` services lease.

@@ -93,14 +93,14 @@
   <!-- notes under cloud-1 -->
   <text x="30" y="372" fill="#eef0f5" font-size="13" font-weight="600">What a host port means on each</text>
   <g class="s">
-    <text x="30" y="396"><tspan class="mono" fill="#f2b45a">hostPort: [external]</tspan> on baremetal-1</text>
+    <text x="30" y="396"><tspan class="mono" fill="#f2b45a">worker: external</tspan> on baremetal-1</text>
     <text x="44" y="414">opens <tspan class="mono" fill="#eef0f5">51.38.10.20:443</tspan>, reachable by anyone.</text>
-    <text x="30" y="442"><tspan class="mono" fill="#8f7bff">hostPort: [internal]</tspan> on lan-1</text>
+    <text x="30" y="442"><tspan class="mono" fill="#8f7bff">worker: internal</tspan> on lan-1</text>
     <text x="44" y="460">opens <tspan class="mono" fill="#eef0f5">192.168.1.11:443</tspan>, reachable on the LAN.</text>
     <text x="44" y="478">To publish it, forward the router's</text>
     <text x="44" y="496"><tspan class="mono" fill="#eef0f5">203.0.113.7:443</tspan> to it. That's your</text>
     <text x="44" y="514">router's job; Kevaso doesn't touch it.</text>
-    <text x="30" y="542"><tspan class="mono" fill="#f2b45a">hostPort: [external]</tspan> can't land on</text>
+    <text x="30" y="542"><tspan class="mono" fill="#f2b45a">worker: external</tspan> can't land on</text>
     <text x="44" y="560">lan-1, lan-2 or lan-3: they have none.</text>
   </g>
 

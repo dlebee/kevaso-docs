@@ -33,8 +33,9 @@ the cluster admin, and `kevasod`, the program it installs on them. `kvoadm` pick
 | `kvoadm store migrate [USER@]ADDR --ssh-key KEY` | Move a SQLite control plane onto etcd with a peer listener |
 | `kvoadm upgrade --kevasod BIN [--kevasod BIN…] [--ssh-key KEY] [--batch N] [--version V] [--dry-run]` | Roll a new `kevasod` over the cluster: system nodes (light first, leader last), then workers. One `--kevasod` per operating system and CPU in the cluster; a host with none refuses the roll before any change. A binary that does not report its own version, or reports a different one from `--version`, is refused. Build it with `-ldflags "-X kevaso.com/core/internal/version.Version=vX.Y.Z"`. [Rules]({{ '/admin/operations/ha/#upgrade' | relative_url }}) |
 | `kvoadm host list` | Hosts, both of their IPs, and their state |
-| `kvoadm host addresses HOST add\|remove CIDR…` | The extra addresses routed to a host, which the built-in `ip-pool` class hands out ([Addresses you keep]({{ '/admin/ips/' | relative_url }})). `remove` is refused for an address an IP holds |
-| `kvoadm host addresses HOST list` | Each range, and which IP holds each address |
+| `kvoadm host addresses HOST add NAME ADDRESS --external\|--internal` | Name one of the extra addresses routed to a host; an IP of type `Host` reserves it by that name ([Host addresses and providers]({{ '/admin/addresses/' | relative_url }})) |
+| `kvoadm host addresses HOST remove NAME` | Refused for an address an IP reserves: delete the IP first |
+| `kvoadm host addresses HOST list` | Each name, its kind and address, and which IP reserves it |
 | `kvoadm host drain NAME` | Stop new silos landing on the host, and start a fresh copy elsewhere of each silo with `onHostLoss: Recreate`. The others are listed and stay. [Draining a host]({{ '/admin/workers/host-loss/' | relative_url }}) |
 | `kvoadm host uncordon NAME` | The host takes new silos again |
 | `kvoadm host ssh NAME [add ADDR… [--local] \| remove ADDR…]` | A host's SSH addresses, in the order `kvoadm` tries them. `add` puts them in the team's `cluster.yaml`, `--local` in your `local.yaml` (tried first). [A host's addresses]({{ '/admin/access/#a-hosts-addresses' | relative_url }}) |
@@ -69,7 +70,7 @@ Both look at the machine first and stop, changing nothing, if something won't wo
 
 | Command | Does |
 |---|---|
-| `kvoadm ingress install [--class NAME] [--driver nginx\|caddy\|kong] [--public] [--host-port internal\|external \| --lb-class CLASS] [--host NAME=NAMESPACE[,NAMESPACE]]… [--image REF] [--runtime NAME] [--option K=V]…` | Start a stock proxy as a silo and the `IngressClass` that drives it. `--host` assigns a name (or a one-label suffix `*.example.com`) to those namespaces. Defaults: class `public`, driver `nginx`, runtime `docker`, ports on the host's external IP. A host is published only when the class assigns it. [HTTPS sites]({{ '/use/ingress/' | relative_url }}) |
+| `kvoadm ingress install [--class NAME] [--driver nginx\|caddy\|kong] [--public] [--host-port internal\|external \| --provider PROVIDER] [--host NAME=NAMESPACE[,NAMESPACE]]… [--image REF] [--runtime NAME] [--option K=V]…` | Start a stock proxy as a silo and the `IngressClass` that drives it. `--host` assigns a name (or a one-label suffix `*.example.com`) to those namespaces. Defaults: class `public`, driver `nginx`, runtime `docker`, ports on the host's external IP. A host is published only when the class assigns it. [HTTPS sites]({{ '/use/ingress/' | relative_url }}) |
 | `kvoadm ingress assign CLASS --host NAME=NAMESPACE[,NAMESPACE]…` | Add host assignments to an IngressClass that is already there. `NAME` may be a suffix `*.example.com` |
 
 ### People

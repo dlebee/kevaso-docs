@@ -109,8 +109,9 @@ Some things are never an `editor`'s. When a page needs one of them, it says so:
 | A namespace | Cluster admin | [Your own kvo, and the admin certificate]({{ '/admin/access/#your-own-kvo-and-the-admin-certificate' | relative_url }}) |
 | A role or a binding (more than `editor`, a CI account's role) | Namespace admin | [Roles]({{ '/admin/access/#roles' | relative_url }}) |
 | A token for CI | Namespace admin | [Tokens for CI]({{ '/admin/access/#tokens-for-ci' | relative_url }}) |
-| A port open on a host address or a load balancer | Namespace admin | [Networking]({{ '/use/networking/#on-the-hosts-address-hostport' | relative_url }}) |
-| An address you keep (an IP) | Namespace admin | [Addresses you keep]({{ '/admin/ips/' | relative_url }}) |
+| A `HostPort` or `LoadBalancer` service | Namespace admin | [Networking]({{ '/use/networking/#who-may-write-what' | relative_url }}) |
+| An address you keep (an IP or IP set) | Namespace admin | [IPs and IP sets]({{ '/use/networking/ips/' | relative_url }}) |
+| Deleting a namespace | Cluster admin | [Namespaces]({{ '/use/namespaces/' | relative_url }}) |
 | A host name on an ingress class, or a public class | Cluster admin | [Ingress controllers and certificates]({{ '/admin/ingress/' | relative_url }}) |
 | A secret's value read back, or an approval answered | Namespace admin | [Secrets]({{ '/use/secrets/#who-can-do-what-with-secrets' | relative_url }}) |
 | A move that says the old host is off (`--confirm-fenced`) | Cluster admin | [When the control plane is lost]({{ '/admin/control-plane-loss/#moving-a-silo-off-a-host-you-know-is-off' | relative_url }}) |

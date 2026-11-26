@@ -123,3 +123,22 @@ saying the old copy is off (--confirm-fenced, and --insist with it) needs create
 
 So a move off a lost host is usually the cluster admin's, run as `kvoadm kvo move …`. Ask them
 for it, or for the permission ([People and access]({{ '/admin/access/#roles' | relative_url }})).
+
+---
+
+## Moves and addresses
+
+A silo's ways in decide where it may go ([Networking]({{ '/use/networking/' | relative_url }}#where-a-silo-can-run)):
+
+| The silo is reached on | A move |
+|---|---|
+| Its silo IP, or its worker's main address (`worker: external` or `internal`) | Goes anywhere that fits. The worker's address changes with the worker |
+| An IP of type `Host` | Is refused: that address is on one host |
+| An IP of type `Provider`, or a balancer | Goes within the provider's reach (Linode: its Linodes in that region). The new worker announces the IP; it answers there once the provider has moved it |
+
+A move outside that area is refused, naming the address that holds the silo where it is.
+`kvo describe silo` shows the area under `Can move`. The same rules hold for a move from a lost
+host with `--confirm-fenced`.
+
+Losing a whole region or provider takes the IPs and balancers there with it. To keep a site
+reachable through that, run one way in per region and point your DNS at both.

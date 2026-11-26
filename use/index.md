@@ -118,18 +118,18 @@ are written to the audit log.
 
 ## 5 · Open a port
 
-Nothing can reach a silo until it says so. It **declares** its ports, and its **service** opens
-each one to the silos you name. This lets the silo `client` connect to port 8080:
+Nothing can reach a silo until it says so. It **declares** its ports, and a **service** opens
+them to the silos you name. This lets the silo `client` connect to port 8080:
 
 ```yaml
 spec:
   ports: [{ name: web, port: 8080 }]
-  service:
-    ports: [{ port: web, allowFrom: [client] }]
+  services:
+    - ports: [{ port: web, allowFrom: [client] }]
 ```
 
-The silo now has a name too, `hello.payments.kevaso`. Opening a port on a host's address, to the
-outside, is an administrator's.
+The silo now has a name too, `hello.payments.kevaso`. Opening a port to the outside (a `HostPort` or
+`LoadBalancer` service) is an administrator's.
 [Addresses, ports and names]({{ '/use/networking/model/' | relative_url }}),
 [Networking]({{ '/use/networking/' | relative_url }}),
 [Port leases]({{ '/use/networking/leases/' | relative_url }}) for ports that open only for a while.
