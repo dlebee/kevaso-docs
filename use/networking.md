@@ -187,6 +187,8 @@ services:
 - A provider is installed by an administrator, under a name: `linode` by default, another name for a
   second account ([Host addresses and providers]({{ '/admin/addresses/#providers' | relative_url }})).
   Naming one that isn't installed is refused, and the refusal lists the ones that are.
+- A silo with several `LoadBalancer` services: `kvo describe silo` shows the first one's address
+  for now. Each balancer still works on its own address.
 - On a balancer that can't limit clients by address, a port with `sources` is left out, not opened to
   everyone: see [leases and sources]({{ '/use/networking/leases/' | relative_url }}#balancers-and-sources).
 

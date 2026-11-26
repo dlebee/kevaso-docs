@@ -210,7 +210,8 @@ The whole example is on [Sets]({{ '/use/silos/sets/#an-address-for-each-instance
 | A `Dynamic` set at `max`, or the provider out of addresses or quota | The instance waits, with `…, and its max is 5` or the provider's words |
 | Scaling in | The members stay reserved: when instance 2 comes back, it gets member 2 again |
 | Deleting or replacing the SiloSet | The IP set and its IPs stay. A new set naming it gets the same addresses in the same order |
-| Deleting a `Static` set | The IPs you listed stay |
+| Deleting a `Static` set | The IPs you listed (`ip:` members) stay. The IPs it made for `hostAddress` members are deleted, and those addresses are free again |
 | Deleting a `Dynamic` set | The IPs it reserved are released |
+| Deleting a set while an instance still uses a member | The delete waits, `Deleting`, until that silo lets go of it |
 
 Making an IP set is a namespace `admin`'s; naming one with `ips` needs `use` on it, as for an IP.
