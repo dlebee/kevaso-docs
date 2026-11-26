@@ -259,6 +259,13 @@ the address moves with it. One silo holds it at a time, and it stays when the si
 kvo create ip edge -n shop --type Provider --provider linode --region ca-central
 ```
 
+> **Ask Linode support first.** A Linode has one public IPv4 unless Linode support raises its limit,
+> and a Provider IP is added to the worker that holds it. Until the limit is raised, the IP is
+> reserved but is Waiting: its `Shared` condition says to ask Linode support to allow more IPv4
+> addresses per Linode, and Kevaso retries every minute. Open a ticket in Cloud Manager (**Help & Support**), say you
+> need extra reserved IPv4 addresses on your worker Linodes for IP sharing (failover), and say how
+> many per Linode. Once it is raised, the address answers by itself; NodeBalancers don't need it.
+
 Then a `HostPort` service names it:
 
 ```yaml
