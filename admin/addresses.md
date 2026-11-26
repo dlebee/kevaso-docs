@@ -54,9 +54,11 @@ kvoadm host addresses baremetal-1 list
 ```
 
 ```text
-NAME   KIND       ADDRESS        IP
-mail   external   203.0.113.21   ip mail/mail (held by silo/mail (25/TCP))
-eth-0  external   203.0.113.22   -
+NAME     KIND       ADDRESS        RESERVED BY
+(main)   external   203.0.113.10   the worker's (hostPort: { worker: external })
+(main)   internal   10.0.0.5       the worker's (hostPort: { worker: internal })
+mail     external   203.0.113.21   ip mail/mail, used by silo/mail (25/TCP)
+eth-0    external   203.0.113.22   -
 ```
 
 Remove one:

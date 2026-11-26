@@ -303,7 +303,7 @@ Services:
   NAME        TYPE      WAY IN            PORTS            REACHABLE AT
   api         Internal  mesh              http             10.64.2.7:8080 from nginx-public, billing/worker
   api-public  HostPort  worker: external  https→443        203.0.113.20:443
-  api-ops     HostPort  worker: internal  metrics, debug   10.0.0.5:9090, 10.0.0.5:9229 (leased)
+  api-ops     HostPort  worker: internal  metrics, debug   10.0.0.5:9090, 10.0.0.5:9229
 Ports:
   PORT     NUMBER    SILO IP (MESH)                    INTERNAL IP    EXTERNAL IP       LOAD BALANCER  ALLOW FROM                    SOURCES
   http     8080/TCP  10.64.2.7:8080                    -              -                 -              nginx-public, billing/worker  -

@@ -238,13 +238,13 @@ kvo describe silo api-blue -n payments
 ```
 
 ```text
-Can move:   yes, within linode us-ord (ip api-edge in linode us-ord; load balancer shop in linode)
+Can move:   yes: within linode/us-ord (IP api-edge)
 ```
 
-A silo pinned by a host's address says so too:
+On a worker's own address it is `yes: any worker`. A silo pinned by a host's address says so:
 
 ```text
-Can move:   no: pinned to host baremetal-1 (ip mail is host address mail)
+Can move:   no: pinned to baremetal-1 (IP mail is that host's address)
 ```
 
 A move to a worker outside that area is refused, and the refusal names the address that holds the

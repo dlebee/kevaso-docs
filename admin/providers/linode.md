@@ -166,8 +166,10 @@ bin/kvo describe silo web -n shop
 ```
 
 ```text
-Load balancer:  linode at 172.233.12.40
-Node ports:     http 80 → host port 30000 (from 192.168.255.0/24)
+Node ports:   http 80 → host port 30000 (from 192.168.255.0/24)
+Services:
+  NAME  TYPE          WAY IN            PORTS  REACHABLE AT
+  web   LoadBalancer  provider: linode  http   172.233.12.40:80
 ```
 
 The NodeBalancer sends each port to the silo's worker on a **node port** over the private network.
