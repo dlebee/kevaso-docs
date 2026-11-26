@@ -136,10 +136,11 @@ outside, is an administrator's.
 
 ## 6 · Give it a secret
 
-Store a value. `--from-file -` reads it from stdin, so it never sits on the command line:
+Store a value under a key you name, here `token`. `--from-file token=-` reads it from stdin, so it
+never sits on the command line:
 
 ```bash
-kvo create secret api-key --from-file -
+kvo create secret api-key --from-file token=-
 ```
 
 A silo gets a secret only through a **Grant**, which also says how. This one adds the key to the
@@ -152,11 +153,13 @@ metadata: { name: api-access, namespace: payments }
 spec:
   secrets:
     - name: api-key
+      key: token
       deliver: inject
       to: { host: api.example.com, header: x-api-key, format: "{% raw %}{{value}}{% endraw %}" }
 ```
 
-The silo names the grant in `spec.grants: [api-access]`. A Grant is also what lets a silo reach
+Every entry names the key it gives (`key: "*"` gives every key). In `format`,
+`{% raw %}{{value}}{% endraw %}` is the injected key's value, not a key name. The silo names the grant in `spec.grants: [api-access]`. A Grant is also what lets a silo reach
 anything outside the cluster. [Secrets]({{ '/use/secrets/' | relative_url }}).
 
 ## 7 · Add a volume

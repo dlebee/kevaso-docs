@@ -30,70 +30,79 @@ leases.
 
 ## Store a secret
 
-Values come from a file or from what you type. `--from-literal` puts the value on the command
+A secret holds one or more values, each under a name you choose: its **keys**. You always name the
+key. Values come from a file or from what you type. `--from-literal` puts the value on the command
 line, so it is refused unless you add `--i-know` (other users of the machine and your shell history
-would see it). A cluster secret never takes `--from-literal`. With `--from-file -`, `kvo` reads the
-value from your terminal:
+would see it). A cluster secret never takes `--from-literal`. With `--from-file KEY=-`, `kvo` reads
+the value from your terminal:
 
 ```bash
-kvo create secret api-key -n dev --from-file - --allow inject --write-only
+kvo create secret api-key -n dev --from-file token=- --allow inject --write-only
 ```
 
 Paste the key, press Enter, then Ctrl-D. Or keep it in a file only you can read and give its path:
 
 ```bash
 kvo create secret api-key -n dev \
-    --from-file ~/keys/api-key.txt \
+    --from-file token=$HOME/keys/api-key.txt \
     --allow inject \
     --write-only
 ```
 
+A `--from-file` without a key is refused, with the form to use:
+
+```text
+--from-file api-key.txt: name the key: --from-file KEY=FILE, or --from-file KEY=- for stdin (e.g. --from-file token=api-key.txt)
+```
+
 | Flag | Meaning |
 |---|---|
-| `--from-file F` / `--from-file -` | The value, from a file or stdin |
-| `--from-file KEY=F` (repeatable) | One [named key](#named-keys) from a file (`KEY=-`: from stdin, once) |
-| `--generate` | Kevaso makes it (32 random bytes, written as hex; or a new private key with `--type`) |
+| `--from-file KEY=F` (repeatable) | The [key](#keys) `KEY`, from a file (`KEY=-`: from stdin, once) |
+| `--generate KEY` | Kevaso makes the key `KEY` (32 random bytes, written as hex; or, with `--type`, a new private key: `--generate private-key`) |
 | `--type ed25519` / `ecdsa-p256` | A signing key: only ever used through `sign`, never readable |
 | `--allow inject,broker` | The only ways grants may deliver it, whatever they ask |
 | `--write-only` | Nobody can read it back, admins included |
 | `-l sensitivity=critical` | Labels: roles can give access by label |
 
-### Named keys
+### Keys
 
-A secret can hold several values under names, its **keys**: a database's user name and password, a
-certificate and its private key. Give each with `--from-file KEY=FILE`:
+A secret can hold several values: a database's user name and password, a certificate and its
+private key. Give each with its own `--from-file KEY=FILE`:
 
 ```bash
 kvo create secret db -n dev --from-file username=db-user.txt --from-file password=db-password.txt
 ```
 
-A secret made from one value, as above, has one key, named `value`. A key's name is letters,
+A key's name is letters,
 digits, `-`, `_` and `.`, starting and ending with a letter or a digit. Two keys may not differ
 only by case or by `-`, `_` and `.` (`db-host` and `DB_HOST`), because both would give the same
 variable name. All keys together hold at most 64 KiB.
 
 The secret is still one object: access, write-only, expiry and rotation are per secret and cover
 every key. `kvo describe secret` lists the keys' names, never their values. In YAML, keys go in
-`spec.data`, base64 like Kubernetes; `spec.value` is the same as `data: {value: …}`.
+`spec.data`, base64 like Kubernetes.
 
-A signing key (`--type ed25519` or `ecdsa-p256`) and a registry secret hold one value only.
+A signing key (`--type ed25519` or `ecdsa-p256`) holds one key, `private-key`. A registry secret
+holds one key, `password`. Any other key is refused.
 
 A secret can set `expiresAt`, a time. `kvo describe secret` shows it under `Expires`. Within seven
-days it says to renew the value (`kvo secret set NAME --from-file -`). After that time it says
+days it says to renew the value (`kvo secret set NAME --from-file KEY=-`). After that time it says
 `EXPIRED`. Nothing stops the secret being used.
 
 The API never returns a value in `get`, `list` or `watch`. Someone with `read-value` can read a
-readable secret:
-
-```bash
-kvo get secret db-password -n dev --reveal
-```
-
-A secret with named keys prints one `KEY: VALUE` line per key. To print one key's bytes alone:
+readable secret, one key at a time:
 
 ```bash
 kvo get secret db -n dev --reveal --key password
 ```
+
+Or every key, one `KEY: VALUE` line each:
+
+```bash
+kvo get secret db -n dev --reveal --key "*"
+```
+
+`--reveal` without `--key` is refused.
 
 ---
 
@@ -106,15 +115,20 @@ metadata: { name: api-access, namespace: dev }
 spec:
   secrets:
     - name: api-key
+      key: token
       deliver: inject
       to: { host: api.example.com, header: x-api-key, format: "{% raw %}{{value}}{% endraw %}" }
-    - name: db-password                  # deliver: broker is the default
-    - name: tls-key
+    - name: db
+      key: password                       # deliver: broker is the default
+    - name: tls
+      key: tls.pem
       deliver: file
       path: /run/secrets/tls.pem          # under /run: memory only
     - name: license
-      deliver: env                        # written by the host; the variable is LICENSE
+      key: key
+      deliver: env                        # written by the host; the variable is LICENSE_KEY
     - name: db                            # a secret with keys username and password
+      key: "*"                            # every key
       deliver: env                        # DB_USERNAME and DB_PASSWORD
     - name: db
       key: password                       # one key
@@ -140,36 +154,42 @@ kvo describe grant api-access -n dev
 
 ### Naming a key
 
-An entry names a secret, and can name one of its keys with `key`. Without `key` it gives every
-key. Access is the same either way: `use` on the secret lets a grant name any of its keys.
+Every entry names a secret and a key: `key: KEY` for one key, or `key: "*"` for every key (quoted:
+a bare `*` isn't a YAML string). Access is the same either way: `use` on the secret lets a grant
+name any of its keys. What the silo gets doesn't depend on how many keys the secret holds today.
 
-| Delivery | With `key` | Without `key` |
+| Delivery | `key: KEY` | `key: "*"` |
 |---|---|---|
 | `broker` | That key | Every key |
-| `file` | One file at `path` (default `/run/secrets/NAME/KEY`) | A secret made from one value: one file at `path` (default `/run/secrets/NAME`). A secret with named keys: a folder at `path` (default `/run/secrets/NAME`) with one file per key, named after the key |
-| `env` | One variable, named `env` | One variable per key (see below) |
-| `inject` | That key | Only a secret with one key. A secret with several is refused when the grant is written |
+| `file` | One file at `path` (default `/run/secrets/NAME/KEY`) | A folder at `path` (default `/run/secrets/NAME`), one file per key, named after the key |
+| `env` | One variable, named `env` (default `NAME_KEY`) | One variable per key, `PREFIX_KEY` (see below) |
+| `inject` | That key | Refused: an injection adds one value |
 
 Variables are named after the secret and the key: the secret's name in capitals, with `-` and `.`
-as `_`, then `_` and the key the same way. The key `value` is the secret's name alone. So a secret
-`db` with keys `username` and `password` gives `DB_USERNAME` and `DB_PASSWORD`, and a secret
-`license` made from one value gives `LICENSE`. Without `key`, `env` replaces the secret's part:
-`env: PG` gives `PG_USERNAME` and `PG_PASSWORD`.
+as `_`, then `_` and the key the same way. So a secret `db` with keys `username` and `password`
+gives `DB_USERNAME` and `DB_PASSWORD`. With `key: "*"`, `env` replaces the secret's part: `env: PG`
+gives `PG_USERNAME` and `PG_PASSWORD`. With one key, `env` is the variable's whole name.
 
-A grant that names a key the secret doesn't have is refused when it is written:
+An entry without `key` is refused when the grant is written, with both forms:
+
+```text
+secret db: key is required: name one key (key: KEY) or every key (key: "*")
+```
+
+So is `key: "*"` on an injection:
+
+```text
+secret api: inject adds one key: name it (key: KEY), not "*"
+```
+
+And a key the secret doesn't have:
 
 ```text
 secret db has no key "passwd" (its keys: password, username)
 ```
 
-So is an inject without `key` on a secret with several keys:
-
-```text
-secret api has 2 keys (id, token): an inject adds one, so name it (key: …)
-```
-
-If a secret gains keys after the grant was written, an inject without `key` stops: the gate adds
-nothing for it until the grant names one.
+If the key is removed from the secret later, the gate adds nothing for that entry until the grant
+names a key the secret has.
 
 ---
 
@@ -197,7 +217,9 @@ given before the hold, for that same hour, and adds none it wasn't given then.
 
 Several injected headers for one host are all kept.
 
-`to.header` defaults to `Authorization` and `to.format` to `Bearer {% raw %}{{value}}{% endraw %}`. The program in the silo just calls the API without a key; it works. On **OpenShell** silos the
+`to.header` defaults to `Authorization` and `to.format` to `Bearer {% raw %}{{value}}{% endraw %}`.
+In `format`, `{% raw %}{{value}}{% endraw %}` stands for the value of the key the entry names: it
+is not a key name, whatever the key is called. The program in the silo just calls the API without a key; it works. On **OpenShell** silos the
 same grant gives the program an environment variable holding a *placeholder* (`$API_KEY =
 openshell:resolve:env:…`), which it sends like a key, and OpenShell swaps the real one in. See
 [Runtimes]({{ '/use/silos/runtimes/' | relative_url }}#openshell).
@@ -211,13 +233,13 @@ depends on the runtime:
 
 | | `file` | `env` |
 |---|---|---|
-| **MicroVM** (`cloud-hypervisor`) | Written by the host through the runtime, over a pipe, to `path` in the grant (default `/run/secrets/NAME`, or a folder of keys: [Naming a key](#naming-a-key)). Mode `0400`. Rewritten while the silo runs | Written to `/run/kevaso/secrets.env` (`0400`), read by login shells through `/etc/profile.d/kevaso-secrets.sh`. A running process sees no change |
+| **MicroVM** (`cloud-hypervisor`) | Written by the host through the runtime, over a pipe, to `path` in the grant (default `/run/secrets/NAME/KEY`, or a folder of keys for `key: "*"`: [Naming a key](#naming-a-key)). Mode `0400`. Rewritten while the silo runs | Written to `/run/kevaso/secrets.env` (`0400`), read by login shells through `/etc/profile.d/kevaso-secrets.sh`. A running process sees no change |
 | **Container on Docker** | A folder of the host's memory-only filesystem, mounted read-only into the container. `0400`, owned by root. Replaced in place on rotation, no restart | The container's own environment, set by Kevaso's runtime as the container starts. Not in `docker inspect`, not on Docker's disk. Shown in `SecretsDelivered` |
 | **Container on Docker, where Kevaso's runtime can't be used**, and **Podman** | As above | The container's own environment, kept by the engine in the container's config: `inspect` shows it and it is on the host's disk. Admission warns |
 | **OpenShell** | Refused, with the reason | Refused, with the reason |
 
-The variable is `env` in the grant, or the secret's name in capitals with `-` as `_` (one per key
-for a secret with keys: [Naming a key](#naming-a-key)). The value goes over a pipe or a file in
+The variable is `env` in the grant, or the secret's and the key's names in capitals with `-` and
+`.` as `_`, like `DB_PASSWORD` (one per key for `key: "*"`: [Naming a key](#naming-a-key)). The value goes over a pipe or a file in
 memory: never on a command line.
 
 - **Memory only.** On a microVM the host refuses to write into a folder that isn't a tmpfs (`/run`
@@ -301,24 +323,23 @@ For on-demand secrets, signatures and port leases, a silo asks plain HTTP at
   This keeps a web page, or a program tricked into fetching a URL, from asking it by accident.
 - Limits: a body only for signing (at most 512 KiB), at most 8 requests at once per silo.
 
-To read a secret:
-
-```bash
-curl -fsS -H 'Kevaso-Local: 1' http://169.254.42.1/v1/secrets/db-password
-```
-
-To read one key of a secret with keys:
+To read one key of a secret, name the secret and the key:
 
 ```bash
 curl -fsS -H 'Kevaso-Local: 1' http://169.254.42.1/v1/secrets/db/password
 ```
 
-Without a key, a secret with named keys answers JSON with every key the grant gives, each value in
-base64:
+To read every key the grant gives, ask for `*`. The answer is JSON, each value in base64:
+
+```bash
+curl -fsS -H 'Kevaso-Local: 1' 'http://169.254.42.1/v1/secrets/db/*'
+```
 
 ```json
 {"data": {"password": "czNjcjN0", "username": "YXBw"}, "version": 3}
 ```
+
+`/v1/secrets/NAME` with no key answers `400`, naming both forms.
 
 To sign a payload (the signature comes back as hex):
 
@@ -344,8 +365,8 @@ curl -fsS -H 'Kevaso-Local: 1' -X POST http://169.254.42.1/v1/ports/debug/close
 
 | Route | Answer |
 |---|---|
-| `GET /v1/secrets/NAME` | The value (`application/octet-stream`); its version in `Kevaso-Version`. For a secret with named keys, when the grant doesn't name one: every key, as JSON (`application/json`) |
-| `GET /v1/secrets/NAME/KEY` | That key's value (`application/octet-stream`) |
+| `GET /v1/secrets/NAME/KEY` | That key's value (`application/octet-stream`); its version in `Kevaso-Version` |
+| `GET /v1/secrets/NAME/*` | Every key the grant gives, as JSON (`application/json`) |
 | `POST /v1/sign/KEY[?slot=N]` | The signature, hex. The body is the payload |
 | `GET /v1/keys/KEY` | The public key, hex |
 | `POST /v1/ports/NAME/open[?for=D]` | `{"port":"debug","until":"…","clamped":false}` |
@@ -355,7 +376,7 @@ Errors come back as JSON, `{"error": "…"}`; `curl -f` turns a refusal into a f
 
 | Status | Meaning |
 |---|---|
-| `400` | A bad parameter |
+| `400` | A bad parameter, or no key named (`/v1/secrets/NAME`) |
 | `403` | Refused: a missing header, an approval denied or expired, a lease refused |
 | `404` | No such route, or a secret, key or signing key that doesn't exist **or isn't this silo's** (the same answer). A key the grant doesn't give is the same |
 | `405` | Wrong method |
@@ -389,6 +410,7 @@ metadata: { name: deploy-access, namespace: ops }
 spec:
   secrets:
     - name: admin-token
+      key: token
       deliver: inject
       to: { host: api.example.com }
       approval: { required: true }
@@ -409,7 +431,7 @@ if denied or expired). Asking with `approval=NAME` doesn't replace the pending r
 without it does:
 
 ```bash
-curl -fsS -H 'Kevaso-Local: 1' 'http://169.254.42.1/v1/secrets/admin-token?for=30m&wait=10m'
+curl -fsS -H 'Kevaso-Local: 1' 'http://169.254.42.1/v1/secrets/admin-token/token?for=30m&wait=10m'
 ```
 
 ```text
@@ -417,7 +439,7 @@ curl: (22) The requested URL returned error: 428
 ```
 
 ```bash
-curl -fsS -H 'Kevaso-Local: 1' 'http://169.254.42.1/v1/secrets/admin-token?for=30m&approval=NAME'
+curl -fsS -H 'Kevaso-Local: 1' 'http://169.254.42.1/v1/secrets/admin-token/token?for=30m&approval=NAME'
 ```
 
 The `428` body has the pending name and says `kvo approve NAME -n ops`; it is also in the
@@ -475,11 +497,11 @@ kvo deny db-3f9a1c2e -n ops --reason "not during the freeze"
 ## Private registry credentials
 
 A container silo can pull its image from a private registry. The credential is a secret of type
-`registry`: the password or token is its one value (the key `value`), and the registry host and
-user are fields.
+`registry`: the password or token is its one key, `password`, and the registry host and user are
+fields.
 
 ```bash
-kvo create secret registry-pull -n dev --type registry --server registry.example.com --username ci-bot --from-file -
+kvo create secret registry-pull -n dev --type registry --server registry.example.com --username ci-bot --from-file password=-
 ```
 
 Paste the password or token, press Enter, then Ctrl-D. On this command `--server` is the registry,
@@ -490,7 +512,7 @@ default for that registry.
 |---|---|
 | `--server HOST` / `--registry HOST` | The registry host, like `registry.example.com` or `ghcr.io`. A pasted `https://…/path` is cut to the host |
 | `--username U` | The user to sign in as |
-| `--from-file F` / `--from-file -` | The password or token. `--generate` is refused |
+| `--from-file password=F` / `--from-file password=-` | The password or token. `--generate` is refused |
 | `--default-pull` | Every silo in the namespace that pulls from this registry uses it, unless it names another |
 
 Name it from the silo:
@@ -504,11 +526,11 @@ spec:
 ```
 
 - **Changing `server` or `username` needs a new value in the same write.** The stored password is
-  for that registry and that user. An update that changes either and does not include a new
-  `spec.value` is refused:
+  for that registry and that user. An update that changes either and does not include the
+  password again in `spec.data` is refused:
 
 ```text
-Secret registry-pull: spec.valueReadable, spec.allowedDelivery, and a registry secret's spec.server or spec.username can't be changed without every key again (spec.value or spec.data, not spec.setData) in the same write (a value made write-only, or kept to one registry, stays so)
+Secret registry-pull: spec.valueReadable, spec.allowedDelivery, and a registry secret's spec.server or spec.username can't be changed without every key again (spec.data, not spec.setData) in the same write (a value made write-only, or kept to one registry, stays so)
 ```
 
   `kvo secret set` replaces the password and leaves `server` and `username` as they are. To point
@@ -533,12 +555,10 @@ Secret registry-pull: spec.valueReadable, spec.allowedDelivery, and a registry s
 ## Rotation
 
 ```bash
-kvo secret set api-key -n dev --from-file -
+kvo secret set api-key -n dev --from-file token=-
 ```
 
-Paste the new key, Enter, Ctrl-D. A bare `--from-file` replaces every key with that one value.
-
-To change one key of a secret with named keys and keep the others:
+Paste the new key, Enter, Ctrl-D. `kvo secret set` changes the keys you name and keeps the others:
 
 ```bash
 kvo secret set db -n dev --from-file password=db-password.txt
@@ -553,7 +573,7 @@ kvo secret set db -n dev --remove-key username
 Each of these is one new version of the secret. In YAML, `spec.setData` changes some keys and
 keeps the rest, and `spec.removeKeys` removes keys; `spec.data` replaces every key. Making a
 secret readable, or allowing a delivery it didn't, needs every key again in the same write
-(`spec.value` or `spec.data`).
+(`spec.data`).
 
 | Delivered as | What happens |
 |---|---|

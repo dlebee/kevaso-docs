@@ -140,7 +140,7 @@ etcd's own clean-up (defragmenting) isn't scheduled.
 |---|---|
 | Secrets' master key | `kvoadm kms rotate root@HOST --ssh-key …` (refused with more than one system node) |
 | A leaked recovery key | `kvoadm kms rotate root@HOST --ssh-key … --new-recovery-key` ([below](#the-master-key-and-the-recovery-key)) |
-| A secret's value | `kvo secret set NAME --from-file -` |
+| A secret's value | `kvo secret set NAME --from-file KEY=-` |
 | Kevaso's SSH key on your machines | Make a new one ([Installing, step 2]({{ '/admin/setup/prepare/' | relative_url }}#step-2--make-an-ssh-key-for-kevaso)), add its `.pub` to each machine's `authorized_keys`, remove the old line |
 | People's access | `kvoadm users disable NAME`: their tokens stop working at once |
 
