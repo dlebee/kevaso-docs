@@ -206,7 +206,7 @@ bin/kvoadm upgrade --kevasod bin/kevasod-linux-amd64 --kevasod bin/kevasod-darwi
 It prints the plan, and which build each host gets, and changes nothing:
 
 ```text
-Upgrade to v0.1.0-rc.10:
+Upgrade to v0.1.0-rc.11:
   1. system hv1
   2. worker hv2, mac1
   note: one system node: the API is away while it restarts (silos keep running)
