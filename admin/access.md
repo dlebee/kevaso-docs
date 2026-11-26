@@ -132,9 +132,6 @@ The invite is refused before anything is made, with no code and no binding, when
 Inviting someone who already exists gives them a new code and turns their account back on if it
 was disabled. Inviting them again to the same role finds the binding already there.
 
-`kvo invite` and the role flags above are in the releases after `v0.1.0-rc.8`. With `rc.8`, invite
-with `kvoadm users invite NAME --namespace NS`, which gives `editor` there, or `--role ROLE` with it.
-
 They sign in with what you sent: [Signing in and contexts]({{ '/use/sign-in/#sign-in' | relative_url }}).
 
 ---

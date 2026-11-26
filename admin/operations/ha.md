@@ -191,6 +191,10 @@ component): use `remove`.
 
 ## Upgrade
 
+**Upgrade with the `kvoadm` of the release you're moving to**, not the one you installed with:
+download the new release's `kvoadm` and `kevasod` together. A newer `kvoadm` knows the newer
+version; an older one may not.
+
 Give it the new `kevasod` for each kind of host in the cluster: one per operating system and CPU
 (the Linux build for Linux hosts; with a [Mac worker]({{ '/admin/workers/mac/' | relative_url }}), the macOS
 build too). With only Linux hosts, one is enough.
@@ -202,7 +206,7 @@ bin/kvoadm upgrade --kevasod bin/kevasod-linux-amd64 --kevasod bin/kevasod-darwi
 It prints the plan, and which build each host gets, and changes nothing:
 
 ```text
-Upgrade to v0.1.0-rc.8:
+Upgrade to v0.1.0-rc.10:
   1. system hv1
   2. worker hv2, mac1
   note: one system node: the API is away while it restarts (silos keep running)

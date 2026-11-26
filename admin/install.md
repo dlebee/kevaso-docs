@@ -28,7 +28,7 @@ from the [release page](https://github.com/dlebee/kevaso/releases) in your brows
 <div class="os-tab" data-os="macos" data-label="macOS" markdown="1">
 
 ```bash
-gh release download v0.1.0-rc.8 --repo dlebee/kevaso --pattern 'kvo*-darwin-arm64.zip' --pattern SHA256SUMS
+gh release download v0.1.0-rc.10 --repo dlebee/kevaso --pattern 'kvo*-darwin-arm64.zip' --pattern SHA256SUMS
 ```
 
 That is for Apple Silicon. On an Intel Mac, take `darwin-amd64` instead of `darwin-arm64`, here
@@ -38,7 +38,7 @@ and below.
 <div class="os-tab" data-os="linux" data-label="Linux" markdown="1">
 
 ```bash
-gh release download v0.1.0-rc.8 --repo dlebee/kevaso --pattern 'kvo*-linux-amd64.tar.gz' --pattern SHA256SUMS
+gh release download v0.1.0-rc.10 --repo dlebee/kevaso --pattern 'kvo*-linux-amd64.tar.gz' --pattern SHA256SUMS
 ```
 
 That is for x86_64. On ARM (`uname -m` says `aarch64`), take `linux-arm64` instead of
@@ -50,7 +50,7 @@ That is for x86_64. On ARM (`uname -m` says `aarch64`), take `linux-arm64` inste
 In PowerShell:
 
 ```powershell
-gh release download v0.1.0-rc.8 --repo dlebee/kevaso --pattern 'kvo*-windows-amd64.zip' --pattern SHA256SUMS
+gh release download v0.1.0-rc.10 --repo dlebee/kevaso --pattern 'kvo*-windows-amd64.zip' --pattern SHA256SUMS
 ```
 
 Windows builds are for x86_64 only.
@@ -85,7 +85,7 @@ Each file it checks prints `: OK`.
 <div class="os-tab" data-os="windows" data-label="Windows" markdown="1">
 
 ```powershell
-Get-FileHash kvo-v0.1.0-rc.8-windows-amd64.zip, kvoadm-v0.1.0-rc.8-windows-amd64.zip
+Get-FileHash kvo-v0.1.0-rc.10-windows-amd64.zip, kvoadm-v0.1.0-rc.10-windows-amd64.zip
 ```
 
 ```powershell
@@ -106,22 +106,22 @@ Each archive unpacks into a folder of its own name.
 <div class="os-tab" data-os="macos" data-label="macOS" markdown="1">
 
 ```bash
-unzip kvoadm-v0.1.0-rc.8-darwin-arm64.zip
+unzip kvoadm-v0.1.0-rc.10-darwin-arm64.zip
 ```
 
 ```bash
-unzip kvo-v0.1.0-rc.8-darwin-arm64.zip
+unzip kvo-v0.1.0-rc.10-darwin-arm64.zip
 ```
 
 </div>
 <div class="os-tab" data-os="linux" data-label="Linux" markdown="1">
 
 ```bash
-tar -xzf kvoadm-v0.1.0-rc.8-linux-amd64.tar.gz
+tar -xzf kvoadm-v0.1.0-rc.10-linux-amd64.tar.gz
 ```
 
 ```bash
-tar -xzf kvo-v0.1.0-rc.8-linux-amd64.tar.gz
+tar -xzf kvo-v0.1.0-rc.10-linux-amd64.tar.gz
 ```
 
 </div>
@@ -130,11 +130,11 @@ tar -xzf kvo-v0.1.0-rc.8-linux-amd64.tar.gz
 With the `tar` that comes with Windows:
 
 ```powershell
-tar -xf kvoadm-v0.1.0-rc.8-windows-amd64.zip
+tar -xf kvoadm-v0.1.0-rc.10-windows-amd64.zip
 ```
 
 ```powershell
-tar -xf kvo-v0.1.0-rc.8-windows-amd64.zip
+tar -xf kvo-v0.1.0-rc.10-windows-amd64.zip
 ```
 
 </div>
@@ -153,22 +153,22 @@ sudo mkdir -p /usr/local/bin
 ```
 
 ```bash
-sudo install -m 0755 kvoadm-v0.1.0-rc.8-darwin-arm64/kvoadm /usr/local/bin/kvoadm
+sudo install -m 0755 kvoadm-v0.1.0-rc.10-darwin-arm64/kvoadm /usr/local/bin/kvoadm
 ```
 
 ```bash
-sudo install -m 0755 kvo-v0.1.0-rc.8-darwin-arm64/kvo /usr/local/bin/kvo
+sudo install -m 0755 kvo-v0.1.0-rc.10-darwin-arm64/kvo /usr/local/bin/kvo
 ```
 
 </div>
 <div class="os-tab" data-os="linux" data-label="Linux" markdown="1">
 
 ```bash
-sudo install -m 0755 kvoadm-v0.1.0-rc.8-linux-amd64/kvoadm /usr/local/bin/kvoadm
+sudo install -m 0755 kvoadm-v0.1.0-rc.10-linux-amd64/kvoadm /usr/local/bin/kvoadm
 ```
 
 ```bash
-sudo install -m 0755 kvo-v0.1.0-rc.8-linux-amd64/kvo /usr/local/bin/kvo
+sudo install -m 0755 kvo-v0.1.0-rc.10-linux-amd64/kvo /usr/local/bin/kvo
 ```
 
 </div>
@@ -181,7 +181,7 @@ New-Item -ItemType Directory -Force "$env:LOCALAPPDATA\Programs\Kevaso"
 ```
 
 ```powershell
-Move-Item kvoadm-v0.1.0-rc.8-windows-amd64\kvoadm.exe, kvo-v0.1.0-rc.8-windows-amd64\kvo.exe "$env:LOCALAPPDATA\Programs\Kevaso"
+Move-Item kvoadm-v0.1.0-rc.10-windows-amd64\kvoadm.exe, kvo-v0.1.0-rc.10-windows-amd64\kvo.exe "$env:LOCALAPPDATA\Programs\Kevaso"
 ```
 
 Add that folder to your own PATH (not the system's: no administrator rights needed):
@@ -228,7 +228,7 @@ Keep it in a `bin` folder, named for what it runs on, as the setup pages expect
 <div class="os-tab" data-os="macos" data-label="macOS" markdown="1">
 
 ```bash
-gh release download v0.1.0-rc.8 --repo dlebee/kevaso --pattern 'kevasod-*-linux-amd64.tar.gz' --pattern SHA256SUMS --clobber
+gh release download v0.1.0-rc.10 --repo dlebee/kevaso --pattern 'kevasod-*-linux-amd64.tar.gz' --pattern SHA256SUMS --clobber
 ```
 
 ```bash
@@ -236,7 +236,7 @@ shasum -a 256 --check --ignore-missing SHA256SUMS
 ```
 
 ```bash
-tar -xzf kevasod-v0.1.0-rc.8-linux-amd64.tar.gz
+tar -xzf kevasod-v0.1.0-rc.10-linux-amd64.tar.gz
 ```
 
 ```bash
@@ -244,14 +244,14 @@ mkdir -p bin
 ```
 
 ```bash
-mv kevasod-v0.1.0-rc.8-linux-amd64/kevasod bin/kevasod-linux-amd64
+mv kevasod-v0.1.0-rc.10-linux-amd64/kevasod bin/kevasod-linux-amd64
 ```
 
 </div>
 <div class="os-tab" data-os="linux" data-label="Linux" markdown="1">
 
 ```bash
-gh release download v0.1.0-rc.8 --repo dlebee/kevaso --pattern 'kevasod-*-linux-amd64.tar.gz' --pattern SHA256SUMS --clobber
+gh release download v0.1.0-rc.10 --repo dlebee/kevaso --pattern 'kevasod-*-linux-amd64.tar.gz' --pattern SHA256SUMS --clobber
 ```
 
 ```bash
@@ -259,7 +259,7 @@ sha256sum --check --ignore-missing SHA256SUMS
 ```
 
 ```bash
-tar -xzf kevasod-v0.1.0-rc.8-linux-amd64.tar.gz
+tar -xzf kevasod-v0.1.0-rc.10-linux-amd64.tar.gz
 ```
 
 ```bash
@@ -267,18 +267,18 @@ mkdir -p bin
 ```
 
 ```bash
-mv kevasod-v0.1.0-rc.8-linux-amd64/kevasod bin/kevasod-linux-amd64
+mv kevasod-v0.1.0-rc.10-linux-amd64/kevasod bin/kevasod-linux-amd64
 ```
 
 </div>
 <div class="os-tab" data-os="windows" data-label="Windows" markdown="1">
 
 ```powershell
-gh release download v0.1.0-rc.8 --repo dlebee/kevaso --pattern 'kevasod-*-linux-amd64.tar.gz' --pattern SHA256SUMS --clobber
+gh release download v0.1.0-rc.10 --repo dlebee/kevaso --pattern 'kevasod-*-linux-amd64.tar.gz' --pattern SHA256SUMS --clobber
 ```
 
 ```powershell
-Get-FileHash kevasod-v0.1.0-rc.8-linux-amd64.tar.gz
+Get-FileHash kevasod-v0.1.0-rc.10-linux-amd64.tar.gz
 ```
 
 ```powershell
@@ -286,7 +286,7 @@ Select-String kevasod SHA256SUMS
 ```
 
 ```powershell
-tar -xf kevasod-v0.1.0-rc.8-linux-amd64.tar.gz
+tar -xf kevasod-v0.1.0-rc.10-linux-amd64.tar.gz
 ```
 
 ```powershell
@@ -294,7 +294,7 @@ New-Item -ItemType Directory -Force bin
 ```
 
 ```powershell
-Move-Item kevasod-v0.1.0-rc.8-linux-amd64\kevasod bin\kevasod-linux-amd64
+Move-Item kevasod-v0.1.0-rc.10-linux-amd64\kevasod bin\kevasod-linux-amd64
 ```
 
 </div>
