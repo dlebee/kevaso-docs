@@ -561,5 +561,5 @@ Save the new key it prints, the same way as the first one. Then:
 
 1. take a new backup;
 2. delete the backups taken before, since the leaked key opens them;
-3. change the secrets that matter (`kvo secret set NAME --from-file -`): whoever had the key and an
+3. change the secrets that matter (`kvo secret set NAME --from-file KEY=-`): whoever had the key and an
    old backup could have read them.

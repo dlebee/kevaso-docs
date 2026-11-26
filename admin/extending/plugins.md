@@ -19,7 +19,7 @@ Either way, a plugin never gets more than it shows you first.
 
 ## Install a provider plugin
 
-A plugin reads its secrets from its credential directory. You store them as a cluster secret, then allow that plugin's service account to read that name and no other. A cluster secret can hold several values under names, its keys, like a [Secret]({{ '/use/secrets/#named-keys' | relative_url }}): a key pair is one cluster secret with two keys.
+A plugin reads its secrets from its credential directory. You store them as a cluster secret, then allow that plugin's service account to read that name and no other. A cluster secret can hold several values under names, its keys, like a [Secret]({{ '/use/secrets/#keys' | relative_url }}): a key pair is one cluster secret with two keys.
 
 Each side of a plugin has its own service account in the namespace `kevaso-system`: `plugin-NAME` for the controller side, on the control plane, and `plugin-NAME-node` for the node side, on the workers. A host fetches a value for a plugin's side only when that side's account may read the name, and a worker only ever fetches for the node side. So bind a secret to the side that uses it: a cloud API token only the controller needs goes to `plugin-NAME` and never reaches a worker. A secret both sides need is bound to both accounts.
 
@@ -33,7 +33,7 @@ chmod 600 cloud-token.txt
 kvo create clustersecret cloud --from-file token=cloud-token.txt
 ```
 
-`--from-file KEY=FILE` names a key; repeat it for each key. A bare `--from-file FILE` stores one value, under the key `value`.
+`--from-file KEY=FILE` names a key; repeat it for each key (`KEY=-` reads one from stdin). A `--from-file` without a key is refused: every key is named.
 
 Save this as `cloud-secrets.yaml`. `resourceNames` lists exactly this plugin's secrets. A rule with no names grants none. A name allows every key of that secret.
 
@@ -62,7 +62,7 @@ kvo apply -f cloud-secrets.yaml
 kvoadm plugin install root@203.0.113.10 --name cloud --binary ./kevaso-provider-cloud-linux-amd64 --cluster-secret cloud
 ```
 
-Install creates the service account `plugin-cloud` in the namespace `kevaso-system` and prints the account to bind. It records the name. It does not copy the file. Each host fetches the keys and keeps them in a folder only root can read, one file per key. systemd gives the plugin each key as the credential `NAME_KEY` in its credential directory: here `cloud_token`. A cluster secret made from one value is `NAME_value`. Repeat `--cluster-secret` once for each name.
+Install creates the service account `plugin-cloud` in the namespace `kevaso-system` and prints the account to bind. It records the name. It does not copy the file. Each host fetches the keys and keeps them in a folder only root can read, one file per key. systemd gives the plugin each key as the credential `NAME_KEY` in its credential directory: here `cloud_token`. Repeat `--cluster-secret` once for each name.
 
 To replace one key, keeping the others:
 

@@ -88,7 +88,7 @@ A JSON file naming the classes. It holds no secrets: credentials are only *named
 | `fileSystem` | The JuiceFS file system's name | `kevaso` |
 | `cacheDir` | The local cache on each host | `/var/cache/kevaso-juicefs/CLASS` |
 | `cacheSizeMiB` | That cache's size, in MiB | JuiceFS's own size, when you leave it out |
-| `credentials` | Where the bucket's keys and the metadata password are: each a cluster secret's `name` and one of its keys, `key` (default `value`, a cluster secret made from one value). Each is optional. | none |
+| `credentials` | Where the bucket's keys and the metadata password are: each a cluster secret's `name` and one of its keys, `key`. Both are required in a reference; a reference without its key is refused. Each reference is optional. | none |
 | `description` | Text shown for the class | A standard line |
 | `stateDir` | The controller side's folder, where it mounts each class's root | `/var/lib/kevaso-provider-juicefs` |
 | `volumesDir` | The folder the node side mounts under | `/var/lib/kevaso/volumes` |

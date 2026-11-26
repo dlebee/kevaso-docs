@@ -168,7 +168,7 @@ The permissions beyond plain read and write are their own *subresources*:
 | `approvals` | `get`, `list`, `watch` | `kvo get approvals` | yes | yes | yes |
 | `approvals` | `delete` | Clear an approval | | | yes |
 | `secrets` | `use` | Name a secret in a grant, or as a silo's `container.pull.secretRef` | | yes | yes |
-| `secrets` | `read-value` | `kvo get secret --reveal` | | | yes |
+| `secrets` | `read-value` | `kvo get secret --reveal --key KEY` | | | yes |
 | `secrets` | `approve` | `kvo approve`, `kvo deny` | | | yes |
 | `ips` | `get`, `list`, `watch` | `kvo get ips`, `kvo describe ip` | yes | yes | yes |
 | `ips` | `use` | Name an IP: a silo's `service.loadBalancer.ip` or `network.egress.ip`, a service's `loadBalancerIP` | | yes | yes |

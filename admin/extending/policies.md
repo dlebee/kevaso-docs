@@ -130,7 +130,7 @@ Two rules close what is left:
 - On a write by something the guards don't ask permission of (the admin socket, `kevasod`'s own
   controllers, hosts), a mutation that changes what the object exposes, its ingress class, its
   grants or a grant's secrets is refused: *policies can't grant privileges*.
-- A policy can never set a Secret's `spec.value`: it would be stored in the clear.
+- A policy can never set a Secret's keys (`spec.data`, `spec.setData`, `spec.removeKeys`): they would be stored in the clear.
 
 Status writes skip the guards, as they skip policies.
 
