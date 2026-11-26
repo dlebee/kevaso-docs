@@ -193,17 +193,18 @@ services:
 | `linode.kevaso.com/nodebalancer-type` | `common` (default), `premium` | Its plan. Fixed when it is made |
 | `linode.kevaso.com/algorithm` | `roundrobin` (default), `leastconn`, `source` | How a port picks a backend |
 | `linode.kevaso.com/proxy-protocol` | `none` (default), `v1`, `v2` | Sends the client's address with the PROXY protocol: the only way the silo sees it behind a NodeBalancer. The silo must speak it on that port |
-| `linode.kevaso.com/client-conn-throttle` | `0` to `20` | New connections per second per client address. `0`: no limit |
+| `linode.kevaso.com/client-conn-throttle` | `0` (default) to `20` | New connections per second per client address. `0`: no limit |
 | `linode.kevaso.com/check` | `connection` (default), `none` | The backends' health check |
-| `linode.kevaso.com/check-interval` | `2` to `3600` | Seconds between checks |
-| `linode.kevaso.com/check-timeout` | `1` to `30` | Seconds a check waits |
-| `linode.kevaso.com/check-attempts` | `1` to `30` | Failed checks before a backend is taken out |
+| `linode.kevaso.com/check-interval` | `2` to `3600` (default `5`) | Seconds between checks |
+| `linode.kevaso.com/check-timeout` | `1` to `30`, below the interval (default `3`) | Seconds a check waits |
+| `linode.kevaso.com/check-attempts` | `1` to `30` (default `2`) | Failed checks before a backend is taken out |
 
 Other annotations in that domain, and other values, are refused when you apply. A second account
 installed as `linode-work` reads `linode-work.kevaso.com/…` instead.
 
-- Two services on one port of a shared NodeBalancer, or disagreeing on its region or type, are a
-  conflict: the second waits, and says so.
+- Services sharing a NodeBalancer share its type and throttle: the type is the first one's (another
+  type is refused), the throttle the last one set. Two of them on one port conflict: the second
+  waits, and says so.
 - NodeBalancers here forward **TCP**. For UDP, use a `HostPort` service on a kept IP
   ([below](#an-ip-that-follows-the-silo)).
 - A NodeBalancer can't limit clients by address, so a port with `sources` is left out of it: see
