@@ -42,8 +42,8 @@ The silo is in the namespace `kevaso-system`, named `ingress-CLASS`, with 1 CPU 
 | `--class NAME` | The IngressClass to make | `public` |
 | `--driver NAME` | The proxy: `nginx`, `caddy` or `kong` | `nginx` |
 | `--public` | The class is reachable from the internet (publishing on it needs its own permission, below) | private |
-| `--host-port internal\|external` | Open the proxy's ports on its host's internal or external address | `external` |
-| `--lb-class CLASS` | Open them on a load balancer of that class instead (not with `--host-port`) | |
+| `--host-port internal\|external` | Open the proxy's ports at its worker, on the worker's internal or external address (a `HostPort` service) | `external` |
+| `--provider PROVIDER` | Put a balancer from that installed provider in front instead (a `LoadBalancer` service; not with `--host-port`) | |
 | `--image REF` | The proxy's image | The driver's vendor image |
 | `--runtime NAME` | The silo's runtime | `docker` |
 | `--option KEY=VALUE` | A driver option, repeatable (see below) | |
@@ -115,10 +115,9 @@ spec:
   ports:
     - { name: http,  port: 80 }
     - { name: https, port: 443 }
-  service:
-    ports:
-      - { port: http,  hostPort: [external] }
-      - { port: https, hostPort: [external] }
+  services:
+    - type: HostPort                 # worker: external
+      ports: [{ port: http }, { port: https }]
 ```
 
 One silo is the controller of one class.

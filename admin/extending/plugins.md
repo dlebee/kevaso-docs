@@ -190,40 +190,47 @@ The object the call was for is reported and tried again. Asking what the plugin 
 
 ### A plugin from another release
 
-`kevasod` accepts a plugin of revision 1. Any other revision is refused, and the line is logged
-once. Install does not check this. The plugin is refused when `kevasod` connects to it.
+`kevasod` accepts a plugin of revision 1 or 2. Any other revision is refused, and the line is
+logged once. Install does not check this. The plugin is refused when `kevasod` connects to it.
 
 ```text
-plugin db 0.1.0 at /run/kevaso-plugins/db/plugin.sock refused: built against an sdk from before wire revisions; this kevasod serves revisions 1 to 1: rebuild the plugin against this release's kevaso.com/core/sdk
+plugin db 0.1.0 at /run/kevaso-plugins/db/plugin.sock refused: built against an sdk from before wire revisions; this kevasod serves revisions 1 to 2: rebuild the plugin against this release's kevaso.com/core/sdk
 ```
 
 ```text
-plugin db 0.1.0 at /run/kevaso-plugins/db/plugin.sock refused: built against sdk wire revision 2; this kevasod serves revisions 1 to 1: rebuild the plugin against this release's kevaso.com/core/sdk (or upgrade kevasod)
+plugin db 0.1.0 at /run/kevaso-plugins/db/plugin.sock refused: built against sdk wire revision 3; this kevasod serves revisions 1 to 2: rebuild the plugin against this release's kevaso.com/core/sdk (or upgrade kevasod)
 ```
 
-The first is a plugin from before revisions. The second is any revision other than 1. Rebuild the
-plugin for this release, or run a `kevasod` that serves the revision the plugin was built with.
+The first is a plugin from before revisions. The second is a revision this `kevasod` doesn't serve.
+Rebuild the plugin for this release, or run a `kevasod` that serves the revision the plugin was
+built with. A revision 1 plugin still runs, but declares nothing about networking (next), so its
+`LoadBalancer` services and `Provider` IPs are refused until it is rebuilt.
 
-### Load balancer classes
+### What a provider declares about networking
 
-A plugin that provides load balancers lists **classes**. A silo or a `Service` names one in
-`loadBalancer.class` (see [Addresses you keep]({{ '/admin/ips/' | relative_url }})). What a
-class says about itself decides what Kevaso does with it:
+A provider plugin that reserves IPs or makes load balancers says so in its info, and Kevaso checks
+every service and IP against it when it is applied
+([Host addresses and providers]({{ '/admin/addresses/#providers' | relative_url }})):
 
-| Class setting | Means |
+| Field | Means |
 |---|---|
-| `announce` | Its address is routed to whichever host has the silo, and the plugin's node side announces it. Clients reach that host with their own address, so **the host's firewall** applies each port's `sources` |
-| `nodePorts` | The load balancer sends to each backend host on a port of its own, which the host forwards to the silo |
-| `filtersSources` | The load balancer itself accepts clients only from the sources it's given. The plugin gets each port's `sources` (narrowed by an open [lease]({{ '/use/networking/leases/' | relative_url }})) and **must apply them**, say with a firewall on the load balancer |
-| `reserve` | The class can hold an address on its own, so an [IP]({{ '/admin/ips/' | relative_url }}) of the class exists before its service and outlives it. Without it the address is the load balancer's and lives as long as the IP does |
-| `follows` | Where the address can go with its holder: `host`, `region` (the default) or `global` |
-| `sendsFrom` | The address is on the silo's host, so the silo can send from it (`egress.source: sameAsService`). A balancer in front can't |
-| `exclusive` | Only one host can have the address at a time, so one silo holds it and it is never shared. Without it, services of the class in a namespace share one address |
+| `providerIPs` | It reserves IPs of type `Provider` |
+| `loadBalancers` | It makes the balancers of `LoadBalancer` services |
+| `frontWithIP` | A kept `Provider` IP can front one of its balancers (`loadBalancer: { ip: NAME }`). Needs both of the above. Without it the balancer has its own address |
+| `keepsClientIP` | The silo sees the client's address behind its balancers |
+| `reach` | Where its IPs and balancers reach a silo: `host`, `region` (the default) or `global`. Silos using them are placed and moved within it |
+| `regions` | The regions it serves; an IP's region must be one. Empty: any |
+| `ownHostsOnly` | Only its own machines can be behind its IPs and balancers |
+| `annotations` | Every annotation it accepts: a key, a description, a type (`string`, `int`, `bool` or `enum`), the values, a pattern or bounds, and whether it goes on a service, an IP or both |
 
-A class whose address isn't announced, and that doesn't set `filtersSources`, **gets no port that has
-`sources`**: the silo's `LoadBalancer` condition is `SourcesNotEnforced` and names the ports. A port
-that someone narrowed is never quietly opened to everyone. A plugin sets `filtersSources: true`
-once it applies the sources it's given.
+An annotation is declared without its domain. Its full name is the install name's domain and the
+key: installed as `linode`, the key `nodebalancer` is `linode.kevaso.com/nodebalancer`; installed
+as `linode-work`, it is `linode-work.kevaso.com/nodebalancer`. A declaration Kevaso can't check (a
+bad key, a key twice, `frontWithIP` without both) is refused when the plugin registers.
+
+A balancer that can't filter clients by address gets no port that has `sources`: the silo's
+`LoadBalancer` condition is `SourcesNotEnforced` and names the ports. A port that someone narrowed
+is never quietly opened to everyone.
 
 ---
 

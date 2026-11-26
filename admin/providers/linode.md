@@ -10,8 +10,8 @@ The Linode provider lets silos on your Linode workers use what Linode offers:
 
 | You write | You get |
 |---|---|
-| `loadBalancer: { class: linode-nodebalancer }` on a service | A NodeBalancer with its own IP, in front of the silo |
-| `loadBalancer: { class: linode-shared-ip, ip: NAME }`, with an [`IP`]({{ '/admin/ips/' | relative_url }}) of that class | An IPv4 that follows the silo from one Linode to another |
+| `type: LoadBalancer` with `loadBalancer: { provider: linode }` on a service | A NodeBalancer with its own IP, in front of the silo |
+| An [`IP`]({{ '/use/networking/ips/' | relative_url }}) of `type: Provider`, `provider: linode`, named by a `HostPort` service | An IPv4 you keep, that follows the silo from one Linode to another in its region |
 | `volumes: [{ class: linode-block, … }]` | A Block Storage volume, kept when the silo restarts, deleted with it |
 | `dns: { provider: linode }` on an IngressClass | Its host names published in Linode DNS |
 
@@ -22,7 +22,7 @@ rest of the cluster (a box at home, another provider) is unchanged.
 flowchart LR
   you["kvo apply"] --> cp["Control plane<br/>kevasod"]
   cp -->|"socket"| plugin["linode plugin<br/>holds the API token"]
-  plugin -->|"Linode API"| linode["NodeBalancers, volumes,<br/>shared IPs, DNS"]
+  plugin -->|"Linode API"| linode["NodeBalancers, volumes,<br/>IPs, DNS"]
   cp --> w1["Linode worker<br/>formats, mounts, forwards"]
 ```
 
@@ -143,7 +143,7 @@ Provider:     linode (#110903030 in ca-central, private 192.168.129.74)
 
 ---
 
-## A NodeBalancer
+## A NodeBalancer in front
 
 ```yaml
 apiVersion: kevaso/v1
@@ -155,10 +155,10 @@ spec:
   resources: { cpu: 1, memory: 256Mi }
   ports:
     - { name: http, port: 80 }
-  service:
-    ports:
-      - { port: http, loadBalancer: true }
-    loadBalancer: { class: linode-nodebalancer }
+  services:
+    - type: LoadBalancer
+      loadBalancer: { provider: linode }
+      ports: [{ port: http }]
 ```
 
 ```bash
@@ -166,33 +166,59 @@ bin/kvo describe silo web -n shop
 ```
 
 ```text
-Load balancer:  linode-nodebalancer at 172.233.12.40
-Node ports:     http 80 → host port 30000 (from 192.168.255.0/24)
+Node ports:   http 80 → host port 30000 (from 192.168.255.0/24)
+Services:
+  NAME  TYPE          WAY IN            PORTS  REACHABLE AT
+  web   LoadBalancer  provider: linode  http   172.233.12.40:80
 ```
 
-The NodeBalancer sends each port to the silo's host on a **node port** over the private network.
-The host forwards that port only from the NodeBalancer's addresses, so it isn't open to the
-internet. If the silo is recreated on another Linode, the NodeBalancer follows it and keeps its IP.
+The NodeBalancer sends each port to the silo's worker on a **node port** over the private network.
+The worker forwards that port only from the NodeBalancer's addresses, so it isn't open to the
+internet. The silo runs on your Linodes in the NodeBalancer's region; if it is recreated on another
+of them, the NodeBalancer follows it and keeps its IP.
 
-The NodeBalancer belongs to an [`IP`]({{ '/admin/ips/' | relative_url }}). With none named, the namespace's shared one
-for the class is used, so the namespace's services of this class share one NodeBalancer, each on its own
-ports. Name another with `loadBalancer.ip`, or set `dedicated: true` for one of its own. The
-NodeBalancer and its address last as long as the `IP`.
+**One NodeBalancer per service**, made with the service and deleted with it. Services that should
+share one name it with an annotation, and it is deleted with the last of them:
 
-NodeBalancers here forward **TCP**. For UDP, use a shared IP. A NodeBalancer can't limit clients by
-address, so a port with `sources` is left out of it: see
-[leases and sources]({{ '/use/networking/leases/' | relative_url }}#load-balancers-from-a-plugin-and-sources).
-You can tune one with annotations on the `IP` or the service: `linode.kevaso.com/algorithm`
-(`roundrobin`, `leastconn` or `source`) and `linode.kevaso.com/proxy-protocol` (`none`, `v1` or `v2`).
-Other annotations in that domain are refused.
+```yaml
+services:
+  - type: LoadBalancer
+    loadBalancer: { provider: linode }
+    annotations:
+      linode.kevaso.com/nodebalancer: edge     # every service naming edge shares one NodeBalancer
+    ports: [{ port: http }]
+```
 
-**Outgoing traffic can't leave from the NodeBalancer's address.** It belongs to no Linode, so
-`egress.source: sameAsService` is refused behind one (use `host`, or `pool` with an `ip-pool` address). See
-[Can a silo use the same IP out as in?]({{ '/use/networking/' | relative_url }}#can-a-silo-use-the-same-ip-out-as-in).
+| Annotation | Values | Means |
+|---|---|---|
+| `linode.kevaso.com/nodebalancer` | A name: lower-case letters, digits and `-`, up to 19 | Services in the namespace naming the same one share one NodeBalancer, each on its own ports. Default: one per service |
+| `linode.kevaso.com/nodebalancer-type` | `common` (default), `premium` | Its plan. Fixed when it is made |
+| `linode.kevaso.com/algorithm` | `roundrobin` (default), `leastconn`, `source` | How a port picks a backend |
+| `linode.kevaso.com/proxy-protocol` | `none` (default), `v1`, `v2` | Sends the client's address with the PROXY protocol: the only way the silo sees it behind a NodeBalancer. The silo must speak it on that port |
+| `linode.kevaso.com/client-conn-throttle` | `0` (default) to `20` | New connections per second per client address. `0`: no limit |
+| `linode.kevaso.com/check` | `connection` (default), `none` | The backends' health check |
+| `linode.kevaso.com/check-interval` | `2` to `3600` (default `5`) | Seconds between checks |
+| `linode.kevaso.com/check-timeout` | `1` to `30`, below the interval (default `3`) | Seconds a check waits |
+| `linode.kevaso.com/check-attempts` | `1` to `30` (default `2`) | Failed checks before a backend is taken out |
 
-A standalone Service can have one too (`type: LoadBalancer`, `loadBalancerClass:
-linode-nodebalancer`): one NodeBalancer whose backends are every Linode with one of its endpoints,
-on the Service's node ports (32000 and up). See [Sets, images and updates]({{ '/use/silos/sets/#an-outside-address' | relative_url }}).
+Other annotations in that domain, and other values, are refused when you apply. A second account
+installed as `linode-work` reads `linode-work.kevaso.com/…` instead.
+
+- Services sharing a NodeBalancer share its type and throttle: the type is the first one's (another
+  type is refused), the throttle the last one set. Two of them on one port conflict: the second
+  waits, and says so.
+- NodeBalancers here forward **TCP**. For UDP, use a `HostPort` service on a kept IP
+  ([below](#an-ip-that-follows-the-silo)).
+- A NodeBalancer can't limit clients by address, so a port with `sources` is left out of it: see
+  [balancers and sources]({{ '/use/networking/leases/' | relative_url }}#balancers-and-sources).
+- A NodeBalancer has its own IP: `loadBalancer: { ip: NAME }` is refused on Linode.
+- **Outgoing traffic can't leave from the NodeBalancer's address.** It belongs to no Linode, so the
+  silo sends from its worker's IP, or from an IP it keeps with `egress.source`. See
+  [which address its traffic leaves from]({{ '/use/networking/' | relative_url }}#which-address-its-traffic-leaves-from).
+
+A standalone Service can have one too (`type: LoadBalancer`, `loadBalancer: { provider: linode }`):
+one NodeBalancer whose backends are every Linode with one of its endpoints, on the Service's node
+ports (32000 and up). See [Sets, images and updates]({{ '/use/silos/sets/#an-outside-address' | relative_url }}).
 
 ---
 
@@ -221,40 +247,41 @@ Linode. Kevaso keeps asking and shows `detaching from hv2` meanwhile.
 
 ---
 
-## A shared IP
+## An IP that follows the silo
 
-A NodeBalancer's IP belongs to the NodeBalancer. A **shared IP** is an IPv4 that the provider shares
-with the region's Linode workers. Whichever worker has the silo announces it (over BGP, like Linode's
-lelastic), so when the silo moves, the address moves with it, in seconds. One silo holds it at a time.
-
-It is an [`IP`]({{ '/admin/ips/' | relative_url }}) of class `linode-shared-ip`. Make one in your region, and Linode reserves an
-IPv4 for it:
+A NodeBalancer's IP belongs to the NodeBalancer. An [IP of type `Provider`]({{ '/use/networking/ips/' | relative_url }})
+is an IPv4 Linode reserves for you and shares with the region's Linode workers (in regions where
+Linode offers IP sharing with BGP failover). Whichever worker has
+the silo announces it (over BGP, like Linode's lelastic), so when the silo moves within the region,
+the address moves with it. One silo holds it at a time, and it stays when the silo goes.
 
 ```bash
-kvo create ip edge --class linode-shared-ip --region ca-central
+kvo create ip edge -n shop --type Provider --provider linode --region ca-central
 ```
 
-Or adopt an IPv4 your account already has, with `spec.address`. Kevaso never gives that one back:
-
-```yaml
-apiVersion: kevaso/v1
-kind: IP
-metadata: { name: edge, namespace: shop }
-spec: { class: linode-shared-ip, address: 172.105.3.63 }
-```
-
-Then the silo names it:
+Then a `HostPort` service names it:
 
 ```yaml
 spec:
   availability: { onHostLoss: Recreate }
   ports:
     - { name: web, port: 8080 }
-  service:
-    ports:
-      - { port: web, loadBalancer: true }
-    loadBalancer: { class: linode-shared-ip, ip: edge }
+  services:
+    - type: HostPort
+      hostPort: { ip: edge }
+      ports: [{ port: web }]
+  network:
+    egress: { source: { ip: edge } }     # and out from the same address
 ```
+
+- The silo runs on your Linodes in `ca-central` only, and `kvo describe silo` says so under
+  `Can move`. A move to a worker elsewhere is refused, naming the IP.
+- After a move, the new worker announces the address. It answers there once Linode has moved it:
+  about a minute.
+- **Outgoing traffic can leave from it too**, with `egress.source: { ip: edge }`: the silo's
+  connections go out from the address people reach it on.
+- For a SiloSet, a `Dynamic` [IP set]({{ '/use/networking/ips/#ip-sets' | relative_url }}) with
+  `provider: linode` reserves one for each instance as it needs it.
 
 When the worker running it goes down, nothing moves by itself: once you know the Linode is off, `kvo move
 silo NAME --to HOST --confirm-fenced --recreate` starts the silo on another worker and the address
@@ -262,10 +289,6 @@ answers from there ([When the control plane is lost]({{ '/admin/control-plane-lo
 Add `onControlPlaneLoss: Stop` to the silo and Kevaso restarts it on another worker by itself only
 after the old host reports that its copy stopped. A host that is down can't report, so then a person
 moves the silo with `kvo move silo NAME -n NS --to HOST --confirm-fenced --recreate`.
-
-**Outgoing traffic can leave from the shared IP too.** Set `network: { egress: { source: sameAsService } }`
-on the silo, and its connections go out from the address people reach it on. See
-[Can a silo use the same IP out as in?]({{ '/use/networking/' | relative_url }}#can-a-silo-use-the-same-ip-out-as-in).
 
 The workers announce it with the plugin's node side. Install it on each Linode worker, giving its
 region:
@@ -282,6 +305,14 @@ bin/kvoadm plugin install root@172.105.99.247 \
 ```
 
 The node side has no token and no privileges.
+
+---
+
+## A second account
+
+Install the plugin again under another name, with that account's token in its own cluster secret.
+Everything above then names that install: `provider: linode-work`, and annotations in
+`linode-work.kevaso.com/`. See [Providers]({{ '/admin/addresses/#providers' | relative_url }}).
 
 ---
 
@@ -342,4 +373,4 @@ This removes the unit on that host, and the program, the copy of the token and t
 kvo delete clustersecret linode
 ```
 
-Delete the silos using its classes first. Their NodeBalancers and volumes are deleted with them, and nothing deletes them once the plugin is gone.
+Delete the silos and services using it, and its IPs, first. Their NodeBalancers, IPs and volumes are deleted with them, and nothing deletes them once the plugin is gone.

@@ -43,8 +43,8 @@
     <rect x="58" y="352" width="146" height="118" rx="9" fill="#0d1017" stroke="#5ef0c0"/>
     <text x="68" y="373" fill="#eef0f5" font-size="12.5" font-weight="600">nginx-public-0</text>
     <text x="68" y="396" class="s mono" font-size="11.5">80, 443</text>
-    <text x="68" y="414" class="s mono" font-size="11.5">hostPort:</text>
-    <text x="68" y="430" class="s mono" font-size="11.5">  [external]</text>
+    <text x="68" y="414" class="s mono" font-size="11.5">worker:</text>
+    <text x="68" y="430" class="s mono" font-size="11.5">  external</text>
     
     <text x="68" y="456" class="mono" fill="#f2b45a" font-size="11.5">51.38.10.20:443</text>
   </g>
@@ -56,8 +56,8 @@
     <rect x="238" y="352" width="146" height="118" rx="9" fill="#0d1017" stroke="#5ef0c0"/>
     <text x="248" y="373" fill="#eef0f5" font-size="12.5" font-weight="600">nginx-public-1</text>
     <text x="248" y="396" class="s mono" font-size="11.5">80, 443</text>
-    <text x="248" y="414" class="s mono" font-size="11.5">hostPort:</text>
-    <text x="248" y="430" class="s mono" font-size="11.5">  [external]</text>
+    <text x="248" y="414" class="s mono" font-size="11.5">worker:</text>
+    <text x="248" y="430" class="s mono" font-size="11.5">  external</text>
     
     <text x="248" y="456" class="mono" fill="#f2b45a" font-size="11.5">51.38.10.21:443</text>
   </g>
@@ -75,8 +75,8 @@
     <text x="488" y="354" class="k" fill="#8f7bff">INTERNAL IP</text><text x="488" y="371" class="v mono">192.168.1.11</text>
     <rect x="478" y="392" width="146" height="78" rx="9" fill="#0d1017" stroke="#5ef0c0"/>
     <text x="488" y="413" fill="#eef0f5" font-size="12.5" font-weight="600">nginx-lan-0</text>
-    <text x="488" y="434" class="s mono" font-size="11.5">443  hostPort:</text>
-    <text x="488" y="452" class="s mono" font-size="11.5">     [internal]</text>
+    <text x="488" y="434" class="s mono" font-size="11.5">443  worker:</text>
+    <text x="488" y="452" class="s mono" font-size="11.5">     internal</text>
   </g>
   <g>
     <rect x="654" y="304" width="170" height="180" rx="10" fill="#141822" stroke="#2a3040"/>
@@ -85,8 +85,8 @@
     <text x="676" y="354" class="k" fill="#8f7bff">INTERNAL IP</text><text x="676" y="371" class="v mono">192.168.1.12</text>
     <rect x="666" y="392" width="146" height="78" rx="9" fill="#0d1017" stroke="#5ef0c0"/>
     <text x="676" y="413" fill="#eef0f5" font-size="12.5" font-weight="600">nginx-lan-1</text>
-    <text x="676" y="434" class="s mono" font-size="11.5">443  hostPort:</text>
-    <text x="676" y="452" class="s mono" font-size="11.5">     [internal]</text>
+    <text x="676" y="434" class="s mono" font-size="11.5">443  worker:</text>
+    <text x="676" y="452" class="s mono" font-size="11.5">     internal</text>
   </g>
 
   <!-- case 3 -->
@@ -101,7 +101,7 @@
     <text x="922" y="354" class="k" fill="#8f7bff">INTERNAL IP</text><text x="1212" y="364" class="v mono" text-anchor="end">192.168.1.13</text>
     <rect x="912" y="392" width="310" height="78" rx="9" fill="#0d1017" stroke="#5ef0c0"/>
     <text x="922" y="413" fill="#eef0f5" font-size="12.5" font-weight="600">nginx-internal</text>
-    <text x="922" y="434" class="s mono" font-size="11.5">443  hostPort: [internal]</text>
+    <text x="922" y="434" class="s mono" font-size="11.5">443  worker: internal</text>
     <text x="922" y="454" class="s" font-size="11.5">Nothing in front: only the LAN reaches it.</text>
   </g>
 
@@ -110,7 +110,7 @@
   <text x="466" y="620" fill="#eef0f5" font-size="14" font-weight="600">silo api</text>
   <text x="814" y="620" class="s" text-anchor="end">on any host in the cluster</text>
   <text x="466" y="642" class="s mono" fill="#5ef0c0">api.payments.kevaso</text>
-  <text x="466" y="666" class="s mono">8080  no hostPort: silos only</text>
+  <text x="466" y="666" class="s mono">8080  Internal: silos only</text>
   <text x="466" y="690" class="s">allowFrom: the three ingress controllers</text>
 
   <!-- to the api -->
@@ -139,17 +139,17 @@
   <g>
     <text x="30" y="744" fill="#eef0f5" font-size="13" font-weight="600">Side by side</text>
     <g class="s" font-weight="600">
-      <text x="30" y="768">CASE</text><text x="250" y="768">THE PORT ASKS FOR</text><text x="440" y="768">IN FRONT</text><text x="730" y="768">WHO CAN REACH IT</text><text x="980" y="768">YOUR DNS</text>
+      <text x="30" y="768">CASE</text><text x="250" y="768">THE SERVICE (HOSTPORT)</text><text x="440" y="768">IN FRONT</text><text x="730" y="768">WHO CAN REACH IT</text><text x="980" y="768">YOUR DNS</text>
     </g>
     <path d="M30 776H1250" stroke="#2a3040"/>
     <g class="s">
-      <text x="30" y="798"><tspan fill="#f2b45a">1</tspan>  Its own external IP</text><text x="250" y="798" class="s mono">hostPort: [external]</text><text x="440" y="798">nothing</text><text x="730" y="798">anyone</text><text x="980" y="798">one A record per host</text>
-      <text x="30" y="822"><tspan fill="#f2b45a">2</tspan>  One shared external IP</text><text x="250" y="822" class="s mono">hostPort: [internal]</text><text x="440" y="822">a balancer holding the external IP</text><text x="730" y="822">anyone, through the balancer</text><text x="980" y="822">one A record, the balancer's</text>
-      <text x="30" y="846"><tspan fill="#8f7bff">3</tspan>  Internal only</text><text x="250" y="846" class="s mono">hostPort: [internal]</text><text x="440" y="846">nothing</text><text x="730" y="846">machines on that network</text><text x="980" y="846">a record in the LAN's own DNS</text>
+      <text x="30" y="798"><tspan fill="#f2b45a">1</tspan>  Its own external IP</text><text x="250" y="798" class="s mono">worker: external</text><text x="440" y="798">nothing</text><text x="730" y="798">anyone</text><text x="980" y="798">one A record per host</text>
+      <text x="30" y="822"><tspan fill="#f2b45a">2</tspan>  One shared external IP</text><text x="250" y="822" class="s mono">worker: internal</text><text x="440" y="822">a balancer holding the external IP</text><text x="730" y="822">anyone, through the balancer</text><text x="980" y="822">one A record, the balancer's</text>
+      <text x="30" y="846"><tspan fill="#8f7bff">3</tspan>  Internal only</text><text x="250" y="846" class="s mono">worker: internal</text><text x="440" y="846">nothing</text><text x="730" y="846">machines on that network</text><text x="980" y="846">a record in the LAN's own DNS</text>
     </g>
   </g>
 
   <rect x="30" y="866" width="1220" height="34" rx="9" fill="#141822" stroke="#5ef0c0"/>
   <text x="48" y="888" fill="#eef0f5" font-size="13" font-weight="600">One mesh across every host</text>
-  <text x="250" y="888" class="s">It's how each nginx reaches the api. In case 2 the balancer can be yours, or a provider's kept in step by a plugin (a cloud provider's load balancer in front of cloud VMs).</text>
+  <text x="250" y="888" class="s">It's how each nginx reaches the api. In case 2 the balancer is yours. A provider's balancer is a LoadBalancer service instead.</text>
 </svg>

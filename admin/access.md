@@ -143,9 +143,9 @@ role to people in a namespace. The built-in roles:
 
 | Role | Can |
 |---|---|
-| `viewer` | Read silos, silo sets, services, VM images, ingresses, certificates, service accounts, grants and OpenShell policies; see that secrets exist, which silos wait for an approval, the [panes]({{ '/use/panes/' | relative_url }}) silos report, the [leases]({{ '/use/networking/leases/' | relative_url }}) on their ports, and the [IPs]({{ '/admin/ips/' | relative_url }}) |
-| `editor` | Everything `viewer` can, plus create and change those objects, `exec`, terminals and files (`silos/ssh`, `silos/files`), plain moves (`create` on `silos/move`), opening and closing leased ports; create and *use* secrets (never read a value back); *use* an IP an admin made |
-| `admin` | Everything `editor` can, plus roles and bindings in the namespace, minting service-account tokens, opening ports on a host address or behind a load balancer (`services/expose-public`), publishing on a public ingress class (`ingresses/publish-public`), creating and releasing IPs, reading secret values, answering approvals (a secret's, or a leased port's), deleting panes, approvals and leases |
+| `viewer` | Read silos, silo sets, services, VM images, ingresses, certificates, service accounts, grants and OpenShell policies; see that secrets exist, which silos wait for an approval, the [panes]({{ '/use/panes/' | relative_url }}) silos report, the [leases]({{ '/use/networking/leases/' | relative_url }}) on their ports, and the [IPs and IP sets]({{ '/use/networking/ips/' | relative_url }}) |
+| `editor` | Everything `viewer` can, plus create and change those objects, `exec`, terminals and files (`silos/ssh`, `silos/files`), plain moves (`create` on `silos/move`), opening and closing leased ports; create and *use* secrets (never read a value back); *use* an IP or IP set an admin made |
+| `admin` | Everything `editor` can, plus roles and bindings in the namespace, minting service-account tokens, `HostPort` and `LoadBalancer` services (`services/expose-public`), publishing on a public ingress class (`ingresses/publish-public`), making and deleting IPs and IP sets, reading secret values, answering approvals (a secret's, or a leased port's), deleting panes, approvals and leases |
 | `cluster-admin` | Everything, everywhere (what `kvoadm init` gives you) |
 
 The permissions beyond plain read and write are their own *subresources*:
@@ -170,10 +170,11 @@ The permissions beyond plain read and write are their own *subresources*:
 | `secrets` | `use` | Name a secret in a grant, or as a silo's `container.pull.secretRef` | | yes | yes |
 | `secrets` | `read-value` | `kvo get secret --reveal --key KEY` | | | yes |
 | `secrets` | `approve` | `kvo approve`, `kvo deny` | | | yes |
-| `ips` | `get`, `list`, `watch` | `kvo get ips`, `kvo describe ip` | yes | yes | yes |
-| `ips` | `use` | Name an IP: a silo's `service.loadBalancer.ip` or `network.egress.ip`, a service's `loadBalancerIP` | | yes | yes |
-| `ips` | `create`, `update`, `patch`, `delete` | `kvo create ip`, `kvo ip keep`, `kvo ip release` | | | yes |
-| `services/expose-public` | `create` | Open a port on a host address (`hostPort`) or behind a load balancer, on a silo, a silo set or a `LoadBalancer` service. Also an edit that widens that reach (below) | | | yes |
+| `ips`, `ipsets` | `get`, `list`, `watch` | `kvo get ips`, `kvo describe ip`, `kvo get ipsets` | yes | yes | yes |
+| `ips` | `use` | Name an IP: `hostPort: { ip }`, `loadBalancer: { ip }`, `egress.source: { ip }` | | yes | yes |
+| `ipsets` | `use` | Name an IP set: a SiloSet's `ips` | | yes | yes |
+| `ips`, `ipsets` | `create`, `update`, `patch`, `delete` | `kvo create ip`, `kvo delete ip`, and the same for IP sets: reserving a host's address or a billed provider IP | | | yes |
+| `services/expose-public` | `create` | A `HostPort` or `LoadBalancer` service, on a silo, a silo set or a standalone `Service`. Also an edit that widens that reach (below) | | | yes |
 | `ingresses/publish-public` | `create` | Publish an `Ingress` on a public class | | | yes |
 
 `cluster-admin` holds `create` on `hosts/confirm-off` (it holds every resource). `editor` and `admin`
@@ -215,12 +216,12 @@ Only someone who already holds the permission can grant it
 ([below](#you-cant-give-more-than-you-hold)).
 
 `open` and `approve` on `silos/exposure` can be limited to one silo by name, or to silos by label,
-like `approve` on secrets. Opening a port on a host address or behind a load balancer is
-`create` on `services/expose-public`. The same permission is required when an edit widens that
-reach. Removing or tightening does not need it. A `ClusterIP` service never does. Widening is any of these:
+like `approve` on secrets. A `HostPort` or `LoadBalancer` service is `create` on
+`services/expose-public`. The same permission is required when an edit widens that
+reach. Removing or tightening does not need it. An `Internal` service never does. Widening is any of these:
 
-- a new port, or a new network on a port (`internal` or `external` where it was not open);
-- a changed protocol, host number, or load-balancer class, or a load balancer set where there was none;
+- a new port in a `HostPort` or `LoadBalancer` service, or a new such service;
+- a changed protocol, number, way in (`worker`, `ip`, `own`) or provider, or a balancer where there was none;
 - wider sources: a source removed, a wider one added, or sources cleared (empty, and `0.0.0.0/0`, are the world);
 - a lease removed, or a lease that needed a yes made automatic;
 - labels, or a selector, that newly match a load balancer, including a service that becomes one and a new port on one;
@@ -228,7 +229,7 @@ reach. Removing or tightening does not need it. A `ClusterIP` service never does
 - a SiloSet's template labels, a selector on the set's label, or a silo's labels, that newly bring silos behind a load balancer, or behind a Service that an Ingress already names onto a leased port.
 
 A lease only decides when. Naming an IP of your own
-needs `use` on that IP. Minting a service-account token is `create` on `serviceaccounts/token`.
+needs `use` on that IP, and an IP set `use` on that set. Minting a service-account token is `create` on `serviceaccounts/token`.
 A token holds whatever its account holds, so `editor` does not have it. In the namespace
 `kevaso-system`, only a cluster admin may create, change or delete an object, a token included.
 

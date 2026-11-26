@@ -245,7 +245,7 @@ policies stay. With no grant and no policy left, the sandbox can reach nothing o
 
 A container from any image, on the **same silo bridge as the VMs**, so everything on
 [Addresses, ports and names]({{ '/use/networking/model/' | relative_url }}) and [Networking]({{ '/use/networking/' | relative_url }})
-applies unchanged: default deny, grants, `allowFrom`, `hostPort`, the egress gate.
+applies unchanged: default deny, grants, `allowFrom`, `HostPort` services, the egress gate.
 
 ```yaml
 apiVersion: kevaso/v1
@@ -258,18 +258,20 @@ spec:
     command: [python3, -m, http.server, "8080", --directory, /data]
   volumes: [{ name: data, mountPath: /data }]
   ports: [{ name: http, port: 8080 }]
-  service:
-    ports: [{ port: http, hostPort: [internal] }]   # opened on the host's internal IP
+  services:
+    - type: HostPort
+      hostPort: { worker: internal }               # opened on the worker's internal IP
+      ports: [{ port: http }]
   init:
     steps:
       - name: seed
         run: echo hello > /data/index.html
 ```
 
-Opening a port on a host address (`hostPort`) is a namespace admin's (`create` on
+Opening a port at the worker (a `HostPort` service) is a namespace admin's (`create` on
 `services/expose-public`, [People and access]({{ '/admin/access/#roles' | relative_url }})): a plain
-`editor` gets `may not expose silos publicly`. Ask an admin to apply this one, or leave out
-`service` and reach it from other silos with `allowFrom`. Once it is applied,
+`editor` gets `may not expose silos publicly`. Ask an admin to apply this one, or make it an
+`Internal` service and reach it from other silos with `allowFrom`. Once it is applied,
 `curl http://HOST_INTERNAL_IP:8080/` answers `hello`.
 
 | Good to know | |
@@ -309,7 +311,7 @@ spec:
 | How many | At most **two** running per Mac: Apple's licence for macOS allows two virtual copies. A third waits, `Pending`, until one stops |
 | Size | 4 CPUs and 8 GiB by default. The image is large (25 to 70 GB): pull it on the Mac first (`tart pull IMAGE`), or the first start takes that long |
 | Network | Through `softnet`: the internet, yes; the Mac's LAN, the other silos and the cluster, no. It has **no silo IP**, and needs no grant to reach the internet |
-| Refused when you apply | `ports` and `service` (nothing can reach it), `grants` (the egress gate is a Linux host's), and volumes: its disk is the VM itself, kept on its Mac |
+| Refused when you apply | `ports` and `services` (nothing can reach it), `grants` (the egress gate is a Linux host's), and volumes: its disk is the VM itself, kept on its Mac |
 | `kvo exec` | Works, as on any silo (`kvo exec silo mac -n demo -- sw_vers`) |
 | Tart | Licensed FSL-1.1-ALv2; Kevaso only runs the `tart` program installed on the Mac |
 

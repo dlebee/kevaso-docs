@@ -49,13 +49,14 @@ flowchart LR
 | **kevasod** | The one program on every host. It is the API server, the controllers, the worker agent. Nothing of Kevaso's is installed inside a silo. |
 | **Silo** | One isolated machine: a microVM or a container, with its own disk or volumes and its own address (the **silo IP**). It starts from a `container:` or a `vm:` block. Silos live in a namespace. |
 | **Port** | A silo *declares* the ports it has in `spec.ports`. Nothing can reach one that isn't declared. |
-| **Service** | What a silo opens of its declared ports: to which silos (`allowFrom`), on which of the host's addresses (`hostPort`), and for how long (`lease`). A service has a name; a silo with no service has none. A standalone `Service` object puts one stable address and name in front of several silos. A load balancer publishes a port only when those silos open it themselves. A port that opens only on a lease stays unpublished. |
+| **Service** | One way in to some of a silo's declared ports, with a name: `Internal` (to the silos in `allowFrom`, over the mesh; the default), `HostPort` (at the worker running the silo, on its address or an IP you keep) or `LoadBalancer` (behind a provider's balancer). A silo lists its services; one with none has no name. A standalone `Service` object puts one stable address and name in front of several silos. [Networking]({{ '/use/networking/' | relative_url }}). |
 | **Internal IP, external IP** | A host's address on its own network, and its address reachable from outside that network. You set them when you add the host; a host has at least one. |
 | **Mesh IP** | A host's address on the encrypted network between hosts. Kevaso sets it. |
 | **Silo IP** | A silo's own address inside the cluster. It changes when the silo changes host. |
 | **Cluster IP** | The one stable address of a standalone `Service`. Never one silo's address. |
 | **Name** | `SERVICE.NAMESPACE[.NETWORK].kevaso` for a service and `HOST.NETWORK.kevaso` for a host. See [Addresses, ports and names]({{ '/use/networking/model/' | relative_url }}). |
-| **IP** (the kind) | An address you keep: it can outlive the silo or service that holds it. [Addresses you keep]({{ '/admin/ips/' | relative_url }}). |
+| **IP** (the kind) | One address you keep, from a host's named extra addresses (`type: Host`) or from a provider (`type: Provider`). It outlives the silo that uses it. An **IPSet** is one per SiloSet instance. [IPs and IP sets]({{ '/use/networking/ips/' | relative_url }}). |
+| **Provider** | An installed plugin that reserves provider IPs and makes balancers, named like a storage class (`linode`). [Host addresses and providers]({{ '/admin/addresses/' | relative_url }}). |
 | **Probe** | A check Kevaso runs against a silo to know it started, is ready and is still alive. [Probes]({{ '/use/silos/probes/' | relative_url }}). |
 | **VMImage** | A versioned disk image a microVM silo can start from. Container silos name a registry image instead. |
 | **Ingress** | A hostname and path routed to a service, through a stock proxy Kevaso drives. [HTTPS sites]({{ '/use/ingress/' | relative_url }}). |

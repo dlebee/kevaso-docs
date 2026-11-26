@@ -22,12 +22,14 @@ The administrator's commands are on [kvoadm and kevasod commands]({{ '/reference
 | `kvo apply -f FILE` (or `-f -`) | Create or update every object in a YAML/JSON file. A field the kind doesn't have is an error, never dropped: fix the name and apply again |
 | `kvo get KIND [NAME] [-n NS \| -A] [-o yaml\|json]` | List or show objects |
 | `kvo describe KIND NAME` | Everything about one object, for people |
-| `kvo delete KIND NAME` | Delete it. A namespace is refused while it still holds anything, and while a binding names the group `system:serviceaccounts:NS`: delete those first. Deleting a namespace never deletes what is in it. `DELETE` on a `/status` path is refused (405) |
+| `kvo delete KIND NAME` | Delete it. `DELETE` on a `/status` path is refused (405) |
+| `kvo delete namespace NAME [--yes]` | Delete the namespace and everything in it, in order (silos, balancers, IPs, the rest, secrets and access), after one question listing what it holds; `--yes` answers it. A step that stops leaves it `Terminating`: run it again to carry on. Cluster admin. [Namespaces]({{ '/use/namespaces/' | relative_url }}) |
+| `kvo delete all [-n NS] [--yes]` | Delete everything in the namespace, secrets included, in the same order; the namespace stays. Asks once; refuses, deleting nothing, if you may not delete something in it |
 | `kvo delete host NAME --confirm-off` | Delete a Host that still has silos, confirming the machine is off or wiped. Refused without the flag. [Removing a host]({{ '/admin/workers/host-loss/#removing-a-host' | relative_url }}) |
 | `kvo watch KIND [-n NS \| -A]` | Print the current state, then every change |
 
 Kinds: `namespaces` (`ns`), `hosts`, `silos`, `silosets` (`ss`), `services` (`svc`), `vmimages`
-(`vmi`), `secrets`, `grants`, `openshellpolicies`, `ips`, `ingresses` (`ing`), `ingressclasses`, `certificates`
+(`vmi`), `secrets`, `grants`, `openshellpolicies`, `ips`, `ipsets`, `ingresses` (`ing`), `ingressclasses`, `certificates`
 (`cert`), `issuers`, `roles`, `rolebindings`, `clusterroles`, `clusterrolebindings`, `clustersecrets`,
 `serviceaccounts` (`sa`), `approvals`, `panes`, `kinddefinitions` (`kd`), `validationpolicies`,
 `mutationpolicies`, `leases`, `plugins`, and any [kind you define]({{ '/admin/extending/kinds/' | relative_url }}) (by its plural,
@@ -103,15 +105,19 @@ See [Panes]({{ '/use/panes/' | relative_url }}).
 | `kvo approve NAME [--request ID]` | Say yes (needs `approve` on that secret; people only). `--request` is that column, a longer prefix, or the full 64 hex digits. At least 32 digits. On a terminal you can omit it: the request is shown and the yes is for what was shown. [Approvals]({{ '/use/secrets/#ask-a-person-first-approvals' | relative_url }}) |
 | `kvo deny NAME [--reason R]` | Say no |
 
-## Addresses you keep
+## IPs and IP sets
 
 | Command | Does |
 |---|---|
-| `kvo create ip NAME --class CLASS [--host HOST \| --region REGION] [--address A] [--reclaim Retain\|Delete]` | Reserve an address. `--reclaim` defaults to `Retain`. [Addresses you keep]({{ '/admin/ips/' | relative_url }}) |
-| `kvo get ips` | `ADDRESS`, `CLASS`, `HELD-BY`, `KEPT` |
-| `kvo describe ip NAME` | What holds it and on which ports |
-| `kvo ip keep NAME` | Its address stays when its holder goes (and it is no longer owned by it) |
-| `kvo ip release NAME` | It goes with its holder, or now if nothing holds it |
+| `kvo create ip NAME --type Host --host-address ADDRESS-NAME` | Reserve one of a host's named extra addresses. Namespace admin. [IPs and IP sets]({{ '/use/networking/ips/' | relative_url }}) |
+| `kvo create ip NAME --type Provider --provider PROVIDER --region REGION` | Reserve an address from an installed provider (billed by it) |
+| `kvo get ips` | `TYPE`, `ADDRESS`, `WHERE`, `SET`, `USED BY`, `MOVES` |
+| `kvo describe ip NAME` | Where it comes from, who uses it, who waits for it, where its holder can move, whether it can be deleted now |
+| `kvo delete ip NAME` | Release it. Refused while a silo or service uses it |
+| `kvo get ipsets` | `TYPE`, `MEMBERS`, `USED`, `MAX` |
+| `kvo describe ipset NAME` | Each member by ordinal: its IP, address and the instance using it |
+
+An IP is kept until you delete it: there is no keep or release.
 
 ## Silo images (microVMs)
 

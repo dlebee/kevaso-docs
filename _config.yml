@@ -29,6 +29,7 @@ parts:
           - { title: Getting started with kvo, url: /use/ }
           - { title: Install kvo, url: /use/install/ }
           - { title: Signing in and contexts, url: /use/sign-in/ }
+          - { title: Namespaces, url: /use/namespaces/ }
           - { title: Your first silo, url: /use/silos/first-silo/ }
           - { title: "Terminals, files and the small UI", url: /use/silos/terminals/ }
       - title: Silos
@@ -44,6 +45,7 @@ parts:
         pages:
           - { title: "Addresses, ports and names", url: /use/networking/model/ }
           - { title: Networking, url: /use/networking/ }
+          - { title: IPs and IP sets, url: /use/networking/ips/ }
           - { title: Port leases, url: /use/networking/leases/ }
           - { title: HTTPS sites (ingress), url: /use/ingress/ }
           - { title: Secrets, url: /use/secrets/ }
@@ -73,7 +75,7 @@ parts:
           - { title: When the control plane is lost, url: /admin/control-plane-loss/ }
       - title: Addresses and sites
         pages:
-          - { title: Addresses you keep (IPs), url: /admin/ips/ }
+          - { title: Host addresses and providers, url: /admin/addresses/ }
           - { title: Ingress controllers and certificates, url: /admin/ingress/ }
       - title: Running it
         pages:

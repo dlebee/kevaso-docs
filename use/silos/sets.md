@@ -203,8 +203,8 @@ spec:
     container: { image: docker.io/library/python:3.12-slim }   # what every instance starts from
     volumes: [{ name: data, mountPath: /data }]
     ports: [{ name: http, port: 8080 }]
-    service:
-      ports: [{ port: http }]
+    services:
+      - ports: [{ port: http }]  # Internal: each instance's own name, on its silo IP
 ```
 
 The instances are `api-pool-0`, `api-pool-1` and `api-pool-2`, each its own silo, with its own disk
@@ -285,7 +285,7 @@ spec:
 ```
 
 - It gets a virtual IP (its cluster IP) and the name `api.payments.kevaso`.
-- A port is sent only to a silo that declares it (`targetPort`, or the port's own name) with the same protocol. A LoadBalancer also holds that silo unless the silo opens the port in its own service, and not only on a lease. `kvo describe service` shows the reason.
+- A port is sent only to a silo that declares it (`targetPort`, or the port's own name) with the same protocol. A LoadBalancer also holds that silo unless the silo opens the port in one of its own services, and not only on a lease. `kvo describe service` shows the reason.
 - Every worker sends that address to one of its endpoints: the Ready silos its selector picks.
   Standby instances are never endpoints.
 - The connection keeps the caller's address, so **each endpoint's `allowFrom` still decides**.
@@ -297,19 +297,22 @@ kvo describe service api -n payments      # its address and endpoints
 
 ### An outside address
 
-`type: LoadBalancer` with a provider's load-balancer class gives the Service an address from outside.
+`type: LoadBalancer` asks an installed provider for one balancer in front of the group:
 
 ```yaml
 spec:
   type: LoadBalancer
-  loadBalancerClass: lb-class
+  loadBalancer: { provider: linode }
 ```
 
-- The address is an [IP]({{ '/admin/ips/' | relative_url }}): by default the namespace's shared one for the
-  class. `loadBalancerIP: NAME` picks one you keep, and `loadBalancerDedicated: true` makes one of its own.
-- The load balancer's backends are the hosts that have endpoints.
-- Each host sends the traffic only to its own endpoints, so they see the load balancer's address,
-  not the client's.
+- One balancer for this Service, made with it and removed with it. Sharing it with other services,
+  and its size, are the provider's annotations on the Service (`metadata.annotations`), checked when
+  you apply. See the [provider page]({{ '/admin/providers/linode/#a-nodebalancer-in-front' | relative_url }}).
+- `loadBalancer: { provider: NAME, ip: IPNAME }` fronts it with an [IP you keep]({{ '/use/networking/ips/' | relative_url }}),
+  where the provider allows it (not on Linode: a NodeBalancer has its own address).
+- The load balancer's backends are the workers that have endpoints, within the provider's reach.
+- Each worker sends the traffic only to its own endpoints, through a port open to the balancer's
+  addresses only. Whether they see the client's address is the provider's to say.
 - The instances themselves stay private.
 - It needs `create` on `services/expose-public` (namespace admins have it, `editor`s don't),
   including an edit that widens who can reach it: an admin applies it, or gives you the permission
@@ -317,7 +320,41 @@ spec:
 - `routeWhen` says whether an endpoint gets traffic only while ready (`ready`) or as soon as it runs
   (`running`). It is required when the silos it selects have a readiness probe; an endpoint that is held
   shows in `kvo describe service`. See [probes and routing]({{ '/use/silos/probes/' | relative_url }}).
-- Only classes that spread over hosts fit. A shared IP that follows one silo is for a silo's own
-  service. See the [provider page]({{ '/admin/providers/linode/' | relative_url }}).
+- A Service is `Internal` (the default) or `LoadBalancer`. `HostPort` is refused: one address at one
+  worker can't front a group. For an address of each instance's own, use `own: true` (next).
+
+### An address for each instance
+
+When each instance must be reached on, or send from, an address of its own (peers that allow-list
+it, a node that announces its address), put the set on an [IP set]({{ '/use/networking/ips/#ip-sets' | relative_url }}):
+instance N takes the set's member N.
+
+```yaml
+apiVersion: kevaso/v1
+kind: SiloSet
+metadata: { name: eth-pool, namespace: web3 }
+spec:
+  instances: 2
+  ips: eth-ips                    # the IPSet the template's own: true takes from
+  template:
+    runtime: cloud-hypervisor
+    vm: { image: ubuntu-24.04 }
+    ports:
+      - { name: p2p,  port: 30303, protocol: TCP }
+      - { name: disc, port: 30303, protocol: UDP }
+    services:
+      - type: HostPort
+        hostPort: { own: true }   # each instance its own member of eth-ips
+        ports: [{ port: p2p }, { port: disc }]
+    network:
+      egress: { source: { own: true } }
+```
+
+- `ips` goes on the set only when the template says `own` (`hostPort: { own: true }` or
+  `egress.source: { own: true }`), and the template can't name one `IP`: both are refused otherwise.
+- An instance with no free member waits, and says so. Scaling in keeps the members: the instance
+  that comes back gets the same address.
+- Deleting or replacing the set keeps the IP set and its IPs: a new set naming it gets the same
+  addresses in the same order.
 
 Full examples are in the repo: `examples/07-siloset-service.yaml` and `examples/08-images-and-registries.yaml`.
