@@ -266,12 +266,15 @@ IPv4 only ([IPv6 on Linode](#ipv6)).
 kvo create ip edge -n shop --type Provider --provider linode --region ca-central
 ```
 
-> **Ask Linode support first.** A Linode has one public IPv4 unless Linode support raises its limit,
-> and a Provider IP is added to the worker that holds it. Until the limit is raised, the IP is
-> reserved but is Waiting: its `Shared` condition says to ask Linode support to allow more IPv4
-> addresses per Linode, and Kevaso retries every minute. Open a ticket in Cloud Manager (**Help & Support**), say you
-> need extra reserved IPv4 addresses on your worker Linodes for IP sharing (failover), and say how
-> many per Linode. Once it is raised, the address answers by itself; NodeBalancers don't need it.
+> **Check your IPv4 limit first.** So that a move takes only seconds, each Provider IP is shared
+> with every Linode in its region, and Linode counts a shared address toward each Linode's IPv4
+> limit. A Linode therefore needs its own public IPv4 plus one address for each Provider IP in
+> the region: a limit of 2 allows one Provider IP per region, and two at once (an IP set of two,
+> say) need 3. Over the limit, the IP is reserved but is Waiting: its `Shared` condition says to
+> ask Linode support to allow more IPv4 addresses per Linode, and Kevaso retries every minute.
+> Open a ticket in Cloud Manager (**Help & Support**), say you need extra IPv4 addresses on your
+> Linodes for IP sharing (failover), and say how many per Linode. Once it is raised, the address
+> answers by itself; NodeBalancers don't need it.
 
 Then a `HostPort` service names it:
 
