@@ -72,9 +72,14 @@ Without `family: IPv6`, it is refused:
 IP mail6: host address mail6 is IPv6 (2001:db8:20::21 on baremetal-1) and the IP is IPv4 (the default): a Host IP's family is its address's; set family: IPv6, or name an IPv4 address
 ```
 
-A floating IPv6 (`type: Provider`, `family: IPv6`) needs a provider that can move single IPv6
-addresses. Linode can't: there, Provider IPs are IPv4 only
-([Linode]({{ '/admin/providers/linode/#ipv6' | relative_url }})).
+A floating IPv6 (`type: Provider`, `family: IPv6`) needs a provider that declares it can move
+single IPv6 addresses (`providerIPv6`). Otherwise it is refused when you apply, with the provider's
+reason and the ways that work. On Linode, Provider IPs are IPv4 only
+([Linode]({{ '/admin/providers/linode/#ipv6' | relative_url }})):
+
+```text
+IP edge6: spec: linode can't float an IPv6 address: a /64 moves as one unit; use an IPv4 Provider IP (family: IPv4), the worker's own IPv6 (a HostPort service on worker), or a host address (an IP of type Host, family: IPv6)
+```
 
 ### Make one
 
@@ -202,7 +207,8 @@ An IP set holds addresses of one family, like the IPs in it:
   family; make two sets, one per family, and a service on each (a port may be in several services)`.
   `family` on a `Static` set is refused.
 - A `Dynamic` set takes `family` (`IPv4` by default), and the IPs it reserves are of that family.
-  It can't change: make another set.
+  It can't change: make another set. A `Dynamic` IPv6 set is refused on a provider that can't
+  float IPv6 addresses, such as Linode, with the same message as an IPv6 Provider IP.
 - A SiloSet names one set (`ips`), so its instances' kept addresses are one family. For the other
   family, a service on `worker: external` answers on the worker's IPv4 and IPv6 addresses.
 

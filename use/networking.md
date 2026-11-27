@@ -179,6 +179,9 @@ services:
   between services, its size and its tuning are the provider's **annotations** on the service,
   checked when you apply: a misspelled one is refused. Each provider's page lists them
   ([Linode]({{ '/admin/providers/linode/#a-nodebalancer-in-front' | relative_url }})).
+- Its address is `status.service.loadBalancerIP` on the silo (`status.loadBalancerIP` on a
+  standalone Service). A balancer that answers on IPv6 too, like a Linode NodeBalancer, also has
+  `loadBalancerIPv6`, and `kvo describe` shows both.
 - The balancer reaches the silo through a port on its worker that is open to the balancer's
   addresses only. Its backends are the silos that are ready ([`routeWhen`]({{ '/use/silos/probes/' | relative_url }})).
   Whether the silo sees the client's own address is the provider's to say.

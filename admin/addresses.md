@@ -188,8 +188,8 @@ What a provider declares decides what Kevaso accepts and where silos go:
 
 | It declares | So |
 |---|---|
-| It makes provider IPs | IPs of type `Provider` naming it are accepted (in the regions it serves), in the families it can reserve. Linode reserves IPv4 only |
-| It makes load balancers | `LoadBalancer` services naming it are accepted. Whether a balancer answers on IPv6 is the provider's: Linode's do |
+| It makes provider IPs | IPs of type `Provider` naming it are accepted (in the regions it serves), in the families it can reserve: IPv6 only when it declares `providerIPv6`. Linode reserves IPv4 only, and an IPv6 one is refused at apply with its reason |
+| It makes load balancers | `LoadBalancer` services naming it are accepted. Whether a balancer answers on IPv6 is the provider's: Linode's do, shown as `loadBalancerIPv6` |
 | A kept IP can front its balancer | `loadBalancer: { ip: NAME }` is accepted. Otherwise refused: the balancer has its own address |
 | Its reach (`host`, `region`, `global`) | A silo using its IPs or balancers is placed and moved within it |
 | Only its own machines | Only workers that are its machines can be behind its IPs and balancers |

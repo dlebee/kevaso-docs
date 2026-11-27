@@ -169,8 +169,11 @@ bin/kvo describe silo web -n shop
 Node ports:   http 80 → host port 30000 (from 192.168.255.0/24)
 Services:
   NAME  TYPE          WAY IN            PORTS  REACHABLE AT
-  web   LoadBalancer  provider: linode  http   172.233.12.40:80
+  web   LoadBalancer  provider: linode  http   198.51.100.40:80, [2001:db8:b::c633:6428]:80
 ```
+
+`REACHABLE AT` lists the NodeBalancer's IPv4 and IPv6 addresses. They are in the silo's status as
+`status.service.loadBalancerIP` and `status.service.loadBalancerIPv6`.
 
 The NodeBalancer sends each port to the silo's worker on a **node port** over the private network.
 The worker forwards that port only from the NodeBalancer's addresses, so it isn't open to the
@@ -208,8 +211,8 @@ installed as `linode-work` reads `linode-work.kevaso.com/…` instead.
   type is refused), the throttle the last one set. Two of them on one port conflict: the second
   waits, and says so.
 - A NodeBalancer answers on **IPv6** too: Linode gives each one an IPv6 address beside its IPv4
-  one, and it forwards to the silo over the private IPv4 network
-  ([IPv6 on Linode](#ipv6)).
+  one (`loadBalancerIPv6` in the status), and it forwards to the silo over the private IPv4
+  network ([IPv6 on Linode](#ipv6)).
 - NodeBalancers here forward **TCP**. For UDP, use a `HostPort` service on a kept IP
   ([below](#an-ip-that-follows-the-silo)).
 - A NodeBalancer can't limit clients by address, so a port with `sources` is left out of it: see
@@ -329,14 +332,20 @@ on that address with `worker: external`, and send to IPv6 destinations their gra
 | On Linode | IPv6 |
 |---|---|
 | A worker's own address (`worker: external`) | Yes, the Linode's IPv6 address |
-| A NodeBalancer (`type: LoadBalancer`) | Yes: it answers on its IPv6 address too |
+| A NodeBalancer (`type: LoadBalancer`) | Yes: it answers on its IPv6 address too, `loadBalancerIPv6` in the status |
 | A fixed extra address, pinned to one Linode | Yes, from a `/64` added to that Linode, as a host address |
 | An IP that follows the silo (`type: Provider`) | **No: IPv4 only** |
 
 **Floating IPs are IPv4 only on Linode**, because Linode hands out extra IPv6 only as `/64` ranges
 and a range moves between Linodes as one unit, so a single IPv6 address can't follow one silo. An IP
-with `type: Provider`, `family: IPv6` and `provider: linode` is refused when you apply. For a
-silo that moves, use the worker's own IPv6 address or a NodeBalancer.
+with `type: Provider`, `family: IPv6` and `provider: linode` is refused when you apply, and so is
+a `Dynamic` IP set with `family: IPv6` and `provider: linode`:
+
+```text
+IP edge6: spec: linode can't float an IPv6 address: a /64 moves as one unit; use an IPv4 Provider IP (family: IPv4), the worker's own IPv6 (a HostPort service on worker), or a host address (an IP of type Host, family: IPv6)
+```
+
+For a silo that moves, use the worker's own IPv6 address or a NodeBalancer.
 
 ### A fixed extra IPv6 address
 

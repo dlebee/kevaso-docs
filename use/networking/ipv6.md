@@ -22,7 +22,7 @@ service) are defined on [Addresses, ports and names]({{ '/use/networking/model/'
 | `HostPort`, `worker: internal` | No: the internal IP is IPv4 |
 | `HostPort`, `ip: NAME`, an IP of `family: IPv6` | **Yes**, on that address. An IP of `family: IPv4` answers on IPv4 only |
 | `HostPort`, `own: true` | As the instance's member: an IP set is [one family](#one-ip-is-one-family) |
-| `LoadBalancer` | Where the provider gives its balancers an IPv6 address. On Linode, NodeBalancers answer on IPv6 ([Linode]({{ '/admin/providers/linode/#a-nodebalancer-in-front' | relative_url }})) |
+| `LoadBalancer` | Where the provider gives its balancers an IPv6 address, shown as `loadBalancerIPv6` in the status and in `kvo describe`. On Linode, NodeBalancers answer on IPv6 ([Linode]({{ '/admin/providers/linode/#a-nodebalancer-in-front' | relative_url }})) |
 | `Internal`, and a silo reaching another silo | No: the mesh is IPv4 |
 
 An IPv6 connection is forwarded to the silo's own IPv6 address, as an IPv4 one is to its silo IP.
@@ -101,7 +101,8 @@ Where IPv6 addresses to keep come from depends on where the hosts are:
 | Where | IPv6 addresses you can keep |
 |---|---|
 | Bare metal, or any host with IPv6 routed to it | Its extra addresses, added by an administrator ([Host addresses and providers]({{ '/admin/addresses/' | relative_url }})) |
-| Linode | Extra addresses from a `/64` an administrator adds to that Linode. A floating (`type: Provider`) IP on Linode is IPv4 only ([Linode]({{ '/admin/providers/linode/#ipv6' | relative_url }})) |
+| Linode | Extra addresses from a `/64` an administrator adds to that Linode. A floating (`type: Provider`) IP on Linode is IPv4 only, and an IPv6 one is refused when you apply ([Linode]({{ '/admin/providers/linode/#ipv6' | relative_url }})) |
+| A provider that declares `providerIPv6` | Floating IPv6 IPs (`type: Provider`, `family: IPv6`), one address each, following the silo like IPv4 ones |
 
 ---
 
