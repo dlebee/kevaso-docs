@@ -26,6 +26,12 @@ way they are defined here.
 
 A host has at least one of internal and external. Both are IPv4 and they can't be the same address.
 
+A host can also have an **external IPv6** address (`externalIPv6`): its global IPv6 address, which
+Kevaso finds by itself. A host without one is IPv4 only. A silo on a host with one gets a **silo
+IPv6** address beside its silo IP, private to that host like the silo IP
+([IPv6 at the edge]({{ '/use/networking/ipv6/' | relative_url }})). The mesh, and so the mesh IP,
+stays IPv4.
+
 ```yaml
 kind: Host
 metadata: { name: baremetal-1 }
@@ -140,11 +146,11 @@ address or a range is refused:
 | `2001:db8::/32`, `2001:db8::1` | `service web: ports[web].sources: "2001:db8::/32": IPv6 comes later; IPv4 for now` |
 | `::ffff:10.0.0.1` (IPv4 inside IPv6), or an address with a zone | The same refusal |
 
-**IPv6 ranges are refused for now.** Silos are IPv4 inside: a silo's address, the mesh, hosts'
-internal and external addresses and every rule Kevaso writes are IPv4. The silo bridge drops IPv6
-packets, so nothing a rule closes is reachable over IPv6. A silo can only send from its own address:
-a packet with another source address is dropped at its port, including before its address is
-known.
+**IPv6 ranges in `sources` are refused for now.** A port with `sources` is closed on IPv6: no
+IPv6 client is in its list. A port without `sources` opens on IPv6 where its service answers on
+IPv6 ([IPv6 at the edge]({{ '/use/networking/ipv6/' | relative_url }})). Everything not opened is
+dropped over IPv6, as over IPv4. A silo can only send from its own addresses: a packet with another
+source address is dropped at its port, including before its address is known.
 
 One thing to know about hosts: the API listens on `0.0.0.0:6443` by default, which is IPv4. It does
 not answer on a host's IPv6 addresses.
@@ -298,7 +304,8 @@ kvo describe silo api-blue -n payments
 ```
 
 ```text
-Silo IP:  10.64.2.7
+Silo IP:    10.64.2.7
+Silo IPv6:  fd12:3456:789a:2::7
 Services:
   NAME        TYPE      WAY IN            PORTS            REACHABLE AT
   api         Internal  mesh              http             10.64.2.7:8080 from nginx-public, billing/worker
@@ -310,6 +317,10 @@ Ports:
   https    8443/TCP  10.64.2.7:8443 (no silo allowed)  -              203.0.113.20:443  -              -                             -
   metrics  9090/TCP  10.64.2.7:9090 (no silo allowed)  10.0.0.5:9090  -                 -              -                             10.0.0.0/24
 ```
+
+`Silo IPv6` is the silo's IPv6 address on its host, or why it has none (`none: host baremetal-1 has
+no IPv6 subnet (IPv4 only)`). A `HostPort` service on `worker: external` answers on the worker's
+IPv6 address too; `kvo describe host` shows it.
 
 | Column | Meaning |
 |---|---|

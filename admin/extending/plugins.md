@@ -214,7 +214,9 @@ every service and IP against it when it is applied
 
 | Field | Means |
 |---|---|
-| `providerIPs` | It reserves IPs of type `Provider` |
+| `providerIPs` | It reserves IPs of type `Provider` (IPv4) |
+| `providerIPv6` | Its Provider IPs can also be IPv6 (`family: IPv6`), each one address that follows its holder. Needs `providerIPs`. Without it, an IPv6 Provider IP, or a `Dynamic` IPv6 IP set, naming it is refused at apply |
+| `noProviderIPv6` | Why it can't float an IPv6 address, said in that refusal (Linode: `a /64 moves as one unit`). Not with `providerIPv6` |
 | `loadBalancers` | It makes the balancers of `LoadBalancer` services |
 | `frontWithIP` | A kept `Provider` IP can front one of its balancers (`loadBalancer: { ip: NAME }`). Needs both of the above. Without it the balancer has its own address |
 | `keepsClientIP` | The silo sees the client's address behind its balancers |
@@ -227,6 +229,10 @@ An annotation is declared without its domain. Its full name is the install name'
 key: installed as `linode`, the key `nodebalancer` is `linode.kevaso.com/nodebalancer`; installed
 as `linode-work`, it is `linode-work.kevaso.com/nodebalancer`. A declaration Kevaso can't check (a
 bad key, a key twice, `frontWithIP` without both) is refused when the plugin registers.
+
+A balancer that answers on IPv6 too reports its IPv6 address beside its IPv4 one (`addressIPv6`).
+Kevaso shows it as `loadBalancerIPv6` in the silo's or Service's status. A plugin is asked to
+reserve an IPv6 address only when it declares `providerIPv6`.
 
 A balancer that can't filter clients by address gets no port that has `sources`: the silo's
 `LoadBalancer` condition is `SourcesNotEnforced` and names the ports. A port that someone narrowed

@@ -44,15 +44,46 @@ spec:
 - The other type's fields are refused: an IP of type `Host` with a `region`, or of type `Provider`
   with a `hostAddress`, says which to drop.
 - One IP is exactly one address. There are no ranges.
+- One IP is one family: `family` is `IPv4` (the default) or `IPv6`. A `Host` IP's family is its
+  host address's, and a mismatch is refused with the fix. An address on both families is two IPs,
+  and a service on each ([IPv6 at the edge]({{ '/use/networking/ipv6/#a-kept-address-on-both-families' | relative_url }})).
 - A host's extra addresses are named by an administrator, with
   `kvoadm host addresses` ([Host addresses and providers]({{ '/admin/addresses/' | relative_url }})).
   Ask yours which names you may reserve.
 - `provider` and `region` are never guessed: with two accounts or two regions, the refusal names the
   word to add.
+- The spec can't change (`type`, `family`, `hostAddress`, `provider`, `region`): make another IP.
+
+An IPv6 one names a host address that is IPv6:
+
+```yaml
+apiVersion: kevaso/v1
+kind: IP
+metadata: { name: mail6, namespace: mail }
+spec:
+  type: Host
+  family: IPv6
+  hostAddress: mail6
+```
+
+Without `family: IPv6`, it is refused:
+
+```text
+IP mail6: host address mail6 is IPv6 (2001:db8:20::21 on baremetal-1) and the IP is IPv4 (the default): a Host IP's family is its address's; set family: IPv6, or name an IPv4 address
+```
+
+A floating IPv6 (`type: Provider`, `family: IPv6`) needs a provider that declares it can move
+single IPv6 addresses (`providerIPv6`). Otherwise it is refused when you apply, with the provider's
+reason and the ways that work. On Linode, Provider IPs are IPv4 only
+([Linode]({{ '/admin/providers/linode/#ipv6' | relative_url }})):
+
+```text
+IP edge6: spec: linode can't float an IPv6 address: a /64 moves as one unit; use an IPv4 Provider IP (family: IPv4), the worker's own IPv6 (a HostPort service on worker), or a host address (an IP of type Host, family: IPv6)
+```
 
 ### Make one
 
-Apply the YAML above, or:
+Apply the YAML above, or, for an IPv4 one:
 
 ```bash
 kvo create ip mail -n mail --type Host --host-address mail
@@ -61,6 +92,8 @@ kvo create ip mail -n mail --type Host --host-address mail
 ```bash
 kvo create ip api-edge -n payments --type Provider --provider linode --region us-ord
 ```
+
+`kvo create ip` has no family: make an IPv6 IP with YAML and `kvo apply -f`.
 
 ```text
 ip/api-edge created: its address shows in kvo get ips once reserved
@@ -73,18 +106,20 @@ it, like a secret: `editor`s and `admin`s have it
 ### See them
 
 ```bash
-kvo get ips -n payments
+kvo get ips -n mail
 ```
 
 ```text
-NAME       TYPE      ADDRESS       WHERE              SET   USED BY                   MOVES                    AGE
-api-edge   Provider  172.232.0.9   linode us-ord      -     silo/api-blue (443/TCP)   within linode us-ord     3d
-mail       Host      203.0.113.21  host baremetal-1   -     -                         no: pinned to its host   3d
+NAME      TYPE      FAMILY   ADDRESS           WHERE              SET   USED BY              MOVES                    AGE
+api-edge  Provider  IPv4     198.51.100.9      linode us-ord      -     -                    within linode us-ord     3d
+mail      Host      IPv4     203.0.113.21      host baremetal-1   -     silo/smtp (25/TCP)   no: pinned to its host   3d
+mail6     Host      IPv6     2001:db8:20::21   host baremetal-1   -     -                    no: pinned to its host   3d
 ```
 
 | Column | Meaning |
 |---|---|
 | `TYPE` | `Host` or `Provider` |
+| `FAMILY` | `IPv4` or `IPv6` |
 | `ADDRESS` | The address, once reserved |
 | `WHERE` | The host, or the provider and region |
 | `SET` | The IP set it is a member of, and its ordinal (`edge#1`), if any |
@@ -97,7 +132,8 @@ kvo describe ip api-edge -n payments
 
 ```text
 Type:       Provider (linode, region us-ord)
-Address:    172.232.0.9
+Family:     IPv4
+Address:    198.51.100.9
 Where:      linode us-ord
 Moves:      with its holder, within linode us-ord (the new worker announces it)
 Used by:    silo/api-blue (443/TCP)
@@ -105,7 +141,7 @@ Waiting:    silo/api-green: held by silo/api-blue
 Deleting:   refused while silo/api-blue uses it: delete that one first, or have it name no IP
 ```
 
-It shows the address, its type and where it comes from, the set and ordinal it belongs to, who
+It shows the address, its type and family, where it comes from, the set and ordinal it belongs to, who
 uses it, any silo waiting for it and why, whether it can be deleted now, and, for the silo using
 it, whether that silo sends from it too.
 
@@ -162,6 +198,19 @@ spec:
 - Every member is an ordinary IP: `kvo get ips` lists them, with the set in `SET`. A
   `hostAddress` member's IP is named after the set and its ordinal (`eth-ips-0`), like a
   `Dynamic` set's.
+
+### One family per set
+
+An IP set holds addresses of one family, like the IPs in it:
+
+- A `Static` set is its members' family. Members of both families are refused: `a set is one
+  family; make two sets, one per family, and a service on each (a port may be in several services)`.
+  `family` on a `Static` set is refused.
+- A `Dynamic` set takes `family` (`IPv4` by default), and the IPs it reserves are of that family.
+  It can't change: make another set. A `Dynamic` IPv6 set is refused on a provider that can't
+  float IPv6 addresses, such as Linode, with the same message as an IPv6 Provider IP.
+- A SiloSet names one set (`ips`), so its instances' kept addresses are one family. For the other
+  family, a service on `worker: external` answers on the worker's IPv4 and IPv6 addresses.
 
 ```bash
 kvo get ipsets -n web3

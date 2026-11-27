@@ -214,6 +214,39 @@ Compare it with what `ssh` showed you in step 3. Same? Keep it: you'll give it t
 
 ---
 
+## IPv6
+
+IPv6 is optional. A Linux host with IPv6 lets its silos answer and send on IPv6
+([IPv6 at the edge]({{ '/use/networking/ipv6/' | relative_url }})); a host without it is IPv4 only,
+and that is not an error. The mesh between hosts stays IPv4.
+
+A host needs **one global IPv6 address on its uplink**, with a default IPv6 route. That is all: a
+routed range is not needed, because silos get private IPv6 addresses that the host translates, as
+for IPv4. On the machine, both of these should print something:
+
+```bash
+ip -6 addr show scope global
+```
+
+```bash
+ip -6 route show default
+```
+
+- Kevaso finds the address by itself when the worker starts, and shows it as `External IPv6` in
+  `kvo describe host`. An address starting with `fd` or `fe80` isn't global: such a host is IPv4
+  only.
+- Kevaso turns IPv6 forwarding on for the host. If the uplink takes its route from router
+  advertisements, Kevaso keeps accepting them while forwarding, so the route stays.
+  `kvoadm reset` puts IPv6 forwarding back as it was before the install. On a machine installed
+  by an older `kevasod`, whose install record doesn't say, it is left on.
+- More IPv6 addresses for kept IPs are routed to the host like extra IPv4 ones, and added by name
+  ([Host addresses and providers]({{ '/admin/addresses/#ipv6-on-a-host' | relative_url }})).
+- A silo already running when the host gains IPv6 stays IPv4 until it is made again: reset a
+  microVM, or delete a container silo and apply it again.
+- A Mac worker is IPv4 only.
+
+---
+
 ## If something goes wrong
 
 | Message | What to do |
