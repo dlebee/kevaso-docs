@@ -77,7 +77,8 @@ parts:
       - title: Addresses and sites
         pages:
           - { title: Host addresses and providers, url: /admin/addresses/ }
-          - { title: Ingress controllers and certificates, url: /admin/ingress/ }
+          - { title: Ingress controllers, url: /admin/ingress/ }
+          - { title: Certificates, url: /admin/certificates/ }
       - title: Running it
         pages:
           - { title: Operations, url: /admin/operations/ }

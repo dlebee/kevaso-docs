@@ -53,7 +53,8 @@ a VM on a Mac in about 15 minutes, playing both the administrator and the user.
 | Know what happens when a worker loses the control plane | [When the control plane is lost]({{ '/admin/control-plane-loss/' | relative_url }}) |
 | Invite people, give roles, make CI tokens, add admins | [People and access]({{ '/admin/access/' | relative_url }}) |
 | Add extra addresses to a host, install providers, decide who may reserve them | [Host addresses and providers]({{ '/admin/addresses/' | relative_url }}) |
-| Set up an ingress controller, its class and issuers | [Ingress controllers and certificates]({{ '/admin/ingress/' | relative_url }}) |
+| Set up an ingress controller and its class | [Ingress controllers]({{ '/admin/ingress/' | relative_url }}) |
+| Set up where certificates come from (Issuers) | [Certificates]({{ '/admin/certificates/' | relative_url }}) |
 | Find the logs, the store and the keys | [Operations]({{ '/admin/operations/' | relative_url }}) |
 | Survive losing a system node, or upgrade without stopping | [High availability]({{ '/admin/operations/ha/' | relative_url }}) |
 | Back up and restore | [Backup and restore]({{ '/admin/operations/backup/' | relative_url }}) |
