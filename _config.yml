@@ -46,6 +46,7 @@ parts:
           - { title: "Addresses, ports and names", url: /use/networking/model/ }
           - { title: Networking, url: /use/networking/ }
           - { title: IPs and IP sets, url: /use/networking/ips/ }
+          - { title: IPv6 at the edge, url: /use/networking/ipv6/ }
           - { title: Port leases, url: /use/networking/leases/ }
           - { title: HTTPS sites (ingress), url: /use/ingress/ }
           - { title: Secrets, url: /use/secrets/ }

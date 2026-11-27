@@ -11,7 +11,7 @@ The Linode provider lets silos on your Linode workers use what Linode offers:
 | You write | You get |
 |---|---|
 | `type: LoadBalancer` with `loadBalancer: { provider: linode }` on a service | A NodeBalancer with its own IP, in front of the silo |
-| An [`IP`]({{ '/use/networking/ips/' | relative_url }}) of `type: Provider`, `provider: linode`, named by a `HostPort` service | An IPv4 you keep, that follows the silo from one Linode to another in its region |
+| An [`IP`]({{ '/use/networking/ips/' | relative_url }}) of `type: Provider`, `provider: linode`, named by a `HostPort` service | An IPv4 you keep, that follows the silo from one Linode to another in its region (IPv4 only: [IPv6 on Linode](#ipv6)) |
 | `volumes: [{ class: linode-block, … }]` | A Block Storage volume, kept when the silo restarts, deleted with it |
 | `dns: { provider: linode }` on an IngressClass | Its host names published in Linode DNS |
 
@@ -207,6 +207,9 @@ installed as `linode-work` reads `linode-work.kevaso.com/…` instead.
 - Services sharing a NodeBalancer share its type and throttle: the type is the first one's (another
   type is refused), the throttle the last one set. Two of them on one port conflict: the second
   waits, and says so.
+- A NodeBalancer answers on **IPv6** too: Linode gives each one an IPv6 address beside its IPv4
+  one, and it forwards to the silo over the private IPv4 network
+  ([IPv6 on Linode](#ipv6)).
 - NodeBalancers here forward **TCP**. For UDP, use a `HostPort` service on a kept IP
   ([below](#an-ip-that-follows-the-silo)).
 - A NodeBalancer can't limit clients by address, so a port with `sources` is left out of it: see
@@ -253,7 +256,8 @@ A NodeBalancer's IP belongs to the NodeBalancer. An [IP of type `Provider`]({{ '
 is an IPv4 Linode reserves for you and shares with the region's Linode workers (in regions where
 Linode offers IP sharing with BGP failover). Whichever worker has
 the silo announces it (over BGP, like Linode's lelastic), so when the silo moves within the region,
-the address moves with it. One silo holds it at a time, and it stays when the silo goes.
+the address moves with it. One silo holds it at a time, and it stays when the silo goes. It is
+IPv4 only ([IPv6 on Linode](#ipv6)).
 
 ```bash
 kvo create ip edge -n shop --type Provider --provider linode --region ca-central
@@ -312,6 +316,55 @@ bin/kvoadm plugin install root@172.105.99.247 \
 ```
 
 The node side has no token and no privileges.
+
+---
+
+## IPv6
+
+Every Linode has its own public IPv6 address, so a Linode worker has IPv6 without any setup:
+Kevaso finds the address and shows it as `External IPv6` in `kvo describe host`. Silos on it answer
+on that address with `worker: external`, and send to IPv6 destinations their grants allow
+([IPv6 at the edge]({{ '/use/networking/ipv6/' | relative_url }})).
+
+| On Linode | IPv6 |
+|---|---|
+| A worker's own address (`worker: external`) | Yes, the Linode's IPv6 address |
+| A NodeBalancer (`type: LoadBalancer`) | Yes: it answers on its IPv6 address too |
+| A fixed extra address, pinned to one Linode | Yes, from a `/64` added to that Linode, as a host address |
+| An IP that follows the silo (`type: Provider`) | **No: IPv4 only** |
+
+**Floating IPs are IPv4 only on Linode**, because Linode hands out extra IPv6 only as `/64` ranges
+and a range moves between Linodes as one unit, so a single IPv6 address can't follow one silo. An IP
+with `type: Provider`, `family: IPv6` and `provider: linode` is refused when you apply. For a
+silo that moves, use the worker's own IPv6 address or a NodeBalancer.
+
+### A fixed extra IPv6 address
+
+An extra IPv6 address that stays on one Linode comes from a `/64` range routed to it:
+
+1. In Cloud Manager → the Linode → Network → Add an IP address, add an IPv6 `/64` range. Linode
+   routes it to that Linode.
+2. Name each address you want to hand out from it as one of the host's extra addresses:
+
+```bash
+kvoadm host addresses hv2 add api6 2001:db8:3c4d:15::10 --external
+```
+
+3. A team keeps it with an IP of type `Host` and `family: IPv6`
+   ([IPs and IP sets]({{ '/use/networking/ips/' | relative_url }})):
+
+```yaml
+apiVersion: kevaso/v1
+kind: IP
+metadata: { name: api6, namespace: shop }
+spec:
+  type: Host
+  family: IPv6
+  hostAddress: api6
+```
+
+A silo using it runs on that Linode only, like any host address. Name one address of the range at
+a time: a range is not an address.
 
 ---
 

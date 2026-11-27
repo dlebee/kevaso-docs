@@ -20,7 +20,8 @@ one stays in force ([Operations]({{ '/admin/operations/#troubleshooting' | relat
 Internal IP, external IP, mesh IP, silo IP and cluster IP each mean one thing in Kevaso, and so do
 "port", "service" and a `.kevaso` name. They're defined, with pictures, in
 [Addresses, ports and names]({{ '/use/networking/model/' | relative_url }}). Addresses you keep, the
-`IP` and `IPSet` kinds, are on [IPs and IP sets]({{ '/use/networking/ips/' | relative_url }}).
+`IP` and `IPSet` kinds, are on [IPs and IP sets]({{ '/use/networking/ips/' | relative_url }}). What
+answers on IPv6, and what stays IPv4, is on [IPv6 at the edge]({{ '/use/networking/ipv6/' | relative_url }}).
 
 ---
 
@@ -114,9 +115,9 @@ address, exactly one of:
 
 | `hostPort` | The address | Written in |
 |---|---|---|
-| Left out, or `{ worker: external }` | The worker's main external IP | A silo or a SiloSet's template |
-| `{ worker: internal }` | The worker's main internal IP | A silo or a SiloSet's template |
-| `{ ip: NAME }` | The address of the `IP` named `NAME` in this namespace | A silo only |
+| Left out, or `{ worker: external }` | The worker's main external IP, and its IPv6 address (`externalIPv6`) when it has one | A silo or a SiloSet's template |
+| `{ worker: internal }` | The worker's main internal IP (IPv4 only) | A silo or a SiloSet's template |
+| `{ ip: NAME }` | The address of the `IP` named `NAME` in this namespace, in that IP's family | A silo only |
 | `{ own: true }` | This instance's member of the set's `IPSet` | A SiloSet's template only, with `ips: SETNAME` on the set |
 
 On each port, `as` is the number there when it differs from the silo's, and `sources` limits who may
@@ -287,8 +288,8 @@ spec:
 
 | `egress.source` | Outgoing traffic leaves from | Written in |
 |---|---|---|
-| Left out | The worker's own IP. A worker behind NAT has none to name | Anywhere |
-| `{ ip: NAME }` | The `IP` named `NAME` | A silo |
+| Left out | The worker's own IP (its IPv6 address for IPv6 destinations). A worker behind NAT has none to name | Anywhere |
+| `{ ip: NAME }` | The `IP` named `NAME`, for destinations of its family. The other family still leaves from the worker | A silo |
 | `{ own: true }` | The instance's member of the set's `IPSet` | A SiloSet's template |
 
 Can a silo use the same IP out as in?
@@ -313,7 +314,10 @@ In and out:  same address in and out: 203.0.113.21
 ```
 
 `Egress IP` is where its outgoing traffic leaves from; when you set `source`, it is in brackets after
-the address. `In and out` says in one line whether the address out is the address in, and why not
+the address. `Egress IPv6` is the same for IPv6 destinations: the worker's IPv6 address, or a kept
+IPv6 IP that `source` names, and `none` on a worker without IPv6.
+
+`In and out` says in one line whether the address out is the address in, and why not
 when it isn't. A `-` means there is none, for example on a worker behind NAT.
 
 Where it may send is still a [Grant](#what-a-silo-may-reach-outside)'s to say: an address to send
@@ -334,6 +338,7 @@ spec:
     - { to: api.example.com }                                  # a name: TLS on 443
     - { to: "*.example.org" }                                  # a wildcard name
     - { to: "203.0.113.0/24", ports: ["5432"] }                # raw, an address range, one port
+    - { to: "2001:db8:44::/48", ports: ["443"] }               # an IPv6 range
 ---
 apiVersion: kevaso/v1
 kind: Silo
@@ -355,19 +360,23 @@ path, read-only or read-write access, REST, and which programs may use a rule.
 
 A rule opens TCP unless it lists `protocols` (`tcp`, `udp`; a host name is TCP only). `ports` takes
 numbers and ranges such as `"30000-30100"`; with none, an address range opens every port and a host name
-opens 443. Addresses are IPv4 only for now.
+opens 443. Addresses and ranges can be IPv4 or IPv6. A host name connects over IPv4: write the
+address or range to reach a destination over IPv6 ([IPv6 at the edge]({{ '/use/networking/ipv6/#sending-to-ipv6' | relative_url }})).
+An IPv4 address written inside IPv6 (`::ffff:203.0.113.7`) is refused: write the IPv4 address.
 
 **What a grant never opens.** Whatever the rule, even `0.0.0.0/0`, a silo never reaches:
-- the host's loopback (`127.0.0.0/8`), `0.0.0.0/8`, link-local (`169.254.0.0/16`, the cloud
-  metadata address `169.254.169.254` included), multicast or reserved addresses;
-- the cluster's own ranges (the mesh, silo and service ranges) except as its silos allow;
+- the host's loopback (`127.0.0.0/8`, `::1`), `0.0.0.0/8`, `::`, link-local (`169.254.0.0/16`, the
+  cloud metadata address `169.254.169.254` included, and `fe80::/10`), multicast (`ff00::/8` too)
+  or reserved addresses;
+- the cluster's own ranges (the mesh, silo and service ranges, and the silos' IPv6 range) except as
+  its silos allow;
 - its own host's internal and external addresses;
 - every host's address on the silo network, `10.64.N.1`, except this host's own DNS and ping;
 - another host's own listeners, reached over the mesh. A silo on one host reaches nothing of another
   host itself. It still reaches that host's silos, as those silos allow.
 
 A grant naming an address in the first two is refused when you write it. So `0.0.0.0/0` means "the internet and
-your private networks", nothing more. A silo still reaches the ports its host publishes for other
+your private networks", nothing more, and `::/0` the same for IPv6. A silo still reaches the ports its host publishes for other
 silos, and its own host's address at `169.254.42.1` for [secrets]({{ '/use/secrets/' | relative_url }}).
 
 On a port where the same silo also has a host-name rule, its connections go through the egress

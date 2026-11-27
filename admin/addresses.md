@@ -22,7 +22,9 @@ The words (internal IP, external IP, service, port) are defined on
 ## A host's addresses
 
 A `Host` has its main `internalIP` and `externalIP`: a `HostPort` service on `worker: internal` or
-`worker: external` opens on them, wherever the silo lands. A host can also have **extra addresses**,
+`worker: external` opens on them, wherever the silo lands. Both are IPv4. A host with a global IPv6
+address also has `externalIPv6`, and `worker: external` opens on it too
+([IPv6 on a host](#ipv6-on-a-host)). A host can also have **extra addresses**,
 routed to that machine, each with a name:
 
 ```yaml
@@ -35,6 +37,9 @@ spec:
     - name: mail
       kind: external          # or internal
       address: 203.0.113.21
+    - name: mail6
+      kind: external
+      address: 2001:db8:20::21
 ```
 
 Add one:
@@ -45,6 +50,12 @@ kvoadm host addresses baremetal-1 add mail 203.0.113.21 --external
 
 ```text
 → baremetal-1's extra addresses: mail 203.0.113.21
+```
+
+An IPv6 address is added the same way:
+
+```bash
+kvoadm host addresses baremetal-1 add mail6 2001:db8:20::21 --external
 ```
 
 List them, with the IP that reserves each:
@@ -67,7 +78,10 @@ Remove one:
 kvoadm host addresses baremetal-1 remove eth-0
 ```
 
-- One address each, IPv4. No ranges: add each address you want to hand out.
+- One address each, IPv4 or IPv6. No ranges: add each address you want to hand out, even from an
+  IPv6 `/64`. An IPv6 address is stored in its short form.
+- An IP of type `Host` naming it is of its family (`family: IPv6` for an IPv6 address). Changing an
+  address to the other family while an IP of the first names it is refused.
 - Names are unique in the whole cluster, so an IP names one without saying which host.
 - An address can't be on two hosts, and can't be the host's own internal or external IP.
 - Removing an address an IP reserves is refused: delete that IP first.
@@ -78,16 +92,53 @@ uses each:
 
 ```text
 Addresses:
-  NAME    KIND      ADDRESS       RESERVED BY
-  (main)  external  203.0.113.10  used by mail/webmail (worker: external)
-  (main)  internal  10.0.0.5      -
-  mail    external  203.0.113.21  ip mail/mail, used by silo/mail (25/TCP)
-  eth-0   external  203.0.113.22  - (free: an IP with type: Host, hostAddress: eth-0 reserves it)
+  NAME    KIND      FAMILY  ADDRESS          RESERVED BY
+  (main)  external  IPv4    203.0.113.10     used by mail/webmail (worker: external)
+  (main)  external  IPv6    2001:db8:10::5   used by mail/webmail (worker: external)
+  (main)  internal  IPv4    10.0.0.5         -
+  mail    external  IPv4    203.0.113.21     ip mail/mail, used by silo/mail (25/TCP)
+  mail6   external  IPv6    2001:db8:20::21  ip mail/mail6
+  eth-0   external  IPv4    203.0.113.22     - (free: an IP with type: Host, hostAddress: eth-0 reserves it)
 ```
+
+The host's `externalIPv6` is a `(main)` row of family `IPv6`. `kvoadm host addresses HOST list`
+lists the IPv4 main addresses and every extra address.
 
 The address must actually reach the machine: route it to the host at your provider or on your
 network, and bring it up on an interface. Kevaso opens its ports and sends from it; it doesn't
 configure your router.
+
+### IPv6 on a host
+
+A host's `externalIPv6` is its global IPv6 address. Kevaso finds it by itself: it is the address
+the machine uses to reach the IPv6 internet. A host without one is IPv4 only, and `kvo describe
+host` says so:
+
+```text
+External IP:        203.0.113.20
+External IPv6:      none: IPv4 only (no global IPv6 address; set spec.externalIPv6 if it has one)
+Silo subnets:       10.64.3.0/24 (no IPv6)
+```
+
+With one, the host also gets an IPv6 subnet for its silos, beside its IPv4 one:
+
+```text
+External IPv6:      2001:db8:10::5
+Silo subnets:       10.64.2.0/24, fd12:3456:789a:2::/64
+```
+
+- `externalIPv6` takes one global IPv6 address only. A unique local (`fd00::/8`), link-local or
+  loopback address is refused: such a host is IPv4 only.
+- An IPv6 address is refused in `internalIP` and `externalIP`, and an IPv4 address in
+  `externalIPv6`, each with the field to use. `kvoadm host add` takes IPv4 in `--internal-ip` and
+  `--external-ip`.
+- The silos' IPv6 subnet is private to the host, from a range Kevaso picks once for the cluster. It
+  isn't routed anywhere: the host forwards to its silos and translates their outgoing traffic, as
+  for IPv4. So one global IPv6 address is enough; no routed range is needed.
+- An extra IPv6 address must reach the machine, as an IPv4 one does: routed to the host by your
+  provider or your network.
+
+What the machine needs is on [Prepare a machine]({{ '/admin/setup/prepare/#ipv6' | relative_url }}).
 
 ### Who may reserve them
 
@@ -137,8 +188,8 @@ What a provider declares decides what Kevaso accepts and where silos go:
 
 | It declares | So |
 |---|---|
-| It makes provider IPs | IPs of type `Provider` naming it are accepted (in the regions it serves) |
-| It makes load balancers | `LoadBalancer` services naming it are accepted |
+| It makes provider IPs | IPs of type `Provider` naming it are accepted (in the regions it serves), in the families it can reserve. Linode reserves IPv4 only |
+| It makes load balancers | `LoadBalancer` services naming it are accepted. Whether a balancer answers on IPv6 is the provider's: Linode's do |
 | A kept IP can front its balancer | `loadBalancer: { ip: NAME }` is accepted. Otherwise refused: the balancer has its own address |
 | Its reach (`host`, `region`, `global`) | A silo using its IPs or balancers is placed and moved within it |
 | Only its own machines | Only workers that are its machines can be behind its IPs and balancers |
@@ -155,4 +206,5 @@ Bare metal has no balancer provider yet: a `LoadBalancer` service has nowhere to
 - An external IP that is not on any of the host's interfaces (a cloud's 1:1 NAT address) matches
   nothing: a `HostPort` service on `worker: external` doesn't work there yet.
 - Quotas on billed IPs and balancers are the provider's own, for now.
-- A balancer provider for bare metal, IPv6, and DNS that joins sites in different regions come later.
+- A balancer provider for bare metal, and DNS that joins sites in different regions come later.
+- The mesh is IPv4: IPv6 is at the edge only ([IPv6 at the edge]({{ '/use/networking/ipv6/' | relative_url }})).

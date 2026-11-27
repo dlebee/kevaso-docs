@@ -60,8 +60,8 @@ overrides) from status text that silos and hosts write, so a silo can't change w
 | `kvo reset silo NAME` | Back onto its image: stopped, a fresh disk or container, volumes kept (a set's instance: onto the set's current image) |
 | `kvo protect silo NAME [--off]` | A set's scale-in never removes it |
 | `kvo move silo NAME --to HOST [--recreate] [--confirm-fenced [--insist]] [-n NS]` | Move it, with its data when its storage allows. A container's own files are never kept: a plain move is refused, and a fresh copy needs `onHostLoss: Recreate` and `--recreate`. `--recreate` is only for `onHostLoss: Recreate` silos. A plain move needs `create` on `silos/move`. `--confirm-fenced`: its host is lost and you know the old copy is off; without it a move from a lost host is refused. Refused while that host claimed a start of this silo less than 30 seconds ago; `--insist`, with `--confirm-fenced`, overrides that. Both flags need `create` on `hosts/confirm-off` (cluster-scoped; only `cluster-admin` by default). [Moves]({{ '/use/silos/moves/' | relative_url }}), [Moving a silo off a host you know is off]({{ '/admin/control-plane-loss/#moving-a-silo-off-a-host-you-know-is-off' | relative_url }}) |
-| `kvo get silos [-o wide]` | `NAME`, `RUNTIME`, `PHASE`, `READY`, `HOST`, `AGE`. `-o wide` adds `MOVABLE` (where each silo could go) and `ON-CP-LOSS` (`stops after 2m` for a silo with `onControlPlaneLoss: Stop` and no `after` of its own, or `stops after` that `after`; `-` for the others). A silo on a silent host has phase `Unknown` |
-| `kvo describe silo NAME` | Its state, [probes]({{ '/use/silos/probes/' | relative_url }}), what it starts from, what it does when its host loses the control plane (`On control-plane loss`), its conditions (`HostUnreachable`, `FenceArmed`, `FenceStopped`), and each port with its addresses and lease. [Addresses, ports and names]({{ '/use/networking/model/' | relative_url }}) |
+| `kvo get silos [-o wide]` | `NAME`, `RUNTIME`, `PHASE`, `READY`, `HOST`, `AGE`. `-o wide` adds `SILO IP`, `SILO IPV6`, `MOVABLE` (where each silo could go) and `ON-CP-LOSS` (`stops after 2m` for a silo with `onControlPlaneLoss: Stop` and no `after` of its own, or `stops after` that `after`; `-` for the others). A silo on a silent host has phase `Unknown` |
+| `kvo describe silo NAME` | Its state, [probes]({{ '/use/silos/probes/' | relative_url }}), what it starts from, what it does when its host loses the control plane (`On control-plane loss`), its `Silo IPv6` and `Egress IPv6` ([IPv6 at the edge]({{ '/use/networking/ipv6/' | relative_url }})), its conditions (`HostUnreachable`, `FenceArmed`, `FenceStopped`), and each port with its addresses and lease. [Addresses, ports and names]({{ '/use/networking/model/' | relative_url }}) |
 | `kvo open silo NAME --port PORT [--port PORT]… [--for D] [--no-wait]` | Open [leased ports]({{ '/use/networking/leases/' | relative_url }}) for a while. Each port is its own lease, on its own terms. If a lease needs a yes, wait for it (`--no-wait`: don't). A refused port doesn't stop the others, and the command exits non-zero |
 | `kvo close silo NAME --port PORT [--port PORT]…` | Close them early |
 | `kvo get leases [-n NS \| -A]` | The leased ports and their state: `SILO`, `PORT`, `PHASE`, `WHEN`, `BY` |
@@ -109,10 +109,10 @@ See [Panes]({{ '/use/panes/' | relative_url }}).
 
 | Command | Does |
 |---|---|
-| `kvo create ip NAME --type Host --host-address ADDRESS-NAME` | Reserve one of a host's named extra addresses. Namespace admin. [IPs and IP sets]({{ '/use/networking/ips/' | relative_url }}) |
+| `kvo create ip NAME --type Host --host-address ADDRESS-NAME` | Reserve one of a host's named extra addresses, IPv4. An IPv6 one is YAML with `family: IPv6` and `kvo apply -f`. Namespace admin. [IPs and IP sets]({{ '/use/networking/ips/' | relative_url }}) |
 | `kvo create ip NAME --type Provider --provider PROVIDER --region REGION` | Reserve an address from an installed provider (billed by it) |
-| `kvo get ips` | `TYPE`, `ADDRESS`, `WHERE`, `SET`, `USED BY`, `MOVES` |
-| `kvo describe ip NAME` | Where it comes from, who uses it, who waits for it, where its holder can move, whether it can be deleted now |
+| `kvo get ips` | `TYPE`, `FAMILY`, `ADDRESS`, `WHERE`, `SET`, `USED BY`, `MOVES` |
+| `kvo describe ip NAME` | Its family, where it comes from, who uses it, who waits for it, where its holder can move, whether it can be deleted now |
 | `kvo delete ip NAME` | Release it. Refused while a silo or service uses it |
 | `kvo get ipsets` | `TYPE`, `MEMBERS`, `USED`, `MAX` |
 | `kvo describe ipset NAME` | Each member by ordinal: its IP, address and the instance using it |
