@@ -112,7 +112,7 @@ Some things are never an `editor`'s. When a page needs one of them, it says so:
 | A `HostPort` or `LoadBalancer` service | Namespace admin | [Networking]({{ '/use/networking/#who-may-write-what' | relative_url }}) |
 | An address you keep (an IP or IP set) | Namespace admin | [IPs and IP sets]({{ '/use/networking/ips/' | relative_url }}) |
 | Deleting a namespace | Cluster admin | [Namespaces]({{ '/use/namespaces/' | relative_url }}) |
-| A host name on an ingress class, or a public class | Cluster admin | [Ingress controllers and certificates]({{ '/admin/ingress/' | relative_url }}) |
+| A host name on an ingress class, or a public class | Cluster admin | [Ingress controllers]({{ '/admin/ingress/' | relative_url }}) |
 | A secret's value read back, or an approval answered | Namespace admin | [Secrets]({{ '/use/secrets/#who-can-do-what-with-secrets' | relative_url }}) |
 | A move that says the old host is off (`--confirm-fenced`) | Cluster admin | [When the control plane is lost]({{ '/admin/control-plane-loss/#moving-a-silo-off-a-host-you-know-is-off' | relative_url }}) |
 

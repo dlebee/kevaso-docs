@@ -11,12 +11,12 @@ moved_anchors:
   3--a-site: "#1--a-site"
   4--dns: "#2--dns"
   5--the-certificate: "#3--the-certificate"
-  where-certificates-come-from: /admin/ingress/#where-certificates-come-from
-  the-internal-ca: /admin/ingress/#the-internal-ca
-  your-own-acme-server: /admin/ingress/#your-own-acme-server
-  solvers-proving-you-own-a-name: /admin/ingress/#solvers-proving-you-own-a-name
-  dns-providers: /admin/ingress/#dns-providers
-  other-tools-certbot-and-friends: /admin/ingress/#other-tools-certbot-and-friends
+  where-certificates-come-from: /admin/certificates/#where-certificates-come-from
+  the-internal-ca: /admin/certificates/#the-internal-ca
+  your-own-acme-server: /admin/certificates/#your-own-acme-server
+  solvers-proving-you-own-a-name: /admin/certificates/#solvers-proving-you-own-a-name
+  dns-providers: /admin/certificates/#dns-providers
+  other-tools-certbot-and-friends: /admin/certificates/#other-tools-certbot-and-friends
 ---
 
 # HTTPS sites (ingress)
@@ -57,7 +57,7 @@ with the proxy's own test, and reloads the proxy.
 ## Before you start: what an admin sets up
 
 An Ingress needs three things an administrator makes first, once per cluster or per name. Ask
-for them, or see [Ingress controllers and certificates]({{ '/admin/ingress/' | relative_url }}) if
+for them, or see [Ingress controllers]({{ '/admin/ingress/' | relative_url }}) if
 you are the admin:
 
 - **A controller and its class.** `kvo get ingressclasses` lists the classes there are.
@@ -68,7 +68,7 @@ you are the admin:
   by accident. An `editor` writes the Ingress and an admin applies it, or the class is private.
 
 Where certificates come from is each Ingress's choice (`tls.issuer`, [below](#routes)), among the
-Issuers the admin made. Two exist from the start: `letsencrypt` and `internal-ca`.
+[Issuers]({{ '/admin/certificates/' | relative_url }}) the admin made. Two exist from the start: `letsencrypt` and `internal-ca`.
 
 ## 1 · A site
 
