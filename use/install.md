@@ -23,7 +23,7 @@ your system, and `SHA256SUMS`.
 <div class="os-tab" data-os="macos" data-label="macOS" markdown="1">
 
 ```bash
-gh release download v0.1.0-rc.12 --repo dlebee/kevaso --pattern 'kvo-*-darwin-arm64.zip' --pattern SHA256SUMS
+gh release download v0.1.0-rc.13 --repo dlebee/kevaso --pattern 'kvo-*-darwin-arm64.zip' --pattern SHA256SUMS
 ```
 
 That is for Apple Silicon. On an Intel Mac, take `darwin-amd64` instead of `darwin-arm64`, here
@@ -33,7 +33,7 @@ and below.
 <div class="os-tab" data-os="linux" data-label="Linux" markdown="1">
 
 ```bash
-gh release download v0.1.0-rc.12 --repo dlebee/kevaso --pattern 'kvo-*-linux-amd64.tar.gz' --pattern SHA256SUMS
+gh release download v0.1.0-rc.13 --repo dlebee/kevaso --pattern 'kvo-*-linux-amd64.tar.gz' --pattern SHA256SUMS
 ```
 
 That is for x86_64. On ARM (`uname -m` says `aarch64`), take `linux-arm64` instead of
@@ -45,7 +45,7 @@ That is for x86_64. On ARM (`uname -m` says `aarch64`), take `linux-arm64` inste
 In PowerShell:
 
 ```powershell
-gh release download v0.1.0-rc.12 --repo dlebee/kevaso --pattern 'kvo-*-windows-amd64.zip' --pattern SHA256SUMS
+gh release download v0.1.0-rc.13 --repo dlebee/kevaso --pattern 'kvo-*-windows-amd64.zip' --pattern SHA256SUMS
 ```
 
 Windows builds are for x86_64 only.
@@ -65,7 +65,7 @@ again.
 shasum -a 256 --check --ignore-missing SHA256SUMS
 ```
 
-It prints `kvo-v0.1.0-rc.12-darwin-arm64.zip: OK`.
+It prints `kvo-v0.1.0-rc.13-darwin-arm64.zip: OK`.
 
 </div>
 <div class="os-tab" data-os="linux" data-label="Linux" markdown="1">
@@ -74,13 +74,13 @@ It prints `kvo-v0.1.0-rc.12-darwin-arm64.zip: OK`.
 sha256sum --check --ignore-missing SHA256SUMS
 ```
 
-It prints `kvo-v0.1.0-rc.12-linux-amd64.tar.gz: OK`.
+It prints `kvo-v0.1.0-rc.13-linux-amd64.tar.gz: OK`.
 
 </div>
 <div class="os-tab" data-os="windows" data-label="Windows" markdown="1">
 
 ```powershell
-Get-FileHash kvo-v0.1.0-rc.12-windows-amd64.zip
+Get-FileHash kvo-v0.1.0-rc.13-windows-amd64.zip
 ```
 
 ```powershell
@@ -101,14 +101,14 @@ The archive unpacks into a folder of its own name, with `kvo` and its licence fi
 <div class="os-tab" data-os="macos" data-label="macOS" markdown="1">
 
 ```bash
-unzip kvo-v0.1.0-rc.12-darwin-arm64.zip
+unzip kvo-v0.1.0-rc.13-darwin-arm64.zip
 ```
 
 </div>
 <div class="os-tab" data-os="linux" data-label="Linux" markdown="1">
 
 ```bash
-tar -xzf kvo-v0.1.0-rc.12-linux-amd64.tar.gz
+tar -xzf kvo-v0.1.0-rc.13-linux-amd64.tar.gz
 ```
 
 </div>
@@ -117,7 +117,7 @@ tar -xzf kvo-v0.1.0-rc.12-linux-amd64.tar.gz
 With the `tar` that comes with Windows:
 
 ```powershell
-tar -xf kvo-v0.1.0-rc.12-windows-amd64.zip
+tar -xf kvo-v0.1.0-rc.13-windows-amd64.zip
 ```
 
 </div>
@@ -136,14 +136,14 @@ sudo mkdir -p /usr/local/bin
 ```
 
 ```bash
-sudo install -m 0755 kvo-v0.1.0-rc.12-darwin-arm64/kvo /usr/local/bin/kvo
+sudo install -m 0755 kvo-v0.1.0-rc.13-darwin-arm64/kvo /usr/local/bin/kvo
 ```
 
 </div>
 <div class="os-tab" data-os="linux" data-label="Linux" markdown="1">
 
 ```bash
-sudo install -m 0755 kvo-v0.1.0-rc.12-linux-amd64/kvo /usr/local/bin/kvo
+sudo install -m 0755 kvo-v0.1.0-rc.13-linux-amd64/kvo /usr/local/bin/kvo
 ```
 
 </div>
@@ -156,7 +156,7 @@ New-Item -ItemType Directory -Force "$env:LOCALAPPDATA\Programs\Kevaso"
 ```
 
 ```powershell
-Move-Item kvo-v0.1.0-rc.12-windows-amd64\kvo.exe "$env:LOCALAPPDATA\Programs\Kevaso"
+Move-Item kvo-v0.1.0-rc.13-windows-amd64\kvo.exe "$env:LOCALAPPDATA\Programs\Kevaso"
 ```
 
 Add that folder to your own PATH (not the system's: no administrator rights needed):
